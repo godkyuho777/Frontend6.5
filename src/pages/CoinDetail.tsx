@@ -55,35 +55,13 @@ export default function CoinDetail() {
     onError: () => toast.error("Failed to save signal"),
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
-        <span className="ml-3 font-mono text-sm text-muted-foreground">
-          Loading {symbol} data...
-        </span>
-      </div>
-    );
-  }
-
-  if (!detail) {
-    return (
-      <div className="text-center py-20">
-        <p className="font-mono text-muted-foreground">No data available for {symbol}</p>
-        <Button variant="outline" className="mt-4" onClick={() => setLocation("/")}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Scanner
-        </Button>
-      </div>
-    );
-  }
-
-  const { candles, indicators, rsiSeries, adxSeries, bbSeries } = detail;
-  const lastCandle = candles[candles.length - 1];
-  const price = lastCandle?.close ?? 0;
-  const fibLevels = indicators.fibLevels || [];
-  const trendlines = indicators.trendlines || [];
-
-  const tfLabel = TIMEFRAMES.find(t => t.value === interval)?.label ?? interval;
+  // Pull series off `detail` with safe fallbacks so the useMemo below can run
+  // unconditionally — moving any hooks below the early returns would change
+  // the hook count between renders and trigger React #310.
+  const candles = detail?.candles ?? [];
+  const bbSeries = detail?.bbSeries;
+  const rsiSeries = detail?.rsiSeries;
+  const adxSeries = detail?.adxSeries;
 
   const chartData = useMemo(() => {
     const sliceStart = Math.max(0, candles.length - 60);
@@ -111,6 +89,36 @@ export default function CoinDetail() {
       };
     });
   }, [candles, bbSeries, rsiSeries, adxSeries]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
+        <span className="ml-3 font-mono text-sm text-muted-foreground">
+          Loading {symbol} data...
+        </span>
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <div className="text-center py-20">
+        <p className="font-mono text-muted-foreground">No data available for {symbol}</p>
+        <Button variant="outline" className="mt-4" onClick={() => setLocation("/")}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Scanner
+        </Button>
+      </div>
+    );
+  }
+
+  const { indicators } = detail;
+  const lastCandle = candles[candles.length - 1];
+  const price = lastCandle?.close ?? 0;
+  const fibLevels = indicators.fibLevels || [];
+  const trendlines = indicators.trendlines || [];
+
+  const tfLabel = TIMEFRAMES.find(t => t.value === interval)?.label ?? interval;
 
   const bbPos =
     indicators.bbUpper !== indicators.bbLower
