@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { HudPanel, StatCard } from "@/components/HudPanel";
+import { SignInDialog } from "@/components/SignInDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function Positions() {
-  const { user, signIn } = useAuth();
+  const { user } = useAuth();
   const [filter, setFilter] = useState<"open" | "closed" | undefined>(undefined);
   const [openDialog, setOpenDialog] = useState(false);
 
@@ -63,12 +64,11 @@ export default function Positions() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="font-mono text-muted-foreground">Sign in to track positions</p>
-        <Button
-          onClick={() => { void signIn(); }}
-          className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30"
-        >
-          CONNECT
-        </Button>
+        <SignInDialog>
+          <Button className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30">
+            CONNECT
+          </Button>
+        </SignInDialog>
       </div>
     );
   }
