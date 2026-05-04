@@ -16,6 +16,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -30,17 +33,45 @@ import {
   LogIn,
   LogOut,
   PanelLeft,
+  Ruler,
   Target,
+  TrendingUp,
   Waves,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: Activity, label: "Signal Scanner", path: "/" },
-  { icon: Waves, label: "Wave Tracker", path: "/wave" },
+type MenuChild = { icon: LucideIcon; label: string; path: string };
+type MenuItem = {
+  icon: LucideIcon;
+  label: string;
+  path: string;
+  children?: MenuChild[];
+};
+
+const menuItems: MenuItem[] = [
+  {
+    icon: Activity,
+    label: "Signal Scanner",
+    path: "/",
+    children: [
+      { icon: BarChart3, label: "RSI / BB / ADX", path: "/?strategy=rsi-bb-adx" },
+      { icon: Ruler, label: "Fibonacci & Trendline", path: "/?strategy=fibonacci-trendline" },
+      { icon: TrendingUp, label: "VWAP Strategy", path: "/?strategy=vwap" },
+    ],
+  },
+  {
+    icon: Waves,
+    label: "Wave Tracker",
+    path: "/wave",
+    children: [
+      { icon: Waves, label: "Sentiment & Matrix", path: "/wave?view=sentiment-matrix" },
+      { icon: TrendingUp, label: "Trend Analysis", path: "/wave?view=trend-analysis" },
+    ],
+  },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },
   { icon: Target, label: "Positions", path: "/positions" },
   { icon: History, label: "Signal History", path: "/history" },
@@ -99,6 +130,8 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const search = useSearch();
+  const currentSearch = search ? `?${search}` : "";
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
@@ -192,6 +225,36 @@ function DashboardLayoutContent({
                       />
                       <span className="text-sm">{item.label}</span>
                     </SidebarMenuButton>
+                    {item.children && item.children.length > 0 && (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => {
+                          const childIsActive =
+                            location + currentSearch === child.path;
+                          return (
+                            <SidebarMenuSubItem key={child.path}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={childIsActive}
+                                className={`h-9 transition-all ${
+                                  childIsActive
+                                    ? "bg-neon-cyan/10 text-neon-cyan"
+                                    : "text-muted-foreground hover:text-neon-cyan hover:bg-neon-cyan/5"
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => setLocation(child.path)}
+                                  className="w-full text-left flex items-center gap-2"
+                                >
+                                  <child.icon className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="text-sm">{child.label}</span>
+                                </button>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
+                      </SidebarMenuSub>
+                    )}
                   </SidebarMenuItem>
                 );
               })}

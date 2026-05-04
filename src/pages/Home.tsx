@@ -1,4 +1,5 @@
 import { HudPanel, StatCard } from "@/components/HudPanel";
+import { SignalDetailDialog } from "@/components/SignalDetailDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,22 +13,174 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { TIMEFRAMES } from "@shared/types";
-import type { TimeframeValue } from "@shared/types";
+import type { CoinScanResult, PressureLabel, TimeframeValue } from "@shared/types";
 import { useMarketScan } from "@/hooks/useMarketData";
 
 type SortKey = "symbol" | "price" | "change24h" | "rsi" | "bbPos" | "adx" | "strength" | "signal";
 type SortDir = "asc" | "desc";
 
+const EMPTY_COINS: CoinScanResult[] = [];
+
+type SortHeaderProps = {
+  label: string;
+  sortKeyVal: SortKey;
+  className?: string;
+  sortKey: SortKey;
+  onSort: (key: SortKey) => void;
+};
+
+function SortHeader({ label, sortKeyVal, className, sortKey, onSort }: SortHeaderProps) {
+  return (
+    <th
+      className={cn(
+        "font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 cursor-pointer hover:text-neon-cyan transition-colors select-none",
+        className
+      )}
+      onClick={() => onSort(sortKeyVal)}
+    >
+      <div className="flex items-center gap-0.5 justify-end">
+        {label}
+        {sortKey === sortKeyVal && (
+          <ArrowUpDown className="h-2.5 w-2.5 text-neon-cyan" />
+        )}
+      </div>
+    </th>
+  );
+}
+
+function renderPressureCell(pressure: PressureLabel, strong: boolean) {
+  if (pressure === "NEUTRAL") {
+    return (
+      <span className="font-mono text-[10px] text-muted-foreground">↔ Neutral</span>
+    );
+  }
+  const isBull = pressure === "BULL_PRESSURE" || pressure === "WEAK_BULL";
+  const colorClass = isBull
+    ? strong
+      ? "text-neon-green"
+      : "text-neon-green/60"
+    : strong
+    ? "text-neon-red"
+    : "text-neon-red/60";
+  const arrow = isBull ? "↑" : "↓";
+  const label = isBull
+    ? strong
+      ? "BULL"
+      : "Bull"
+    : strong
+    ? "BEAR"
+    : "Bear";
+  return (
+    <span className={cn("font-mono text-[10px] inline-flex items-center gap-0.5", colorClass)}>
+      <span>{arrow}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function renderPatternCell(coin: CoinScanResult) {
+  const bullCount = coin.candlePatterns.filter((p) => p.bias === "bullish").length;
+  const bearCount = coin.candlePatterns.filter((p) => p.bias === "bearish").length;
+  if (bullCount === 0 && bearCount === 0) {
+    return <span className="font-mono text-[10px] text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="font-mono text-[10px] inline-flex items-center gap-1">
+      {bullCount > 0 && (
+        <span className="text-neon-green">{bullCount}↑</span>
+      )}
+      {bearCount > 0 && (
+        <span className="text-neon-red">{bearCount}↓</span>
+      )}
+    </span>
+  );
+}
+
+function renderSignalBadges(coin: CoinScanResult) {
+  const badges: { key: string; node: React.ReactNode }[] = [];
+
+  if (coin.isStopLossHit) {
+    badges.push({
+      key: "stop",
+      node: (
+        <Badge className="bg-neon-red/20 text-neon-red border-neon-red/40 font-mono text-[10px]">
+          <ShieldAlert className="h-2.5 w-2.5 mr-0.5" />
+          STOP
+        </Badge>
+      ),
+    });
+  }
+
+  if (coin.entryDecision) {
+    const path = coin.entryDecision.path;
+    const colorClass =
+      path === "NUM"
+        ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40"
+        : path === "PTN"
+        ? "bg-neon-pink/20 text-neon-pink border-neon-pink/40"
+        : "bg-neon-green/20 text-neon-green border-neon-green/40";
+    badges.push({
+      key: "long",
+      node: (
+        <Badge className={cn("font-mono text-[10px]", colorClass)}>
+          <TrendingUp className="h-2.5 w-2.5 mr-0.5" />
+          LONG {path}
+        </Badge>
+      ),
+    });
+  }
+
+  if (coin.exitDecision) {
+    const label = coin.exitDecision.relaxedToBearish
+      ? "EXIT 약세"
+      : `EXIT ${coin.exitDecision.conditionsMet}/4`;
+    badges.push({
+      key: "exit",
+      node: (
+        <Badge
+          className={cn(
+            "font-mono text-[10px]",
+            coin.exitDecision.relaxedToBearish
+              ? "bg-orange-500/20 text-orange-400 border-orange-400/40"
+              : "bg-neon-yellow/20 text-neon-yellow border-neon-yellow/40"
+          )}
+        >
+          <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
+          {label}
+        </Badge>
+      ),
+    });
+  }
+
+  if (badges.length === 0) {
+    return <span className="font-mono text-[10px] text-muted-foreground">—</span>;
+  }
+
+  return (
+    <SignalDetailDialog coin={coin}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+      >
+        {badges.map((b) => (
+          <span key={b.key}>{b.node}</span>
+        ))}
+      </button>
+    </SignalDetailDialog>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [interval, setInterval] = useState<TimeframeValue>("4h");
+  const [selectedInterval, setSelectedInterval] = useState<TimeframeValue>("4h");
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -40,7 +193,7 @@ export default function Home() {
     refetch,
     isFetching,
     error,
-  } = useMarketScan(page, pageSize, interval);
+  } = useMarketScan(page, pageSize, selectedInterval);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -51,7 +204,7 @@ export default function Home() {
     }
   };
 
-  const coins = scanData?.coins ?? [];
+  const coins = scanData?.coins ?? EMPTY_COINS;
   const totalCoins = scanData?.total ?? 0;
   const totalPages = scanData?.totalPages ?? 1;
 
@@ -113,24 +266,7 @@ export default function Home() {
     ? (coins.reduce((sum, r) => sum + r.indicators.rsi, 0) / coins.length).toFixed(1)
     : "—";
 
-  const tfLabel = TIMEFRAMES.find((t) => t.value === interval)?.label ?? interval;
-
-  const SortHeader = ({ label, sortKeyVal, className }: { label: string; sortKeyVal: SortKey; className?: string }) => (
-    <th
-      className={cn(
-        "font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 cursor-pointer hover:text-neon-cyan transition-colors select-none",
-        className
-      )}
-      onClick={() => handleSort(sortKeyVal)}
-    >
-      <div className="flex items-center gap-0.5 justify-end">
-        {label}
-        {sortKey === sortKeyVal && (
-          <ArrowUpDown className="h-2.5 w-2.5 text-neon-cyan" />
-        )}
-      </div>
-    </th>
-  );
+  const tfLabel = TIMEFRAMES.find((t) => t.value === selectedInterval)?.label ?? selectedInterval;
 
   return (
     <div className="space-y-4">
@@ -153,12 +289,12 @@ export default function Home() {
                 <button
                   key={tf.value}
                   onClick={() => {
-                    setInterval(tf.value as TimeframeValue);
+                    setSelectedInterval(tf.value as TimeframeValue);
                     setPage(1);
                   }}
                   className={cn(
                     "font-mono text-[10px] px-2 py-1 rounded-sm transition-all",
-                    interval === tf.value
+                    selectedInterval === tf.value
                       ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                   )}
@@ -270,17 +406,26 @@ export default function Home() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border/30">
-                    <SortHeader label="Symbol" sortKeyVal="symbol" className="text-left" />
-                    <SortHeader label="Price" sortKeyVal="price" />
-                    <SortHeader label="24h" sortKeyVal="change24h" className="hidden sm:table-cell" />
-                    <SortHeader label="RSI" sortKeyVal="rsi" />
-                    <SortHeader label="BB Pos" sortKeyVal="bbPos" className="hidden md:table-cell" />
-                    <SortHeader label="ADX" sortKeyVal="adx" />
+                    <SortHeader label="Symbol" sortKeyVal="symbol" className="text-left" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="Price" sortKeyVal="price" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="24h" sortKeyVal="change24h" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="RSI" sortKeyVal="rsi" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="BB Pos" sortKeyVal="bbPos" className="hidden md:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="ADX" sortKeyVal="adx" sortKey={sortKey} onSort={handleSort} />
                     <th className="text-right font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 hidden lg:table-cell">
+                      Pressure
+                    </th>
+                    <th className="text-right font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 hidden lg:table-cell">
+                      Rev %
+                    </th>
+                    <th className="text-right font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 hidden xl:table-cell">
+                      Pattern
+                    </th>
+                    <th className="text-right font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 hidden xl:table-cell">
                       Fib Zone
                     </th>
-                    <SortHeader label="Strength" sortKeyVal="strength" className="hidden sm:table-cell" />
-                    <SortHeader label="Signal" sortKeyVal="signal" className="text-center" />
+                    <SortHeader label="Strength" sortKeyVal="strength" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="Signal" sortKeyVal="signal" className="text-center" sortKey={sortKey} onSort={handleSort} />
                   </tr>
                 </thead>
                 <tbody>
@@ -297,7 +442,7 @@ export default function Home() {
                     return (
                       <tr
                         key={coin.symbol}
-                        onClick={() => setLocation(`/coin/${coin.symbol}?tf=${interval}`)}
+                        onClick={() => setLocation(`/coin/${coin.symbol}?tf=${selectedInterval}`)}
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
                           isHighlighted
@@ -391,7 +536,35 @@ export default function Home() {
                             {coin.indicators.adx === 0 ? "..." : coin.indicators.adx.toFixed(1)}
                           </span>
                         </td>
-                        <td className="text-right py-2 px-2 font-mono text-[10px] text-muted-foreground hidden lg:table-cell">
+                        {/* Pressure */}
+                        <td className="text-right py-2 px-2 hidden lg:table-cell">
+                          {renderPressureCell(coin.pressure, coin.pressureStrong)}
+                        </td>
+                        {/* Rev % */}
+                        <td className="text-right py-2 px-2 hidden lg:table-cell">
+                          {coin.indicators.adx === 0 ? (
+                            <span className="font-mono text-[10px] text-muted-foreground">…</span>
+                          ) : (
+                            <span
+                              className={cn(
+                                "font-mono text-xs",
+                                coin.reversalProb >= 70
+                                  ? "text-neon-green"
+                                  : coin.reversalProb >= 50
+                                  ? "text-neon-yellow"
+                                  : "text-muted-foreground"
+                              )}
+                            >
+                              {coin.reversalProb.toFixed(0)}%
+                            </span>
+                          )}
+                        </td>
+                        {/* Pattern count */}
+                        <td className="text-right py-2 px-2 hidden xl:table-cell">
+                          {renderPatternCell(coin)}
+                        </td>
+                        {/* Fib Zone */}
+                        <td className="text-right py-2 px-2 font-mono text-[10px] text-muted-foreground hidden xl:table-cell">
                           {coin.fibSignal ? (
                             <Badge variant="outline" className={cn(
                               "font-mono text-[10px] border-none",
@@ -436,20 +609,12 @@ export default function Home() {
                             <span className="font-mono text-[10px] text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="text-center py-2 px-2">
-                          {coin.isEntrySignal ? (
-                            <Badge className="bg-neon-green/20 text-neon-green border-neon-green/30 font-mono text-[10px]">
-                              <TrendingUp className="h-2.5 w-2.5 mr-0.5" />
-                              LONG
-                            </Badge>
-                          ) : coin.isExitSignal ? (
-                            <Badge className="bg-neon-yellow/20 text-neon-yellow border-neon-yellow/30 font-mono text-[10px]">
-                              <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
-                              EXIT
-                            </Badge>
-                          ) : (
-                            <span className="font-mono text-[10px] text-muted-foreground">—</span>
-                          )}
+                        {/* Signal — rich BBDX badges, click to open detail */}
+                        <td
+                          className="text-center py-2 px-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {renderSignalBadges(coin)}
                         </td>
                       </tr>
                     );
