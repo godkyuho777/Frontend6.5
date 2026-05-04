@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { SignInDialog } from "@/components/SignInDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -96,7 +97,7 @@ function DashboardLayoutContent({
   children,
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
-  const { user, logout, signIn } = useAuth();
+  const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -228,24 +229,21 @@ function DashboardLayoutContent({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <button
-                onClick={() => {
-                  void signIn();
-                }}
-                className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-neon-cyan/5 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <div className="h-9 w-9 flex items-center justify-center border border-neon-cyan/30 rounded-full shrink-0 bg-neon-cyan/10">
-                  <LogIn className="h-4 w-4 text-neon-cyan" />
-                </div>
-                <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                  <p className="text-sm font-medium text-neon-cyan">
-                    Sign In
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 font-mono">
-                    For positions & alerts
-                  </p>
-                </div>
-              </button>
+              <SignInDialog>
+                <button className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-neon-cyan/5 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <div className="h-9 w-9 flex items-center justify-center border border-neon-cyan/30 rounded-full shrink-0 bg-neon-cyan/10">
+                    <LogIn className="h-4 w-4 text-neon-cyan" />
+                  </div>
+                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                    <p className="text-sm font-medium text-neon-cyan">
+                      Sign In
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 font-mono">
+                      For positions & alerts
+                    </p>
+                  </div>
+                </button>
+              </SignInDialog>
             )}
           </SidebarFooter>
         </Sidebar>
