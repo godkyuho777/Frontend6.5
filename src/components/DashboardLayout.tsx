@@ -30,7 +30,6 @@ import {
   Bell,
   Bot,
   History,
-  Layers,
   LogIn,
   LogOut,
   PanelLeft,
@@ -61,7 +60,6 @@ const menuItems: MenuItem[] = [
     children: [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/?strategy=rsi-bb-adx" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/?strategy=fibonacci-trendline" },
-      { icon: Layers, label: "Multi-Confluence", path: "/?strategy=multi-confluence" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/?strategy=vwap" },
     ],
   },

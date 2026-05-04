@@ -19,26 +19,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useSearch } from "wouter";
-
-type WaveView = "sentiment-matrix" | "trend-analysis";
-
-const VIEW_LABELS: Record<WaveView, { title: string; subtitle: string }> = {
-  "sentiment-matrix": {
-    title: "SENTIMENT & MATRIX",
-    subtitle: "OI · L/S · FUNDING · LIQUIDATIONS // BYBIT DATA",
-  },
-  "trend-analysis": {
-    title: "TREND ANALYSIS",
-    subtitle: "WAVE SCORE · DETECTION REASONS // BYBIT DATA",
-  },
-};
-
-function parseView(search: string): WaveView {
-  const value = new URLSearchParams(search).get("view");
-  if (value === "trend-analysis") return "trend-analysis";
-  return "sentiment-matrix";
-}
 import {
   Area,
   AreaChart,
@@ -247,11 +227,6 @@ function LiquidationPressureBar({
 // ─── Main Page ───────────────────────────────────────────────
 
 export default function WaveTracker() {
-  const search = useSearch();
-  const view = parseView(search);
-  const viewLabel = VIEW_LABELS[view];
-  const showSentiment = view === "sentiment-matrix";
-  const showTrend = view === "trend-analysis";
   const [oiInterval, setOiInterval] = useState<OIInterval>("1h");
   const {
     snapshot,
@@ -301,10 +276,10 @@ export default function WaveTracker() {
         <div>
           <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-3">
             <Waves className="h-6 w-6" />
-            {viewLabel.title}
+            WAVE TRACKER
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            BTC PERPETUAL // {viewLabel.subtitle}
+            BTC PERPETUAL // OI + LIQUIDATION PRESSURE ANALYSIS // BYBIT DATA
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -411,63 +386,53 @@ export default function WaveTracker() {
             />
           </div>
 
-          {/* Wave Analysis + Liquidation Pressure — composition adapts to the
-              selected view: trend-analysis shows Wave Score + Analysis Detail
-              (2 cols), sentiment-matrix shows Liquidation Pressure full-width. */}
-          <div
-            className={cn(
-              "grid grid-cols-1 gap-4",
-              showTrend ? "lg:grid-cols-2" : "lg:grid-cols-1"
-            )}
-          >
-            {showTrend && (
-              <HudPanel
-                title="Wave Score"
-                subtitle="OI + LS RATIO + FUNDING COMPOSITE"
-                variant="highlight"
-              >
-                <div className="flex flex-col items-center py-4">
-                  <WaveGauge score={analysis.score} label={analysis.label} />
-                </div>
-              </HudPanel>
-            )}
+          {/* Wave Analysis + Liquidation Pressure */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Wave Gauge */}
+            <HudPanel
+              title="Wave Score"
+              subtitle="OI + LS RATIO + FUNDING COMPOSITE"
+              variant="highlight"
+            >
+              <div className="flex flex-col items-center py-4">
+                <WaveGauge score={analysis.score} label={analysis.label} />
+              </div>
+            </HudPanel>
 
-            {showSentiment && (
-              <HudPanel
-                title="Liquidation Pressure"
-                subtitle="ESTIMATED FROM LONG/SHORT RATIO"
-              >
-                <div className="py-4">
-                  <LiquidationPressureBar
-                    longPressure={analysis.longPressure}
-                    shortPressure={analysis.shortPressure}
-                    dominantSide={analysis.dominantLiqSide}
-                  />
-                </div>
-              </HudPanel>
-            )}
+            {/* Liquidation Pressure */}
+            <HudPanel
+              title="Liquidation Pressure"
+              subtitle="ESTIMATED FROM LONG/SHORT RATIO"
+            >
+              <div className="py-4">
+                <LiquidationPressureBar
+                  longPressure={analysis.longPressure}
+                  shortPressure={analysis.shortPressure}
+                  dominantSide={analysis.dominantLiqSide}
+                />
+              </div>
+            </HudPanel>
 
-            {showTrend && (
-              <HudPanel
-                title="Analysis Detail"
-                subtitle="WAVE DETECTION REASONS"
-              >
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {analysis.reasons.map((reason, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2 text-xs font-mono"
-                    >
-                      <Zap className={cn(
-                        "h-3 w-3 mt-0.5 shrink-0",
-                        analysis.score >= 50 ? "text-neon-yellow" : "text-muted-foreground"
-                      )} />
-                      <span className="text-foreground/80 leading-relaxed">{reason}</span>
-                    </div>
-                  ))}
-                </div>
-              </HudPanel>
-            )}
+            {/* Analysis Reasons */}
+            <HudPanel
+              title="Analysis Detail"
+              subtitle="WAVE DETECTION REASONS"
+            >
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {analysis.reasons.map((reason, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 text-xs font-mono"
+                  >
+                    <Zap className={cn(
+                      "h-3 w-3 mt-0.5 shrink-0",
+                      analysis.score >= 50 ? "text-neon-yellow" : "text-muted-foreground"
+                    )} />
+                    <span className="text-foreground/80 leading-relaxed">{reason}</span>
+                  </div>
+                ))}
+              </div>
+            </HudPanel>
           </div>
 
           {/* OI History Chart */}
@@ -527,8 +492,7 @@ export default function WaveTracker() {
             )}
           </HudPanel>
 
-          {/* Long/Short Ratio Chart — sentiment view only */}
-          {showSentiment && (
+          {/* Long/Short Ratio Chart */}
           <HudPanel
             title="Long / Short Ratio"
             subtitle={`ACCOUNT RATIO · ${oiInterval.toUpperCase()} INTERVAL`}
@@ -593,10 +557,8 @@ export default function WaveTracker() {
               </div>
             )}
           </HudPanel>
-          )}
 
-          {/* Funding Rate Chart — sentiment view only */}
-          {showSentiment && (
+          {/* Funding Rate Chart */}
           <HudPanel
             title="Funding Rate History"
             subtitle="8H INTERVAL · BTCUSDT PERP"
@@ -643,7 +605,6 @@ export default function WaveTracker() {
               </div>
             )}
           </HudPanel>
-          )}
 
           {/* Last updated */}
           {lastUpdated && (
