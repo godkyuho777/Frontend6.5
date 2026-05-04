@@ -7,7 +7,16 @@ import superjson from "superjson";
 import App from "./App";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // 30s — quick cross-page navigation serves cache instead of refetching.
+      // Per-query `refetchInterval` still drives polling where set.
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
