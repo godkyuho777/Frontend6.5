@@ -41,7 +41,7 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
 
         <div className="space-y-4 pt-2">
           {/* STOP — highest priority, surface first */}
-          {coin.isStopLossHit && (
+          {(coin.isStopLossHit ?? false) && (
             <Section
               title="Stop Loss Triggered"
               icon={<ShieldAlert className="h-4 w-4 text-neon-red" />}
@@ -113,13 +113,13 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
           )}
 
           {/* No active signal */}
-          {!coin.entryDecision && !coin.exitDecision && !coin.isStopLossHit && (
+          {!coin.entryDecision && !coin.exitDecision && !(coin.isStopLossHit ?? false) && (
             <Section title="No Active Signal" icon={<Activity className="h-4 w-4 text-muted-foreground" />}>
               <p className="font-mono text-[11px] text-muted-foreground">
                 None of the NUM / PTN / BB entry conditions are satisfied, and no
                 exit threshold has been crossed.
               </p>
-              {coin.isFallingKnife && (
+              {(coin.isFallingKnife ?? false) && (
                 <p className="font-mono text-[11px] text-neon-red mt-2">
                   ⚠ Falling Knife filter active (-DI &gt; +DI AND ADX &gt; 25). Entry blocked.
                 </p>
@@ -136,18 +136,18 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
               <Row label="-DI" value={coin.indicators.minusDi.toFixed(1)} />
               <Row label="BB Middle" value={`$${formatPrice(coin.indicators.bbMiddle)}`} />
               <Row label="BB Lower" value={`$${formatPrice(coin.indicators.bbLower)}`} />
-              <Row label="Pressure" value={formatPressure(coin.pressure)} />
-              <Row label="Reversal Prob" value={`${coin.reversalProb.toFixed(0)}%`} />
-              <Row label="Volume Ratio" value={coin.volumeRatio.toFixed(2)} />
-              <Row label="Stop Loss" value={`$${formatPrice(coin.stopLossPrice)}`} />
+              <Row label="Pressure" value={formatPressure(coin.pressure ?? "NEUTRAL")} />
+              <Row label="Reversal Prob" value={`${(coin.reversalProb ?? 0).toFixed(0)}%`} />
+              <Row label="Volume Ratio" value={(coin.volumeRatio ?? 1).toFixed(2)} />
+              <Row label="Stop Loss" value={`$${formatPrice(coin.stopLossPrice ?? 0)}`} />
             </div>
           </Section>
 
           {/* Patterns */}
-          {coin.candlePatterns.length > 0 && (
+          {(coin.candlePatterns ?? []).length > 0 && (
             <Section title="Detected Patterns" icon={<Activity className="h-4 w-4 text-neon-pink" />}>
               <div className="space-y-1">
-                {coin.candlePatterns.map((p, i) => (
+                {(coin.candlePatterns ?? []).map((p, i) => (
                   <div
                     key={i}
                     className={cn(

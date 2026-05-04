@@ -10,10 +10,18 @@ import { TOP_COINS } from "@shared/types";
 import { fetchKlines, fetchAll24hTickers } from "@/lib/bybit-client";
 import {
   calculateAllIndicators,
-  isEntrySignal,
-  isExitSignal,
-  calculateSignalStrength,
+  calculateBollingerBandsSeries,
+  calculateSignalStrengthV2,
+  decideEntry,
+  decideExit,
+  detectAllCandlePatterns,
+  detectBBStructure,
+  isFallingKnife,
   isInFibZone,
+  pressureLabel,
+  reversalProbability,
+  volumeConfirmationFromRatio,
+  volumeRatio,
 } from "@/lib/indicators-client";
 
 interface ScanPageResult {
@@ -44,11 +52,12 @@ async function scanCoin(
   const cached = scanCache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     if (tickerData) {
+      // Refresh price-derived fields without recomputing patterns / decisions.
       cached.data.price = tickerData.price;
       cached.data.change24h = tickerData.change24h;
       cached.data.volume24h = tickerData.volume24h;
-      cached.data.isEntrySignal = isEntrySignal(tickerData.price, cached.data.indicators);
-      cached.data.isExitSignal = isExitSignal(tickerData.price, cached.data.indicators);
+      cached.data.isStopLossHit =
+        tickerData.price <= cached.data.stopLossPrice;
     }
     return cached.data;
   }
@@ -73,16 +82,56 @@ async function scanCoin(
       }
     }
 
+    // BBDX-PATTERN v6.1 — match backend scan output
+    const closes = candles.map((c) => c.close);
+    const bbSeries = calculateBollingerBandsSeries(closes);
+    const candlePatterns = detectAllCandlePatterns(candles);
+    const bbStructure = detectBBStructure(candles, bbSeries);
+    const ratio = volumeRatio(candles);
+    const volConfirmation = volumeConfirmationFromRatio(ratio);
+    const reversalProb = reversalProbability(indicators.adx);
+    const pressure = pressureLabel(indicators.plusDi, indicators.minusDi);
+    const pressureStrong =
+      Math.abs(indicators.plusDi - indicators.minusDi) > 5;
+    const fallingKnife = isFallingKnife(
+      indicators.plusDi,
+      indicators.minusDi,
+      indicators.adx
+    );
+    const entryDecision = fallingKnife
+      ? null
+      : decideEntry(candles, indicators, candlePatterns, bbStructure, ratio);
+    const bearishPatterns = candlePatterns.filter(
+      (p) => p.bias === "bearish"
+    );
+    const exitDecision = decideExit(price, indicators, bearishPatterns);
+    const stopLossPrice = indicators.bbLower * 0.97;
+    const isStopLossHit = price <= stopLossPrice;
+
     const result: CoinScanResult = {
       symbol,
       price,
       change24h,
       volume24h,
       indicators,
-      isEntrySignal: isEntrySignal(price, indicators) || !!fibSignal,
-      isExitSignal: isExitSignal(price, indicators),
-      signalStrength: calculateSignalStrength(price, indicators),
+      // Legacy boolean fields — derived from rich decisions for back-compat
+      isEntrySignal: entryDecision != null || !!fibSignal,
+      isExitSignal: exitDecision != null,
+      signalStrength: calculateSignalStrengthV2(price, indicators, volConfirmation),
       fibSignal,
+      // BBDX-PATTERN v6.1 fields
+      pressure,
+      pressureStrong,
+      reversalProb,
+      volumeRatio: ratio,
+      volumeConfirmation: volConfirmation,
+      candlePatterns,
+      bbStructure,
+      entryDecision,
+      exitDecision,
+      stopLossPrice,
+      isStopLossHit,
+      isFallingKnife: fallingKnife,
     };
 
     scanCache.set(key, { data: result, timestamp: Date.now() });
@@ -144,6 +193,20 @@ async function scanCoinsPage(
             isEntrySignal: false,
             isExitSignal: false,
             signalStrength: 0,
+            // BBDX-PATTERN v6.1 — empty defaults so the renderer doesn't
+            // crash on partial failures.
+            pressure: "NEUTRAL",
+            pressureStrong: false,
+            reversalProb: 0,
+            volumeRatio: 1,
+            volumeConfirmation: 0,
+            candlePatterns: [],
+            bbStructure: null,
+            entryDecision: null,
+            exitDecision: null,
+            stopLossPrice: 0,
+            isStopLossHit: false,
+            isFallingKnife: false,
           });
         }
       }
