@@ -14,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { TIMEFRAMES } from "@shared/types";
@@ -23,6 +23,40 @@ import { useMarketScan } from "@/hooks/useMarketData";
 
 type SortKey = "symbol" | "price" | "change24h" | "rsi" | "bbPos" | "adx" | "strength" | "signal";
 type SortDir = "asc" | "desc";
+
+type Strategy = "rsi-bb-adx" | "fibonacci-trendline" | "multi-confluence" | "vwap";
+
+const STRATEGY_LABELS: Record<Strategy, { title: string; subtitle: string }> = {
+  "rsi-bb-adx": {
+    title: "SIGNAL SCANNER",
+    subtitle: "RSI + BB + ADX ANALYSIS // BYBIT DATA",
+  },
+  "fibonacci-trendline": {
+    title: "FIBONACCI & TRENDLINE",
+    subtitle: "GOLDEN-ZONE RETRACEMENT FILTER // BYBIT DATA",
+  },
+  "multi-confluence": {
+    title: "MULTI-CONFLUENCE",
+    subtitle: "STRENGTH ≥ 70 // MULTI-INDICATOR ALIGNMENT",
+  },
+  vwap: {
+    title: "VWAP STRATEGY",
+    subtitle: "VWAP DEVIATION (COMING SOON)",
+  },
+};
+
+function parseStrategy(search: string): Strategy {
+  const value = new URLSearchParams(search).get("strategy");
+  if (
+    value === "rsi-bb-adx" ||
+    value === "fibonacci-trendline" ||
+    value === "multi-confluence" ||
+    value === "vwap"
+  ) {
+    return value;
+  }
+  return "rsi-bb-adx";
+}
 
 const EMPTY_COINS: CoinScanResult[] = [];
 
@@ -55,6 +89,9 @@ function SortHeader({ label, sortKeyVal, className, sortKey, onSort }: SortHeade
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const strategy = parseStrategy(search);
+  const strategyLabel = STRATEGY_LABELS[strategy];
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterval, setSelectedInterval] = useState<TimeframeValue>("4h");
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
@@ -86,6 +123,17 @@ export default function Home() {
 
   const filteredAndSorted = useMemo(() => {
     let list = [...coins];
+
+    // Strategy-driven filter applied before search/sort.
+    if (strategy === "fibonacci-trendline") {
+      list = list.filter((r) => r.fibSignal != null);
+    } else if (strategy === "multi-confluence") {
+      list = list.filter((r) => r.signalStrength >= 70);
+    } else if (strategy === "vwap") {
+      // VWAP indicator not yet computed in the backend; show an empty
+      // result until that pipeline lands.
+      list = [];
+    }
 
     if (searchQuery) {
       list = list.filter((r) =>
@@ -134,7 +182,7 @@ export default function Home() {
     });
 
     return list;
-  }, [coins, searchQuery, sortKey, sortDir]);
+  }, [coins, searchQuery, sortKey, sortDir, strategy]);
 
   const entryCount = coins.filter((r) => r.isEntrySignal).length;
   const exitCount = coins.filter((r) => r.isExitSignal).length;
@@ -150,10 +198,10 @@ export default function Home() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
-            SIGNAL SCANNER
+            {strategyLabel.title}
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            {tfLabel} TIMEFRAME // RSI + BB + ADX ANALYSIS // BYBIT DATA
+            {tfLabel} TIMEFRAME // {strategyLabel.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -470,11 +518,29 @@ export default function Home() {
               </table>
             </div>
 
-            {/* Empty search state */}
-            {filteredAndSorted.length === 0 && searchQuery && (
+            {/* Empty state — VWAP placeholder takes priority over generic
+                "no matches" messaging because it's a known data gap. */}
+            {filteredAndSorted.length === 0 && strategy === "vwap" && (
+              <div className="flex flex-col items-center justify-center py-8 gap-1">
+                <p className="font-mono text-sm text-muted-foreground">
+                  VWAP indicator coming soon
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground/70">
+                  Awaiting backend pipeline support
+                </p>
+              </div>
+            )}
+            {filteredAndSorted.length === 0 && strategy !== "vwap" && searchQuery && (
               <div className="flex flex-col items-center justify-center py-8">
                 <p className="font-mono text-sm text-muted-foreground">
                   No coins matching "{searchQuery}"
+                </p>
+              </div>
+            )}
+            {filteredAndSorted.length === 0 && strategy !== "vwap" && !searchQuery && (
+              <div className="flex flex-col items-center justify-center py-8">
+                <p className="font-mono text-sm text-muted-foreground">
+                  No coins match the {strategyLabel.title.toLowerCase()} filter
                 </p>
               </div>
             )}
