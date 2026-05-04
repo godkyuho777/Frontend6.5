@@ -15,7 +15,7 @@ export default function AlertSettings() {
 
   const { data: alerts, isLoading, refetch } = trpc.alerts.get.useQuery(
     undefined,
-    { enabled: !!user }
+    { enabled: !!user, staleTime: 5 * 60 * 1000 }
   );
 
   const upsertMutation = trpc.alerts.upsert.useMutation({

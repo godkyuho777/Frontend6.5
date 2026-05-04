@@ -25,7 +25,52 @@ export default function Positions() {
 
   const { data: positions, isLoading, refetch } = trpc.positions.list.useQuery(
     { status: filter },
-    { enabled: !!user, refetchInterval: 30000 }
+    { enabled: !!user, refetchInterval: 30_000 }
+  );
+
+  const openSymbols = useMemo(
+    () =>
+      positions
+        ?.filter((p) => p.status === "open")
+        .map((p) => p.symbol) ?? [],
+    [positions]
+  );
+
+  // Live price/PnL updates fetched separately so the position list can render
+  // immediately while the slower Bybit roundtrip happens in parallel.
+  const { data: priceUpdates } = trpc.positions.refreshPrices.useQuery(
+    { symbols: openSymbols },
+    {
+      enabled: !!user && openSymbols.length > 0,
+      refetchInterval: 30_000,
+    }
+  );
+
+  const priceMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { currentPrice: number; pnlPercent: number; pnlAmount: number }
+    >();
+    for (const u of priceUpdates ?? []) {
+      map.set(u.symbol, u);
+    }
+    return map;
+  }, [priceUpdates]);
+
+  const displayPositions = useMemo(
+    () =>
+      positions?.map((p) => {
+        if (p.status !== "open") return p;
+        const u = priceMap.get(p.symbol);
+        if (!u) return p;
+        return {
+          ...p,
+          currentPrice: u.currentPrice,
+          pnlPercent: u.pnlPercent,
+          pnlAmount: u.pnlAmount,
+        };
+      }) ?? [],
+    [positions, priceMap]
   );
 
   const createMutation = trpc.positions.create.useMutation({
@@ -46,8 +91,8 @@ export default function Positions() {
   });
 
   const openPositions = useMemo(
-    () => positions?.filter((p) => p.status === "open") ?? [],
-    [positions]
+    () => displayPositions.filter((p) => p.status === "open"),
+    [displayPositions]
   );
 
   const totalPnl = useMemo(
@@ -127,7 +172,7 @@ export default function Positions() {
           value={`${totalPnlPercent.toFixed(2)}%`}
           variant={totalPnlPercent >= 0 ? "positive" : "negative"}
         />
-        <StatCard label="Total" value={positions?.length ?? 0} unit="positions" />
+        <StatCard label="Total" value={displayPositions.length} unit="positions" />
       </div>
 
       {/* Filter */}
@@ -160,13 +205,13 @@ export default function Positions() {
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
           </div>
-        ) : !positions?.length ? (
+        ) : displayPositions.length === 0 ? (
           <div className="text-center py-8">
             <p className="font-mono text-sm text-muted-foreground">No positions found</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {positions.map((pos) => (
+            {displayPositions.map((pos) => (
               <div
                 key={pos.id}
                 className={cn(
