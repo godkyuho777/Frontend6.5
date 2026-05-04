@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { HudPanel } from "@/components/HudPanel";
+import { SignInDialog } from "@/components/SignInDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export default function AlertSettings() {
-  const { user, signIn } = useAuth();
+  const { user } = useAuth();
 
   const { data: alerts, isLoading, refetch } = trpc.alerts.get.useQuery(
     undefined,
@@ -38,12 +39,11 @@ export default function AlertSettings() {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Bell className="h-10 w-10 text-muted-foreground/30" />
         <p className="font-mono text-muted-foreground">Sign in to configure alerts</p>
-        <Button
-          onClick={() => { void signIn(); }}
-          className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30"
-        >
-          CONNECT
-        </Button>
+        <SignInDialog>
+          <Button className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30">
+            CONNECT
+          </Button>
+        </SignInDialog>
       </div>
     );
   }
