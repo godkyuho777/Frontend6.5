@@ -86,8 +86,9 @@ function renderPressureCell(pressure: PressureLabel, strong: boolean) {
 }
 
 function renderPatternCell(coin: CoinScanResult) {
-  const bullCount = coin.candlePatterns.filter((p) => p.bias === "bullish").length;
-  const bearCount = coin.candlePatterns.filter((p) => p.bias === "bearish").length;
+  const patterns = coin.candlePatterns ?? [];
+  const bullCount = patterns.filter((p) => p.bias === "bullish").length;
+  const bearCount = patterns.filter((p) => p.bias === "bearish").length;
   if (bullCount === 0 && bearCount === 0) {
     return <span className="font-mono text-[10px] text-muted-foreground">—</span>;
   }
@@ -106,7 +107,7 @@ function renderPatternCell(coin: CoinScanResult) {
 function renderSignalBadges(coin: CoinScanResult) {
   const badges: { key: string; node: React.ReactNode }[] = [];
 
-  if (coin.isStopLossHit) {
+  if (coin.isStopLossHit ?? false) {
     badges.push({
       key: "stop",
       node: (
@@ -538,7 +539,7 @@ export default function Home() {
                         </td>
                         {/* Pressure */}
                         <td className="text-right py-2 px-2 hidden lg:table-cell">
-                          {renderPressureCell(coin.pressure, coin.pressureStrong)}
+                          {renderPressureCell(coin.pressure ?? "NEUTRAL", coin.pressureStrong ?? false)}
                         </td>
                         {/* Rev % */}
                         <td className="text-right py-2 px-2 hidden lg:table-cell">
@@ -548,14 +549,14 @@ export default function Home() {
                             <span
                               className={cn(
                                 "font-mono text-xs",
-                                coin.reversalProb >= 70
+                                (coin.reversalProb ?? 0) >= 70
                                   ? "text-neon-green"
-                                  : coin.reversalProb >= 50
+                                  : (coin.reversalProb ?? 0) >= 50
                                   ? "text-neon-yellow"
                                   : "text-muted-foreground"
                               )}
                             >
-                              {coin.reversalProb.toFixed(0)}%
+                              {(coin.reversalProb ?? 0).toFixed(0)}%
                             </span>
                           )}
                         </td>
