@@ -18,16 +18,45 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { TIMEFRAMES } from "@shared/types";
-import type { TimeframeValue } from "@shared/types";
+import type { CoinScanResult, TimeframeValue } from "@shared/types";
 import { useMarketScan } from "@/hooks/useMarketData";
 
 type SortKey = "symbol" | "price" | "change24h" | "rsi" | "bbPos" | "adx" | "strength" | "signal";
 type SortDir = "asc" | "desc";
 
+const EMPTY_COINS: CoinScanResult[] = [];
+
+type SortHeaderProps = {
+  label: string;
+  sortKeyVal: SortKey;
+  className?: string;
+  sortKey: SortKey;
+  onSort: (key: SortKey) => void;
+};
+
+function SortHeader({ label, sortKeyVal, className, sortKey, onSort }: SortHeaderProps) {
+  return (
+    <th
+      className={cn(
+        "font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 cursor-pointer hover:text-neon-cyan transition-colors select-none",
+        className
+      )}
+      onClick={() => onSort(sortKeyVal)}
+    >
+      <div className="flex items-center gap-0.5 justify-end">
+        {label}
+        {sortKey === sortKeyVal && (
+          <ArrowUpDown className="h-2.5 w-2.5 text-neon-cyan" />
+        )}
+      </div>
+    </th>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [interval, setInterval] = useState<TimeframeValue>("4h");
+  const [selectedInterval, setSelectedInterval] = useState<TimeframeValue>("4h");
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -40,7 +69,7 @@ export default function Home() {
     refetch,
     isFetching,
     error,
-  } = useMarketScan(page, pageSize, interval);
+  } = useMarketScan(page, pageSize, selectedInterval);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -51,7 +80,7 @@ export default function Home() {
     }
   };
 
-  const coins = scanData?.coins ?? [];
+  const coins = scanData?.coins ?? EMPTY_COINS;
   const totalCoins = scanData?.total ?? 0;
   const totalPages = scanData?.totalPages ?? 1;
 
@@ -113,24 +142,7 @@ export default function Home() {
     ? (coins.reduce((sum, r) => sum + r.indicators.rsi, 0) / coins.length).toFixed(1)
     : "—";
 
-  const tfLabel = TIMEFRAMES.find((t) => t.value === interval)?.label ?? interval;
-
-  const SortHeader = ({ label, sortKeyVal, className }: { label: string; sortKeyVal: SortKey; className?: string }) => (
-    <th
-      className={cn(
-        "font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 cursor-pointer hover:text-neon-cyan transition-colors select-none",
-        className
-      )}
-      onClick={() => handleSort(sortKeyVal)}
-    >
-      <div className="flex items-center gap-0.5 justify-end">
-        {label}
-        {sortKey === sortKeyVal && (
-          <ArrowUpDown className="h-2.5 w-2.5 text-neon-cyan" />
-        )}
-      </div>
-    </th>
-  );
+  const tfLabel = TIMEFRAMES.find((t) => t.value === selectedInterval)?.label ?? selectedInterval;
 
   return (
     <div className="space-y-4">
@@ -153,12 +165,12 @@ export default function Home() {
                 <button
                   key={tf.value}
                   onClick={() => {
-                    setInterval(tf.value as TimeframeValue);
+                    setSelectedInterval(tf.value as TimeframeValue);
                     setPage(1);
                   }}
                   className={cn(
                     "font-mono text-[10px] px-2 py-1 rounded-sm transition-all",
-                    interval === tf.value
+                    selectedInterval === tf.value
                       ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                   )}
@@ -270,17 +282,17 @@ export default function Home() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border/30">
-                    <SortHeader label="Symbol" sortKeyVal="symbol" className="text-left" />
-                    <SortHeader label="Price" sortKeyVal="price" />
-                    <SortHeader label="24h" sortKeyVal="change24h" className="hidden sm:table-cell" />
-                    <SortHeader label="RSI" sortKeyVal="rsi" />
-                    <SortHeader label="BB Pos" sortKeyVal="bbPos" className="hidden md:table-cell" />
-                    <SortHeader label="ADX" sortKeyVal="adx" />
+                    <SortHeader label="Symbol" sortKeyVal="symbol" className="text-left" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="Price" sortKeyVal="price" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="24h" sortKeyVal="change24h" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="RSI" sortKeyVal="rsi" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="BB Pos" sortKeyVal="bbPos" className="hidden md:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="ADX" sortKeyVal="adx" sortKey={sortKey} onSort={handleSort} />
                     <th className="text-right font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 hidden lg:table-cell">
                       Fib Zone
                     </th>
-                    <SortHeader label="Strength" sortKeyVal="strength" className="hidden sm:table-cell" />
-                    <SortHeader label="Signal" sortKeyVal="signal" className="text-center" />
+                    <SortHeader label="Strength" sortKeyVal="strength" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="Signal" sortKeyVal="signal" className="text-center" sortKey={sortKey} onSort={handleSort} />
                   </tr>
                 </thead>
                 <tbody>
@@ -297,7 +309,7 @@ export default function Home() {
                     return (
                       <tr
                         key={coin.symbol}
-                        onClick={() => setLocation(`/coin/${coin.symbol}?tf=${interval}`)}
+                        onClick={() => setLocation(`/coin/${coin.symbol}?tf=${selectedInterval}`)}
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
                           isHighlighted
