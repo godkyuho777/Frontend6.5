@@ -4,15 +4,16 @@
  * Reads `:symbol` from URL and `?tf=` from query.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { ChevronLeft, Clock, RefreshCw } from "lucide-react";
 import { HudPanel } from "@/components/HudPanel";
+import { CandleChartLW } from "@/components/CandleChartLW";
 import { cn } from "@/lib/utils";
 import { useFibonacciDetail } from "@/hooks/useFibonacciDetail";
-import type { FibLevel, Trendline } from "@/lib/fibonacci-engine";
+import type { Trendline } from "@/lib/fibonacci-engine";
 import { TIMEFRAMES } from "@shared/types";
-import type { Candle, TimeframeValue } from "@shared/types";
+import type { TimeframeValue } from "@shared/types";
 
 const FIB_TIMEFRAMES = TIMEFRAMES;
 
@@ -196,7 +197,7 @@ export default function FibonacciDetail() {
         title="Fibonacci Chart"
         subtitle={`${symbol} · ${tfLabel} · ${candles.length} candles`}
       >
-        <CandlestickFibChart
+        <CandleChartLW
           candles={candles}
           fibLevels={analysis.fibLevels}
           trendlines={analysis.trendlines}
@@ -299,265 +300,6 @@ export default function FibonacciDetail() {
           </div>
         )}
       </HudPanel>
-    </div>
-  );
-}
-
-// ─── Candlestick Chart with Fibonacci & Trendlines (lightweight-charts) ──
-
-function CandlestickFibChart({
-  candles,
-  fibLevels,
-  trendlines,
-  currentPrice,
-}: {
-  candles: Candle[];
-  fibLevels: FibLevel[];
-  trendlines: Trendline[];
-  currentPrice: number;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<{ remove: () => void } | null>(null);
-
-  const initChart = useCallback(async () => {
-    if (!containerRef.current || candles.length === 0) return;
-
-    const {
-      createChart,
-      CandlestickSeries,
-      HistogramSeries,
-      LineSeries: LWSLineSeries,
-      ColorType,
-      LineStyle,
-      CrosshairMode,
-    } = await import("lightweight-charts");
-
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
-    }
-
-    const container = containerRef.current;
-
-    const chart = createChart(container, {
-      width: container.clientWidth,
-      height: 500,
-      layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#888",
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 11,
-      },
-      grid: {
-        vertLines: { color: "rgba(255,255,255,0.04)" },
-        horzLines: { color: "rgba(255,255,255,0.04)" },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: { color: "rgba(0,229,255,0.3)", width: 1, style: LineStyle.Dashed },
-        horzLine: { color: "rgba(0,229,255,0.3)", width: 1, style: LineStyle.Dashed },
-      },
-      rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.1)",
-        scaleMargins: { top: 0.05, bottom: 0.05 },
-      },
-      timeScale: {
-        borderColor: "rgba(255,255,255,0.1)",
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
-
-    chartRef.current = chart;
-
-    const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#00e676",
-      downColor: "#ff1744",
-      borderUpColor: "#00e676",
-      borderDownColor: "#ff1744",
-      wickUpColor: "#00e676",
-      wickDownColor: "#ff1744",
-    });
-
-    const chartCandles = candles.slice(-120);
-    const candleData = chartCandles.map((c) => ({
-      time: Math.floor(c.openTime / 1000) as never,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
-    candleSeries.setData(candleData);
-
-    const volumeSeries = chart.addSeries(HistogramSeries, {
-      priceFormat: { type: "volume" },
-      priceScaleId: "volume",
-    });
-    chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.85, bottom: 0 },
-    });
-    volumeSeries.setData(
-      chartCandles.map((c) => ({
-        time: Math.floor(c.openTime / 1000) as never,
-        value: c.volume,
-        color: c.close >= c.open ? "rgba(0,230,118,0.15)" : "rgba(255,23,68,0.15)",
-      }))
-    );
-
-    // Fibonacci Level Lines
-    const fibColors: Record<number, string> = {
-      0: "#ff0066",
-      0.236: "#ff006688",
-      0.382: "#ff6b6b",
-      0.5: "#00e5ff88",
-      0.618: "#FFD700",
-      0.786: "#00e5ff88",
-      1: "#ff0066",
-    };
-
-    for (const level of fibLevels) {
-      const color = fibColors[level.ratio] || "#00e5ff44";
-      const isGolden = level.ratio === 0.618;
-      const isKey =
-        level.ratio === 0 ||
-        level.ratio === 1 ||
-        level.ratio === 0.618 ||
-        level.ratio === 0.382;
-
-      candleSeries.createPriceLine({
-        price: level.price,
-        color: color,
-        lineWidth: isGolden ? 2 : 1,
-        lineStyle: isGolden ? LineStyle.Solid : LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: `${level.label} ($${level.price < 1 ? level.price.toPrecision(4) : level.price.toFixed(2)})`,
-      });
-
-      if (isKey) {
-        candleSeries.createPriceLine({
-          price: level.zoneHigh,
-          color: color,
-          lineWidth: 1,
-          lineStyle: LineStyle.Dotted,
-          axisLabelVisible: false,
-          title: "",
-        });
-        candleSeries.createPriceLine({
-          price: level.zoneLow,
-          color: color,
-          lineWidth: 1,
-          lineStyle: LineStyle.Dotted,
-          axisLabelVisible: false,
-          title: "",
-        });
-      }
-    }
-
-    // Current Price Line
-    candleSeries.createPriceLine({
-      price: currentPrice,
-      color: "#ff0066",
-      lineWidth: 1,
-      lineStyle: LineStyle.SparseDotted,
-      axisLabelVisible: true,
-      title: "Current",
-    });
-
-    // Trendlines
-    const validTrendlines = trendlines.filter((t) => t.isValid);
-    const offsetIdx = candles.length - chartCandles.length;
-
-    for (const tl of validTrendlines) {
-      const tlColor = tl.type === "support" ? "#00e676" : "#ff1744";
-      const chartStartIdx = Math.max(0, tl.startPoint.index - offsetIdx);
-
-      if (tl.endPoint.index < offsetIdx) continue;
-      if (tl.startPoint.index >= candles.length) continue;
-
-      const drawEndIdx = chartCandles.length - 1;
-
-      const lineData: { time: number; value: number }[] = [];
-      for (let i = chartStartIdx; i <= drawEndIdx; i++) {
-        const globalIdx = i + offsetIdx;
-        const price = tl.startPoint.price + tl.slope * (globalIdx - tl.startPoint.index);
-        lineData.push({
-          time: Math.floor(chartCandles[i].openTime / 1000),
-          value: price,
-        });
-      }
-
-      if (lineData.length >= 2) {
-        const tlSeries = chart.addSeries(LWSLineSeries, {
-          color: tlColor,
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          crosshairMarkerVisible: false,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-        tlSeries.setData(lineData as never);
-      }
-    }
-
-    chart.timeScale().fitContent();
-
-    const handleResize = () => {
-      if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth });
-      }
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.remove();
-    };
-  }, [candles, fibLevels, trendlines, currentPrice]);
-
-  useEffect(() => {
-    const cleanupPromise = initChart();
-    return () => {
-      cleanupPromise?.then((fn) => fn?.());
-      if (chartRef.current) {
-        try {
-          chartRef.current.remove();
-        } catch {
-          // ignore
-        }
-        chartRef.current = null;
-      }
-    };
-  }, [initChart]);
-
-  return (
-    <div className="relative">
-      <div ref={containerRef} className="w-full" style={{ minHeight: 500 }} />
-      <div className="flex flex-wrap items-center gap-4 mt-3 px-2">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-[#FFD700]" />
-          <span className="font-mono text-[10px] text-muted-foreground">0.618 Golden</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-[#ff6b6b]" />
-          <span className="font-mono text-[10px] text-muted-foreground">0.382</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5" style={{ borderTop: "1px dashed #ff0066" }} />
-          <span className="font-mono text-[10px] text-muted-foreground">High/Low</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5" style={{ borderTop: "2px dashed #00e676" }} />
-          <span className="font-mono text-[10px] text-muted-foreground">Support TL</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5" style={{ borderTop: "2px dashed #ff1744" }} />
-          <span className="font-mono text-[10px] text-muted-foreground">Resistance TL</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5" style={{ borderTop: "1px dotted #ff0066" }} />
-          <span className="font-mono text-[10px] text-muted-foreground">Current Price</span>
-        </div>
-      </div>
     </div>
   );
 }
