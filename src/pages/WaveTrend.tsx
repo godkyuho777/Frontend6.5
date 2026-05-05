@@ -1,23 +1,13 @@
 import { useMemo, useState } from "react";
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ReferenceLine,
-  XAxis,
-  YAxis,
-  Bar,
-  ResponsiveContainer,
-  Tooltip as RTooltip,
-} from "recharts";
 import { Loader2, RefreshCw, Waves } from "lucide-react";
 
 import { HudPanel, StatCard } from "@/components/HudPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CandleChartLW, type ChartFibLevel } from "@/components/CandleChartLW";
 import { useCoinDetail } from "@/hooks/useMarketData";
 import { cn } from "@/lib/utils";
+import type { Trendline as FibTrendline } from "@/lib/fibonacci-engine";
 import { TOP_COINS } from "@shared/types";
 import type { Candle, TimeframeValue } from "@shared/types";
 
@@ -74,38 +64,33 @@ function computeFibLevels(low: number, high: number): FibLevel[] {
 }
 
 /**
- * Build the chart data table — one row per candle, joining trendline
- * prices computed from each line's slope/intercept.
+ * Adapt the page's TrendlineComputed shape into the fib-engine Trendline
+ * shape consumed by <CandleChartLW>. WaveTrend's resolveTrendline already
+ * vetted the lines, so we always render them as valid.
  */
-function buildChartData(
+function toFibTrendline(
   candles: Candle[],
-  upTrend: TrendlineComputed | null,
-  downTrend: TrendlineComputed | null
-) {
-  return candles.map((c, i) => ({
-    idx: i,
-    time: c.openTime,
-    timeLabel: formatTime(c.openTime),
-    close: c.close,
-    high: c.high,
-    low: c.low,
-    open: c.open,
-    volume: c.volume,
-    upTrend: upTrend
-      ? upTrend.startPrice + upTrend.slope * (i - upTrend.startIdx)
-      : null,
-    downTrend: downTrend
-      ? downTrend.startPrice + downTrend.slope * (i - downTrend.startIdx)
-      : null,
-  }));
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(
-    2,
-    "0"
-  )}:${String(d.getMinutes()).padStart(2, "0")}`;
+  tl: TrendlineComputed | null
+): FibTrendline | null {
+  if (!tl) return null;
+  const startCandle = candles[tl.startIdx];
+  const endCandle = candles[tl.endIdx];
+  if (!startCandle || !endCandle) return null;
+  const lastTime = candles[candles.length - 1]?.openTime ?? endCandle.openTime;
+  const durationDays =
+    (lastTime - startCandle.openTime) / (1000 * 60 * 60 * 24);
+  const candlesFromStart = candles.length - 1 - tl.startIdx;
+  const currentPrice = tl.startPrice + tl.slope * candlesFromStart;
+  return {
+    startPoint: { time: startCandle.openTime, price: tl.startPrice, index: tl.startIdx },
+    endPoint: { time: endCandle.openTime, price: tl.endPrice, index: tl.endIdx },
+    slope: tl.slope,
+    type: tl.type,
+    touchCount: Math.max(2, Math.round((tl.strength / 100) * (tl.endIdx - tl.startIdx))),
+    durationDays,
+    isValid: true,
+    currentPrice,
+  };
 }
 
 function formatPrice(p: number): string {
@@ -216,9 +201,15 @@ export default function WaveTrend() {
     };
   }, [candles, indicators]);
 
-  // ─── Chart data ────────────────────────────────────────────────────
-  const chartData = useMemo(
-    () => buildChartData(candles, upTrend, downTrend),
+  // ─── Chart adapters (page → CandleChartLW) ────────────────────────
+  const chartFibLevels: ChartFibLevel[] = useMemo(
+    () => fibLevels.map((f) => ({ ratio: f.ratio, price: f.price, label: f.label })),
+    [fibLevels]
+  );
+  const chartTrendlines = useMemo(
+    () =>
+      [toFibTrendline(candles, upTrend), toFibTrendline(candles, downTrend)]
+        .filter((t): t is FibTrendline => t !== null),
     [candles, upTrend, downTrend]
   );
 
@@ -416,122 +407,20 @@ export default function WaveTrend() {
 
       {!isLoading && detail && candles.length > 0 && (
         <>
-          {/* Chart */}
+          {/* Chart — TradingView Lightweight Charts with fib levels + trendlines + volume */}
           <HudPanel
             title="Price Chart"
-            subtitle={`${candles.length} candles · 10 fib levels · ${
-              [upTrend, downTrend].filter(Boolean).length
-            } trendlines`}
+            subtitle={`${candles.length} candles · 10 fib levels · ${chartTrendlines.length} trendlines`}
             variant="highlight"
           >
-            <div className="h-[420px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={chartData}
-                  margin={{ top: 10, right: 60, left: 10, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/20" />
-                  <XAxis
-                    dataKey="timeLabel"
-                    tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
-                    interval="preserveStartEnd"
-                    tickCount={8}
-                  />
-                  <YAxis
-                    domain={[fibLow * 0.98, fibHigh * 1.02]}
-                    tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
-                    tickFormatter={(v) => `$${formatPrice(v)}`}
-                    width={60}
-                    orientation="right"
-                  />
-                  <RTooltip
-                    contentStyle={{
-                      backgroundColor: "oklch(0.14 0.015 260)",
-                      border: "1px solid oklch(0.3 0.02 260)",
-                      fontFamily: "Share Tech Mono",
-                      fontSize: 10,
-                    }}
-                    formatter={(value: number, name: string) => [
-                      `$${formatPrice(value)}`,
-                      name,
-                    ]}
-                  />
-                  {/* Fib levels — horizontal reference lines */}
-                  {fibLevels.map((f) => (
-                    <ReferenceLine
-                      key={f.ratio}
-                      y={f.price}
-                      stroke={f.color}
-                      strokeDasharray="2 4"
-                      strokeWidth={f.ratio === 0.5 ? 1.5 : 1}
-                      label={{
-                        value: f.label,
-                        position: "right",
-                        fill: f.color,
-                        fontSize: 8,
-                        fontFamily: "Share Tech Mono",
-                      }}
-                    />
-                  ))}
-                  {/* Price area */}
-                  <Area
-                    type="monotone"
-                    dataKey="close"
-                    name="Price"
-                    stroke="oklch(0.82 0.18 195)"
-                    strokeWidth={1.5}
-                    fill="oklch(0.82 0.18 195 / 0.06)"
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                  {/* Trendlines */}
-                  {upTrend && (
-                    <Line
-                      type="linear"
-                      dataKey="upTrend"
-                      name="Up Trendline"
-                      stroke="oklch(0.7 0.22 145)"
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  )}
-                  {downTrend && (
-                    <Line
-                      type="linear"
-                      dataKey="downTrend"
-                      name="Down Trendline"
-                      stroke="oklch(0.65 0.25 25)"
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  )}
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Volume strip below */}
-            <div className="h-[80px] w-full mt-2 border-t border-border/20 pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={chartData}
-                  margin={{ top: 0, right: 60, left: 10, bottom: 0 }}
-                >
-                  <XAxis dataKey="timeLabel" hide />
-                  <YAxis
-                    tick={{ fontSize: 8, fontFamily: "Share Tech Mono" }}
-                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}K` : `${v}`)}
-                    width={60}
-                    orientation="right"
-                  />
-                  <Bar
-                    dataKey="volume"
-                    fill="oklch(0.65 0.02 260 / 0.5)"
-                    isAnimationActive={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+            <CandleChartLW
+              candles={candles}
+              currentPrice={currentPrice}
+              fibLevels={chartFibLevels}
+              trendlines={chartTrendlines}
+              height={500}
+              windowSize={candles.length}
+            />
           </HudPanel>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
