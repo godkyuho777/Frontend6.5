@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
 import Home from "./pages/Home";
 import Fibonacci from "./pages/Fibonacci";
+import FibonacciDetail from "./pages/FibonacciDetail";
 import Vwap from "./pages/Vwap";
 import CoinDetail from "./pages/CoinDetail";
 import Positions from "./pages/Positions";
@@ -25,6 +26,7 @@ function Router() {
         <Route path={"/"} component={Home} />
         {/* Signal Scanner sub-pages — distinct strategies per the v6.1 doc. */}
         <Route path={"/fibonacci"} component={Fibonacci} />
+        <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
         {/* Wave Tracker — split into Sentiment & Matrix and Trend Analysis. */}
         <Route path={"/wave/sentiment"} component={WaveSentiment} />
