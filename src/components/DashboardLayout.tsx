@@ -68,8 +68,8 @@ const menuItems: MenuItem[] = [
     label: "Wave Tracker",
     path: "/wave",
     children: [
-      { icon: Waves, label: "Sentiment & Matrix", path: "/wave?view=sentiment-matrix" },
-      { icon: TrendingUp, label: "Trend Analysis", path: "/wave?view=trend-analysis" },
+      { icon: Waves, label: "Sentiment & Matrix", path: "/wave/sentiment" },
+      { icon: TrendingUp, label: "Trend Analysis", path: "/wave/trend" },
     ],
   },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },
