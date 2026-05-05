@@ -352,7 +352,7 @@ export default function Fibonacci() {
                       <tr
                         key={coin.symbol}
                         onClick={() =>
-                          setLocation(`/coin/${coin.symbol}?tf=${selectedInterval}`)
+                          setLocation(`/fibonacci/${coin.symbol}?tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
