@@ -11,17 +11,23 @@ import { fetchKlines, fetchAll24hTickers } from "@/lib/bybit-client";
 import {
   calculateAllIndicators,
   calculateBollingerBandsSeries,
+  calculateEMA,
   calculateSignalStrengthV2,
+  calculateVWAP,
   decideEntry,
   decideExit,
+  decideVwapSignal,
   detectAllCandlePatterns,
   detectBBStructure,
+  detectPullback,
+  emaPosition,
   isFallingKnife,
   isInFibZone,
   pressureLabel,
   reversalProbability,
   volumeConfirmationFromRatio,
   volumeRatio,
+  vwapPosition,
 } from "@/lib/indicators-client";
 
 interface ScanPageResult {
@@ -58,6 +64,9 @@ async function scanCoin(
       cached.data.volume24h = tickerData.volume24h;
       cached.data.isStopLossHit =
         tickerData.price <= cached.data.stopLossPrice;
+      // VWAP/EMA positions are price-relative — recompute cheaply.
+      cached.data.vwapPosition = vwapPosition(tickerData.price, cached.data.vwap);
+      cached.data.emaPosition = emaPosition(tickerData.price, cached.data.ema9);
     }
     return cached.data;
   }
@@ -108,6 +117,14 @@ async function scanCoin(
     const stopLossPrice = indicators.bbLower * 0.97;
     const isStopLossHit = price <= stopLossPrice;
 
+    // VWAP Strategy ──
+    const vwap = indicators.vwap ?? calculateVWAP(candles);
+    const ema9 = indicators.ema9 ?? calculateEMA(closes, 9);
+    const vwapPos = vwapPosition(price, vwap);
+    const emaPos = emaPosition(price, ema9);
+    const pullbackDetected = detectPullback(candles, vwap, ema9);
+    const vwapSignal = decideVwapSignal(price, vwap, ema9, pullbackDetected, ratio);
+
     const result: CoinScanResult = {
       symbol,
       price,
@@ -132,6 +149,13 @@ async function scanCoin(
       stopLossPrice,
       isStopLossHit,
       isFallingKnife: fallingKnife,
+      // VWAP Strategy fields
+      vwap,
+      ema9,
+      vwapPosition: vwapPos,
+      emaPosition: emaPos,
+      pullbackDetected,
+      vwapSignal,
     };
 
     scanCache.set(key, { data: result, timestamp: Date.now() });
@@ -207,6 +231,13 @@ async function scanCoinsPage(
             stopLossPrice: 0,
             isStopLossHit: false,
             isFallingKnife: false,
+            // VWAP Strategy — empty defaults
+            vwap: 0,
+            ema9: 0,
+            vwapPosition: "AT",
+            emaPosition: "AT",
+            pullbackDetected: false,
+            vwapSignal: null,
           });
         }
       }
@@ -299,7 +330,6 @@ export function useMarketScan(
  * on re-visit. The cache TTL matches scanCache (10 min).
  */
 import {
-  calculateBollingerBandsSeries,
   calculateRSISeries,
   calculateADXSeries,
 } from "@/lib/indicators-client";
