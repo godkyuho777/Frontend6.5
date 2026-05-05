@@ -16,6 +16,7 @@ import AIInsight from "./pages/AIInsight";
 import WaveSentiment from "./pages/WaveSentiment";
 import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
+import Backtest from "./pages/Backtest";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ function Router() {
         <Route path={"/history"} component={SignalHistory} />
         <Route path={"/alerts"} component={AlertSettings} />
         <Route path={"/ai"} component={AIInsight} />
+        <Route path={"/backtest"} component={Backtest} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
