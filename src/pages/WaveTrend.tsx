@@ -180,7 +180,7 @@ function strengthLabel(s: number): { label: string; color: string } {
   return { label: "매우 약함", color: "text-muted-foreground/50" };
 }
 
-export default function WaveTracker() {
+export default function WaveTrend() {
   const [symbolInput, setSymbolInput] = useState("BTCUSDT");
   const [symbol, setSymbol] = useState<string>("BTCUSDT");
   const [interval, setSelectedInterval] = useState<WaveTimeframe>("4h");
@@ -312,7 +312,7 @@ export default function WaveTracker() {
         <div>
           <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-3">
             <Waves className="h-6 w-6" />
-            WAVE TRACKER
+            TREND ANALYSIS
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
             {symbol.replace("USDT", "")} · {tfLabel} · FIBONACCI + TRENDLINE
