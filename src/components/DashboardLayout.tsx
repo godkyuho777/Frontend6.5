@@ -58,9 +58,9 @@ const menuItems: MenuItem[] = [
     label: "Signal Scanner",
     path: "/",
     children: [
-      { icon: BarChart3, label: "RSI / BB / ADX", path: "/?strategy=rsi-bb-adx" },
-      { icon: Ruler, label: "Fibonacci & Trendline", path: "/?strategy=fibonacci-trendline" },
-      { icon: TrendingUp, label: "VWAP Strategy", path: "/?strategy=vwap" },
+      { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
+      { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
+      { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
     ],
   },
   {
