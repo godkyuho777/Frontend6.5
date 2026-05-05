@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
@@ -11,7 +11,8 @@ import Positions from "./pages/Positions";
 import SignalHistory from "./pages/SignalHistory";
 import AlertSettings from "./pages/AlertSettings";
 import AIInsight from "./pages/AIInsight";
-import WaveTracker from "./pages/WaveTracker";
+import WaveSentiment from "./pages/WaveSentiment";
+import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 
 function Router() {
@@ -19,7 +20,12 @@ function Router() {
     <DashboardLayout>
       <Switch>
         <Route path={"/"} component={Home} />
-        <Route path={"/wave"} component={WaveTracker} />
+        {/* Wave Tracker — split into Sentiment & Matrix and Trend Analysis. */}
+        <Route path={"/wave/sentiment"} component={WaveSentiment} />
+        <Route path={"/wave/trend"} component={WaveTrend} />
+        <Route path={"/wave"}>
+          <Redirect to="/wave/sentiment" />
+        </Route>
         <Route path={"/tech-tracker"} component={TechTracker} />
         <Route path={"/coin/:symbol"} component={CoinDetail} />
         <Route path={"/positions"} component={Positions} />
