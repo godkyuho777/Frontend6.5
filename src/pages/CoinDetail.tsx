@@ -23,13 +23,12 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Area,
-  ComposedChart,
-  Bar,
 } from "recharts";
 import { toast } from "sonner";
 import { TIMEFRAMES } from "@shared/types";
 import type { TimeframeValue } from "@shared/types";
 import { useCoinDetail } from "@/hooks/useMarketData";
+import { CandleChartLW, type ChartFibLevel } from "@/components/CandleChartLW";
 
 export default function CoinDetail() {
   const params = useParams<{ symbol: string }>();
@@ -339,53 +338,21 @@ export default function CoinDetail() {
         </div>
       </HudPanel>
 
-      {/* Price Chart with BB, Fibonacci & Trendlines */}
-      <HudPanel title="Advanced Chart" subtitle={`${tfLabel} candles with BB, Fibonacci Zones & Trendlines`}>
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.03 260)" />
-              <XAxis
-                dataKey="time"
-                tick={axisTick}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                domain={["auto", "auto"]}
-                tick={axisTick}
-                tickLine={false}
-                orientation="right"
-              />
-              <Tooltip contentStyle={tooltipStyle} />
-              
-              {/* Fibonacci Levels */}
-              {fibLevels.map((fib: any) => (
-                <ReferenceLine
-                  key={`fib-${fib.level}`}
-                  y={fib.price}
-                  stroke={fib.isGoldenZone ? "oklch(0.7 0.2 60)" : "oklch(0.4 0.05 260)"}
-                  strokeDasharray="2 2"
-                  label={{
-                    value: `Fib ${fib.level}`,
-                    position: "left",
-                    fill: fib.isGoldenZone ? "oklch(0.7 0.2 60)" : "oklch(0.4 0.05 260)",
-                    fontSize: 10,
-                    fontFamily: "Share Tech Mono"
-                  }}
-                />
-              ))}
-
-              {/* Bollinger Bands */}
-              <Line type="monotone" dataKey="bbUpper" stroke="oklch(0.65 0.02 260)" strokeDasharray="5 5" dot={false} strokeWidth={1} />
-              <Line type="monotone" dataKey="bbMiddle" stroke="oklch(0.65 0.02 260)" strokeDasharray="3 3" dot={false} strokeWidth={1} />
-              <Line type="monotone" dataKey="bbLower" stroke="oklch(0.65 0.02 260)" strokeDasharray="5 5" dot={false} strokeWidth={1} />
-              
-              <Bar dataKey="close" fill="oklch(0.7 0.15 160)" opacity={0.3} />
-              <Line type="monotone" dataKey="close" stroke="oklch(0.7 0.2 190)" dot={false} strokeWidth={2} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Price Chart — TradingView Lightweight Charts with BB + Fibonacci overlays */}
+      <HudPanel title="Advanced Chart" subtitle={`${tfLabel} candles with BB & Fibonacci Zones`}>
+        <CandleChartLW
+          candles={candles}
+          currentPrice={price}
+          bbSeries={bbSeries}
+          fibLevels={fibLevels.map(
+            (f: { level: number; price: number; isGoldenZone?: boolean }): ChartFibLevel => ({
+              ratio: f.level,
+              price: f.price,
+              label: `Fib ${(f.level * 100).toFixed(1)}%${f.isGoldenZone ? " (Golden)" : ""}`,
+            })
+          )}
+          height={420}
+        />
       </HudPanel>
 
       {/* RSI Chart */}
