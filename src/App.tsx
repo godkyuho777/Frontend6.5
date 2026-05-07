@@ -17,6 +17,7 @@ import WaveSentiment from "./pages/WaveSentiment";
 import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
+import Onchain from "./pages/Onchain";
 
 function Router() {
   return (
@@ -39,6 +40,7 @@ function Router() {
         <Route path={"/alerts"} component={AlertSettings} />
         <Route path={"/ai"} component={AIInsight} />
         <Route path={"/backtest"} component={Backtest} />
+        <Route path={"/onchain"} component={Onchain} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
