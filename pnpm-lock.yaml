@@ -99,8 +99,8 @@ importers:
         specifier: ^5.90.2
         version: 5.100.9(react@19.2.6)
       '@tradelab/backend':
-        specifier: git+https://github.com/tradelab-hq/tradelab-backend.git#main
-        version: git+https://github.com/tradelab-hq/tradelab-backend.git#9cad2c5232f970e665717c455cad879a736856b4(typescript@5.9.3)
+        specifier: git+https://github.com/godkyuho777/6.5SUM.git#main
+        version: https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/9cad2c5232f970e665717c455cad879a736856b4(typescript@5.9.3)
       '@trpc/client':
         specifier: ^11.6.0
         version: 11.17.0(@trpc/server@11.17.0(typescript@5.9.3))(typescript@5.9.3)
@@ -1466,8 +1466,8 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
-  '@tradelab/backend@git+https://github.com/tradelab-hq/tradelab-backend.git#9cad2c5232f970e665717c455cad879a736856b4':
-    resolution: {commit: 9cad2c5232f970e665717c455cad879a736856b4, repo: https://github.com/tradelab-hq/tradelab-backend.git, type: git}
+  '@tradelab/backend@https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/9cad2c5232f970e665717c455cad879a736856b4':
+    resolution: {tarball: https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/9cad2c5232f970e665717c455cad879a736856b4}
     version: 0.1.0
 
   '@trpc/client@11.17.0':
@@ -4567,7 +4567,7 @@ snapshots:
       '@tanstack/query-core': 5.100.9
       react: 19.2.6
 
-  '@tradelab/backend@git+https://github.com/tradelab-hq/tradelab-backend.git#9cad2c5232f970e665717c455cad879a736856b4(typescript@5.9.3)':
+  '@tradelab/backend@https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/9cad2c5232f970e665717c455cad879a736856b4(typescript@5.9.3)':
     dependencies:
       '@trpc/server': 11.17.0(typescript@5.9.3)
       axios: 1.16.0
