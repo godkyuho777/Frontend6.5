@@ -29,11 +29,15 @@ import {
   BarChart3,
   Bell,
   Bot,
+  Database,
+  FlaskConical,
+  HeartPulse,
   History,
   LogIn,
   LogOut,
   PanelLeft,
   Ruler,
+  Sparkles,
   Target,
   TrendingUp,
   Waves,
@@ -41,6 +45,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
+import { BackendBranchIndicator } from "./BackendBranchIndicator";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
@@ -73,10 +78,14 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },
+  { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
+  { icon: Database, label: "Onchain Data", path: "/onchain" },
+  { icon: Sparkles, label: "Lite Mode (일반인용)", path: "/lite" },
   { icon: Target, label: "Positions", path: "/positions" },
   { icon: History, label: "Signal History", path: "/history" },
   { icon: Bell, label: "Alert Settings", path: "/alerts" },
   { icon: Bot, label: "AI Insight", path: "/ai" },
+  { icon: HeartPulse, label: "Admin / Health", path: "/admin/health" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -262,6 +271,7 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3 border-t border-border/30">
+            <BackendBranchIndicator />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
