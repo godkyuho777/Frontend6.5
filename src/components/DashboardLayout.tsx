@@ -43,6 +43,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
+import { BackendBranchIndicator } from "./BackendBranchIndicator";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
@@ -266,6 +267,7 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3 border-t border-border/30">
+            <BackendBranchIndicator />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

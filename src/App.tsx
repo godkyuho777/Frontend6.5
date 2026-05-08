@@ -18,6 +18,7 @@ import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
+import V65MergeStatus from "./pages/V65MergeStatus";
 
 function Router() {
   return (
@@ -41,6 +42,7 @@ function Router() {
         <Route path={"/ai"} component={AIInsight} />
         <Route path={"/backtest"} component={Backtest} />
         <Route path={"/onchain"} component={Onchain} />
+        <Route path={"/v65-merge-status"} component={V65MergeStatus} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
