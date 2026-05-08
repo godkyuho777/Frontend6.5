@@ -5,8 +5,16 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { CoinScanResult, TimeframeValue } from "@shared/types";
+import type {
+  CoinScanResult,
+  TimeframeValue,
+  PatternConfluenceSummary,
+  PatternContextDetail,
+  Candle,
+  CandlePatternMatch,
+} from "@shared/types";
 import { TOP_COINS } from "@shared/types";
+import { aggregatePatternScore } from "@/lib/pattern-aggregator";
 import { fetchKlines, fetchAll24hTickers } from "@/lib/bybit-client";
 import {
   calculateAllIndicators,
@@ -36,6 +44,70 @@ interface ScanPageResult {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+/**
+ * 거래량 baseline — 최근 50 캔들의 단순 평균.
+ * Audit-권고 aggregator 의 거래량 multiplier 산출용.
+ */
+function computeVolumeBaseline(candles: Candle[]): number {
+  if (candles.length === 0) return 0;
+  const tail = candles.slice(-50);
+  const sum = tail.reduce((acc, c) => acc + c.volume, 0);
+  return sum / tail.length;
+}
+
+/**
+ * Aggregator 결과 → CoinScanResult 의 PatternConfluenceSummary.
+ * 백엔드 scanner.buildPatternConfluence 의 클라이언트 mirror.
+ */
+function buildClientPatternConfluence(
+  candlePatterns: CandlePatternMatch[],
+  candles: Candle[],
+  interval: TimeframeValue,
+): PatternConfluenceSummary {
+  const baselineVolume = computeVolumeBaseline(candles);
+  const bull = aggregatePatternScore(
+    candlePatterns,
+    candles,
+    baselineVolume,
+    interval,
+    "bullish",
+  );
+  const bear = aggregatePatternScore(
+    candlePatterns,
+    candles,
+    baselineVolume,
+    interval,
+    "bearish",
+  );
+  const toContext = (p: typeof bull.primary): PatternContextDetail | null =>
+    p == null
+      ? null
+      : {
+          base: p.contextual.base,
+          volumeMultiplier: p.contextual.volume.multiplier,
+          volumeLabel: p.contextual.volume.label,
+          volumeRatio: p.contextual.volume.ratio,
+          trendMultiplier: p.contextual.trend.multiplier,
+          trendLabel: p.contextual.trend.label,
+          trendCumulativeReturn: p.contextual.trend.cumulativeReturn,
+          ageDiscount: p.contextual.ageDiscount,
+          contextualStrength: p.contextual.strength,
+        };
+  return {
+    bullishScore: bull.score,
+    bearishScore: bear.score,
+    bullishCount: bull.count,
+    bearishCount: bear.count,
+    bullishBonus: bull.bonus,
+    bearishBonus: bear.bonus,
+    bullishPrimaryName: bull.primary?.name ?? null,
+    bearishPrimaryName: bear.primary?.name ?? null,
+    bullishContext: toContext(bull.primary),
+    bearishContext: toContext(bear.primary),
+    tf: interval,
+  };
 }
 
 // 인메모리 캐시
@@ -143,9 +215,11 @@ async function scanCoin(
       volumeRatio: ratio,
       volumeConfirmation: volConfirmation,
       candlePatterns,
-      // 클라이언트 사이드 계산은 백엔드의 patternConfluence 합산을 만들지 않음.
-      // 백엔드 trpc.signals.scan 응답이 server-computed 값을 제공.
-      patternConfluence: null,
+      patternConfluence: buildClientPatternConfluence(
+        candlePatterns,
+        candles,
+        interval,
+      ),
       bbStructure,
       entryDecision,
       exitDecision,
@@ -337,7 +411,7 @@ import {
   calculateRSISeries,
   calculateADXSeries,
 } from "@/lib/indicators-client";
-import type { Candle, TechnicalIndicators } from "@shared/types";
+import type { TechnicalIndicators } from "@shared/types";
 
 type CoinDetailPayload = {
   candles: Candle[];
