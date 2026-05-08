@@ -31,6 +31,7 @@ import {
   Bot,
   Database,
   FlaskConical,
+  HeartPulse,
   History,
   LogIn,
   LogOut,
@@ -84,6 +85,7 @@ const menuItems: MenuItem[] = [
   { icon: History, label: "Signal History", path: "/history" },
   { icon: Bell, label: "Alert Settings", path: "/alerts" },
   { icon: Bot, label: "AI Insight", path: "/ai" },
+  { icon: HeartPulse, label: "Admin / Health", path: "/admin/health" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

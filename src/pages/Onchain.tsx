@@ -16,6 +16,11 @@ import { trpc } from "@/lib/trpc";
 import { HudPanel } from "@/components/HudPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TOP_COINS } from "@shared/types";
 import { cn } from "@/lib/utils";
 import {
@@ -126,6 +131,7 @@ const REGIME_META: Record<
 function statusIcon(status: string) {
   if (status === "ok") return <CheckCircle2 className="h-3.5 w-3.5 text-neon-green" />;
   if (status === "stub") return <Database className="h-3.5 w-3.5 text-muted-foreground/60" />;
+  if (status === "mock") return <Database className="h-3.5 w-3.5 text-purple-300" />;
   return <XCircle className="h-3.5 w-3.5 text-neon-red" />;
 }
 
@@ -310,32 +316,80 @@ export default function Onchain() {
                   bullishDesc: "",
                   bearishDesc: "",
                 };
+                // backend type currently includes "ok"|"stub"|"error"; "mock"
+                // is forward-compatible (백엔드 onchain types.ts 에 이미 존재) —
+                // cast for TS narrow-check compat.
+                const status = m.status as "ok" | "stub" | "mock" | "error";
+                const isStub = status === "stub";
+                const isMock = status === "mock";
+                const isError = status === "error";
+                // status === "ok" → real data, no top-right badge
                 return (
                   <div
                     key={m.key}
                     className={cn(
-                      "border rounded-sm px-3 py-2 grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-center transition-colors",
+                      "relative border rounded-sm px-3 py-2 grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-center transition-colors",
                       m.value > 0
                         ? "bg-neon-green/5 border-neon-green/20"
                         : m.value < 0
                           ? "bg-neon-red/5 border-neon-red/20"
-                          : "bg-background/30 border-border/30"
+                          : "bg-background/30 border-border/30",
+                      // stub / error 카드는 전체 opacity 낮춰 시각적 구분 (헌장 §3 — 가중치 0)
+                      (isStub || isError) && "opacity-70"
                     )}
                   >
-                    <div className="space-y-0.5">
+                    {/* Top-right status badge — stub / mock / error 만 표시 */}
+                    {(isStub || isMock || isError) && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={cn(
+                              "absolute top-1.5 right-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border cursor-help z-10",
+                              isStub &&
+                                "bg-amber-500/20 text-amber-300 border-amber-500/40",
+                              isMock &&
+                                "bg-purple-500/20 text-purple-300 border-purple-500/40",
+                              isError &&
+                                "bg-neon-red/20 text-neon-red border-neon-red/40"
+                            )}
+                          >
+                            {isStub
+                              ? "DATA SOURCE PENDING"
+                              : isMock
+                                ? "MOCK"
+                                : "ERROR"}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          align="end"
+                          className="max-w-[280px] text-[11px] leading-relaxed"
+                        >
+                          {isStub &&
+                            "이 modifier 는 외부 API 키 미설정 상태입니다. ONCHAIN_MOCK=1 환경변수로 mock 데이터 시각화 가능."}
+                          {isMock &&
+                            "ONCHAIN_MOCK=1 로 실행 중 — 결정론적 mock 데이터입니다. 실제 API 키 설정 시 'ok' 로 전환됩니다."}
+                          {isError &&
+                            "외부 API 호출 실패. 자세한 사유는 detail 필드 또는 백엔드 로그를 확인하세요."}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    <div className="space-y-0.5 pr-2">
                       <div className="flex items-center gap-1.5">
-                        {statusIcon(m.status)}
+                        {statusIcon(status)}
                         <span className="font-display text-xs tracking-wider text-foreground">
                           {meta.label}
                         </span>
                         <span
                           className={cn(
                             "font-mono text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider border",
-                            m.status === "ok"
+                            status === "ok"
                               ? "border-neon-green/30 text-neon-green"
-                              : m.status === "stub"
+                              : status === "stub"
                                 ? "border-muted/40 text-muted-foreground"
-                                : "border-neon-red/30 text-neon-red"
+                                : status === "mock"
+                                  ? "border-purple-500/30 text-purple-300"
+                                  : "border-neon-red/30 text-neon-red"
                           )}
                         >
                           {m.status}
@@ -349,7 +403,14 @@ export default function Onchain() {
                       </div>
                     </div>
                     <div className="text-right md:px-3">
-                      <div className={cn("font-display text-lg font-bold", valueColor(m.value))}>
+                      <div
+                        className={cn(
+                          "font-display text-lg font-bold",
+                          valueColor(m.value),
+                          // 진짜 neutral (status: ok, value: 0) 와 stub (데이터 부재) 시각 구분
+                          (isStub || isError) && "opacity-50"
+                        )}
+                      >
                         {fmtValue(m.value)}
                       </div>
                       <div className="font-mono text-[9px] text-muted-foreground">

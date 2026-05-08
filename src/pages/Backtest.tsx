@@ -9,11 +9,9 @@ import { trpc } from "@/lib/trpc";
 import { HudPanel } from "@/components/HudPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
-  BarChart2,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -21,26 +19,21 @@ import {
   FlaskConical,
   Loader2,
   Play,
-  Target,
-  TrendingDown,
-  TrendingUp,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
   Cell,
   Pie,
   PieChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
+import { EquityChart } from "@/components/backtest/EquityChart";
+import {
+  BacktestStatCard,
+  MetricCards,
+} from "@/components/backtest/MetricCards";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -75,45 +68,8 @@ const SYMBOL_PRESETS = {
   "BTC+ETH": "BTCUSDT,ETHUSDT",
 };
 
-// ─── Stat Card ────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  sub,
-  color = "cyan",
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  color?: "pink" | "cyan" | "green" | "yellow" | "red";
-  icon?: React.ElementType;
-}) {
-  const colorMap = {
-    pink: "text-neon-pink",
-    cyan: "text-neon-cyan",
-    green: "text-neon-green",
-    yellow: "text-neon-yellow",
-    red: "text-red-400",
-  };
-  return (
-    <div className="flex flex-col gap-1 p-3 rounded-sm border border-border/20 bg-card/40">
-      <div className="flex items-center gap-1.5">
-        {Icon && <Icon className={cn("h-3 w-3", colorMap[color])} />}
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-      <div className={cn("font-display text-xl font-bold", colorMap[color])}>
-        {value}
-      </div>
-      {sub && (
-        <div className="font-mono text-[10px] text-muted-foreground">{sub}</div>
-      )}
-    </div>
-  );
-}
+// StatCard / EquityCurve / TradeRow 는 components/backtest/ 로 추출됨.
+// (BacktestStatCard, EquityChart, TradeTable 로 import)
 
 // ─── Exit Reason Pie Chart ────────────────────────────────
 
@@ -162,84 +118,6 @@ function ExitReasonChart({
           ]}
         />
       </PieChart>
-    </ResponsiveContainer>
-  );
-}
-
-// ─── Equity Curve ─────────────────────────────────────────
-
-function EquityCurve({ trades }: { trades: Array<{ signalTs: number; returnPct: number; win: boolean }> }) {
-  const data = useMemo(() => {
-    let equity = 100;
-    return trades.map((t) => {
-      equity *= 1 + t.returnPct / 100;
-      return {
-        name: new Date(t.signalTs).toLocaleDateString("ko-KR", {
-          month: "short",
-          day: "numeric",
-        }),
-        equity: Math.round(equity * 100) / 100,
-      };
-    });
-  }, [trades]);
-
-  const minEquity = Math.min(...data.map((d) => d.equity), 95);
-  const maxEquity = Math.max(...data.map((d) => d.equity), 105);
-  const finalEquity = data[data.length - 1]?.equity ?? 100;
-  const isPositive = finalEquity >= 100;
-
-  return (
-    <ResponsiveContainer width="100%" height={180}>
-      <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop
-              offset="5%"
-              stopColor={isPositive ? "#00f5d4" : "#ff6b6b"}
-              stopOpacity={0.3}
-            />
-            <stop
-              offset="95%"
-              stopColor={isPositive ? "#00f5d4" : "#ff6b6b"}
-              stopOpacity={0}
-            />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-        <XAxis
-          dataKey="name"
-          tick={{ fontSize: 9, fontFamily: "monospace", fill: "#666" }}
-          tickLine={false}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          domain={[minEquity * 0.98, maxEquity * 1.02]}
-          tick={{ fontSize: 9, fontFamily: "monospace", fill: "#666" }}
-          tickLine={false}
-          tickFormatter={(v) => `${v.toFixed(0)}`}
-          width={36}
-        />
-        <ReferenceLine y={100} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
-        <Tooltip
-          contentStyle={{
-            background: "#0d0d14",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "4px",
-            fontFamily: "monospace",
-            fontSize: "11px",
-          }}
-          formatter={(v: number) => [`${v.toFixed(2)}`, "Equity"]}
-        />
-        <Area
-          type="monotone"
-          dataKey="equity"
-          stroke={isPositive ? "#00f5d4" : "#ff6b6b"}
-          strokeWidth={1.5}
-          fill="url(#equityGrad)"
-          dot={false}
-          activeDot={{ r: 3, fill: isPositive ? "#00f5d4" : "#ff6b6b" }}
-        />
-      </AreaChart>
     </ResponsiveContainer>
   );
 }
@@ -760,61 +638,13 @@ export default function Backtest() {
               </div>
 
               {/* Stat Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                <StatCard
-                  label="총 시그널"
-                  value={String(overall.totalTrades)}
-                  sub={`${overall.wins}W / ${overall.losses}L`}
-                  color="cyan"
-                  icon={Zap}
-                />
-                <StatCard
-                  label="승률"
-                  value={`${(overall.winRate * 100).toFixed(1)}%`}
-                  sub={`기준 50%`}
-                  color={overall.winRate >= 0.5 ? "green" : "red"}
-                  icon={overall.winRate >= 0.5 ? TrendingUp : TrendingDown}
-                />
-                <StatCard
-                  label="Sharpe"
-                  value={overall.sharpe.toFixed(3)}
-                  sub={overall.sharpe >= 1 ? "양호 ≥1.0" : overall.sharpe >= 0 ? "보통" : "위험"}
-                  color={overall.sharpe >= 1 ? "green" : overall.sharpe >= 0 ? "yellow" : "red"}
-                  icon={BarChart2}
-                />
-                <StatCard
-                  label="기댓값"
-                  value={`${overall.expectancy >= 0 ? "+" : ""}${overall.expectancy.toFixed(2)}%`}
-                  sub="per trade"
-                  color={overall.expectancy > 0 ? "cyan" : "red"}
-                  icon={Target}
-                />
-                <StatCard
-                  label="Profit Factor"
-                  value={isFinite(overall.profitFactor) ? overall.profitFactor.toFixed(2) : "∞"}
-                  sub="이익/손실 비"
-                  color={overall.profitFactor >= 1.5 ? "green" : overall.profitFactor >= 1 ? "yellow" : "red"}
-                />
-                <StatCard
-                  label="Max Drawdown"
-                  value={`-${overall.maxDrawdown.toFixed(2)}%`}
-                  sub="누적 최대 낙폭"
-                  color="red"
-                  icon={TrendingDown}
-                />
-              </div>
+              <MetricCards overall={overall} variant="full" />
 
               {/* Charts Row */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 <div className="lg:col-span-2">
                   <HudPanel title="Equity Curve" subtitle="누적 수익률 (기준 100)">
-                    {result.trades.length > 0 ? (
-                      <EquityCurve trades={result.trades as any} />
-                    ) : (
-                      <div className="h-[180px] flex items-center justify-center">
-                        <p className="font-mono text-xs text-muted-foreground">시그널 없음</p>
-                      </div>
-                    )}
+                    <EquityChart trades={result.trades as any} />
                   </HudPanel>
                 </div>
                 <div>
@@ -856,23 +686,23 @@ export default function Backtest() {
 
               {/* Win/Loss breakdown */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <StatCard
+                <BacktestStatCard
                   label="평균 승리 수익"
                   value={`+${overall.avgWin.toFixed(2)}%`}
                   color="green"
                 />
-                <StatCard
+                <BacktestStatCard
                   label="평균 패배 손실"
                   value={`${overall.avgLoss.toFixed(2)}%`}
                   color="red"
                 />
-                <StatCard
+                <BacktestStatCard
                   label="평균 MFE"
                   value={`+${overall.avgMaxFavorable.toFixed(2)}%`}
                   sub="평균 최대 순방향"
                   color="cyan"
                 />
-                <StatCard
+                <BacktestStatCard
                   label="평균 MAE"
                   value={`-${overall.avgMaxAdverse.toFixed(2)}%`}
                   sub="평균 최대 역방향"
