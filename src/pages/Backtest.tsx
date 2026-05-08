@@ -57,7 +57,14 @@ interface BacktestConfig {
   runName: string;
 }
 
-type SortKey = "symbol" | "winRate" | "avgReturn" | "sharpe" | "totalTrades";
+type SortKey =
+  | "symbol"
+  | "winRate"
+  | "avgReturn"
+  | "sharpe"
+  | "totalTrades"
+  | "maxDrawdown"
+  | "expectancy";
 
 // ─── Preset 심볼 그룹 ────────────────────────────────────
 
@@ -951,7 +958,7 @@ export default function Backtest() {
                     이 수치가 Calibration의 <code className="text-neon-cyan">baselineWinRate</code>가 됩니다.
                     Trend Composite (EMA200, ADX, MACD 등 7개 지표 합성) 추가 시 regime별 승률 비교 →
                     <code className="text-neon-pink"> strong_uptrend</code>에서 예상 승률:{" "}
-                    {Math.min(99, (overall.winRate * 100 + 15).toFixed(0))}%+
+                    {Math.min(99, Math.round(overall.winRate * 100 + 15))}%+
                   </p>
                 </div>
               </HudPanel>
