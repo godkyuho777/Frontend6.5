@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 /**
- * /v65-merge-status — feat/v6.5-merge 결합 검증 페이지.
+ * /admin/health — 영구 시스템 헬스 체크 페이지.
+ *
+ * (구 V65MergeStatus 가 v6.5 머지 검증 페이지였으나, 영구 디버그 페이지로 승격됨.)
  *
  * 4개 검증 카드:
  *  1. /api/health — 백엔드 부팅 + 브랜치 정보
- *  2. trpc.signals.scan — main 의 BBDX v6.1 시그널 로직 작동
- *  3. trpc.onchain.score — OnchainData 의 7-modifier 작동
- *  4. trpc.backtest.list — OnchainData 의 백테스트 라우터 작동
+ *  2. trpc.signals.scan — BBDX 시그널 로직 작동
+ *  3. trpc.onchain.score — 7-modifier 작동
+ *  4. trpc.backtest.list — 백테스트 라우터 작동
  *
- * 모든 카드가 ✓ 면 결합 성공. v6.5 Phase 1 시작 후 삭제 가능.
+ * TODO: add charter.validate, decideEntry cards when v6.5 merges
  */
-export default function V65MergeStatus() {
+export default function HealthCheck() {
   const [health, setHealth] = useState<
     | { status: "loading" }
     | { status: "ok"; branch: string; timestamp: number }
@@ -40,19 +42,19 @@ export default function V65MergeStatus() {
       );
   }, []);
 
-  // BBDX 시그널 (main 기능) — 1 페이지만 호출하여 라우터/스캐너가 살아있는지 확인
+  // BBDX 시그널 — 1 페이지만 호출하여 라우터/스캐너가 살아있는지 확인
   const signalsQuery = trpc.signals.scan.useQuery(
     { interval: "4h", page: 1, pageSize: 3 },
     { staleTime: 60_000, retry: 0 }
   );
 
-  // 온체인 (OnchainData 기능)
+  // 온체인
   const onchainQuery = trpc.onchain.score.useQuery(
     { symbol: "BTCUSDT" },
     { staleTime: 60_000, retry: 0 }
   );
 
-  // 백테스트 라우터 (OnchainData 기능)
+  // 백테스트 라우터
   const backtestQuery = trpc.backtest.list.useQuery(undefined, {
     staleTime: 60_000,
     retry: 0,
@@ -61,7 +63,7 @@ export default function V65MergeStatus() {
   const cards = [
     {
       title: "1. /api/health",
-      source: "main + index.ts 패치",
+      source: "Express health endpoint",
       ok: health.status === "ok",
       loading: health.status === "loading",
       summary:
@@ -73,7 +75,7 @@ export default function V65MergeStatus() {
     },
     {
       title: "2. trpc.signals.scan",
-      source: "main 의 BBDX v6.1 (decideEntry, detectAllCandlePatterns, detectBBStructure, isFallingKnife)",
+      source: "BBDX 시그널 (decideEntry, detectAllCandlePatterns, detectBBStructure, isFallingKnife)",
       ok: signalsQuery.isSuccess,
       loading: signalsQuery.isLoading,
       summary: signalsQuery.isSuccess
@@ -82,7 +84,7 @@ export default function V65MergeStatus() {
     },
     {
       title: "3. trpc.onchain.score",
-      source: "OnchainData 의 7-modifier (computeOnchainScore)",
+      source: "7-modifier (computeOnchainScore)",
       ok: onchainQuery.isSuccess,
       loading: onchainQuery.isLoading,
       summary: onchainQuery.isSuccess
@@ -91,7 +93,7 @@ export default function V65MergeStatus() {
     },
     {
       title: "4. trpc.backtest.list",
-      source: "OnchainData 의 backtest router (runBacktest, getBacktestRuns)",
+      source: "backtest router (runBacktest, getBacktestRuns)",
       ok: backtestQuery.isSuccess,
       loading: backtestQuery.isLoading,
       summary: backtestQuery.isSuccess
@@ -107,12 +109,11 @@ export default function V65MergeStatus() {
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-display font-bold text-neon-cyan mb-2">
-          v6.5 결합 브랜치 상태
+          🩺 System Health
         </h1>
         <p className="text-sm font-mono text-muted-foreground">
-          백엔드 <code className="text-neon-pink">feat/v6.5-merge</code> + 프론트엔드{" "}
-          <code className="text-neon-pink">feat/v6.5-merge-frontend</code> 결합 후 4개 영역이
-          모두 살아있는지 검증.
+          백엔드 + tRPC 라우터 4개 영역의 헬스 체크. 배포/디버깅 시 가장 먼저
+          확인할 페이지입니다.
         </p>
       </div>
 
@@ -127,7 +128,7 @@ export default function V65MergeStatus() {
       >
         <p className="font-mono text-sm">
           {allOk ? (
-            <span className="text-emerald-400">✓ 결합 성공 — 4개 영역 모두 응답</span>
+            <span className="text-emerald-400">✓ 시스템 정상 — 4개 영역 모두 응답</span>
           ) : anyError ? (
             <span className="text-red-400">✗ 일부 영역 실패 — 아래 카드 확인</span>
           ) : (
@@ -172,8 +173,11 @@ export default function V65MergeStatus() {
         ))}
       </div>
 
+      {/* TODO: add charter.validate, decideEntry cards when v6.5 merges */}
+
       <div className="text-[10px] font-mono text-muted-foreground border-t border-border/30 pt-3">
-        이 페이지는 결합 브랜치 검증용. v6.5 Phase 1 시작 후 삭제 권장.
+        영구 시스템 헬스 페이지 · 푸시 후 Vercel/Railway 부팅 검증, modifier
+        키 설정 확인, tRPC 라우터 회귀 검증에 사용.
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import LiteLayout from "./components/lite/LiteLayout";
 import Home from "./pages/Home";
 import Fibonacci from "./pages/Fibonacci";
+import FibonacciDetail from "./pages/FibonacciDetail";
 import Vwap from "./pages/Vwap";
 import CoinDetail from "./pages/CoinDetail";
 import Positions from "./pages/Positions";
@@ -20,7 +21,7 @@ import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
-import V65MergeStatus from "./pages/V65MergeStatus";
+import V65MergeStatus from "./pages/admin/HealthCheck";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -70,6 +71,7 @@ function ProShell() {
         <Route path={"/"} component={Home} />
         {/* Signal Scanner sub-pages — distinct strategies per the v6.1 doc. */}
         <Route path={"/fibonacci"} component={Fibonacci} />
+        <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
         {/* Wave Tracker — split into Sentiment & Matrix and Trend Analysis. */}
         <Route path={"/wave/sentiment"} component={WaveSentiment} />

@@ -1,0 +1,357 @@
+/**
+ * Lightweight-charts (TradingView OSS) candlestick chart with optional
+ * Bollinger Bands, Fibonacci level, and trendline overlays. Used by both
+ * /coin/:symbol and /fibonacci/:symbol detail pages.
+ */
+
+import { useCallback, useEffect, useRef } from "react";
+import type { Candle } from "@shared/types";
+import type { Trendline } from "@/lib/fibonacci-engine";
+
+export interface ChartFibLevel {
+  ratio: number;
+  price: number;
+  label?: string;
+  zoneLow?: number;
+  zoneHigh?: number;
+}
+
+export interface ChartBBPoint {
+  upper: number;
+  middle: number;
+  lower: number;
+}
+
+interface CandleChartLWProps {
+  candles: Candle[];
+  currentPrice: number;
+  fibLevels?: ChartFibLevel[];
+  trendlines?: Trendline[];
+  bbSeries?: ChartBBPoint[];
+  height?: number;
+  /** how many trailing candles to display (default 120) */
+  windowSize?: number;
+  /** show the floating legend row under the chart (default true) */
+  showLegend?: boolean;
+}
+
+const FIB_COLORS: Record<number, string> = {
+  0: "#ff0066",
+  0.236: "#ff006688",
+  0.382: "#ff6b6b",
+  0.5: "#00e5ff88",
+  0.618: "#FFD700",
+  0.786: "#00e5ff88",
+  1: "#ff0066",
+};
+
+export function CandleChartLW({
+  candles,
+  currentPrice,
+  fibLevels,
+  trendlines,
+  bbSeries,
+  height = 500,
+  windowSize = 120,
+  showLegend = true,
+}: CandleChartLWProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<{ remove: () => void } | null>(null);
+
+  const initChart = useCallback(async () => {
+    if (!containerRef.current || candles.length === 0) return;
+
+    const {
+      createChart,
+      CandlestickSeries,
+      HistogramSeries,
+      LineSeries,
+      ColorType,
+      LineStyle,
+      CrosshairMode,
+    } = await import("lightweight-charts");
+
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+
+    const container = containerRef.current;
+
+    const chart = createChart(container, {
+      width: container.clientWidth,
+      height,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#888",
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 11,
+      },
+      grid: {
+        vertLines: { color: "rgba(255,255,255,0.04)" },
+        horzLines: { color: "rgba(255,255,255,0.04)" },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: "rgba(0,229,255,0.3)", width: 1, style: LineStyle.Dashed },
+        horzLine: { color: "rgba(0,229,255,0.3)", width: 1, style: LineStyle.Dashed },
+      },
+      rightPriceScale: {
+        borderColor: "rgba(255,255,255,0.1)",
+        scaleMargins: { top: 0.05, bottom: 0.05 },
+      },
+      timeScale: {
+        borderColor: "rgba(255,255,255,0.1)",
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
+
+    chartRef.current = chart;
+
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: "#00e676",
+      downColor: "#ff1744",
+      borderUpColor: "#00e676",
+      borderDownColor: "#ff1744",
+      wickUpColor: "#00e676",
+      wickDownColor: "#ff1744",
+    });
+
+    const offsetIdx = Math.max(0, candles.length - windowSize);
+    const chartCandles = candles.slice(offsetIdx);
+
+    candleSeries.setData(
+      chartCandles.map((c) => ({
+        time: Math.floor(c.openTime / 1000) as never,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }))
+    );
+
+    // Volume histogram
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+    });
+    chart.priceScale("volume").applyOptions({
+      scaleMargins: { top: 0.85, bottom: 0 },
+    });
+    volumeSeries.setData(
+      chartCandles.map((c) => ({
+        time: Math.floor(c.openTime / 1000) as never,
+        value: c.volume,
+        color: c.close >= c.open ? "rgba(0,230,118,0.15)" : "rgba(255,23,68,0.15)",
+      }))
+    );
+
+    // Bollinger Bands overlay
+    if (bbSeries && bbSeries.length === candles.length) {
+      const bbWindow = bbSeries.slice(offsetIdx);
+      const bbColor = "rgba(180,180,255,0.55)";
+      const upperData: { time: number; value: number }[] = [];
+      const middleData: { time: number; value: number }[] = [];
+      const lowerData: { time: number; value: number }[] = [];
+      for (let i = 0; i < bbWindow.length; i++) {
+        const time = Math.floor(chartCandles[i].openTime / 1000);
+        const bb = bbWindow[i];
+        if (!bb) continue;
+        upperData.push({ time, value: bb.upper });
+        middleData.push({ time, value: bb.middle });
+        lowerData.push({ time, value: bb.lower });
+      }
+      const upper = chart.addSeries(LineSeries, {
+        color: bbColor,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      upper.setData(upperData as never);
+      const middle = chart.addSeries(LineSeries, {
+        color: "rgba(180,180,255,0.35)",
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      middle.setData(middleData as never);
+      const lower = chart.addSeries(LineSeries, {
+        color: bbColor,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      lower.setData(lowerData as never);
+    }
+
+    // Fibonacci price lines
+    if (fibLevels && fibLevels.length > 0) {
+      for (const level of fibLevels) {
+        const color = FIB_COLORS[level.ratio] ?? "#00e5ff44";
+        const isGolden = level.ratio === 0.618;
+        const isKey =
+          level.ratio === 0 ||
+          level.ratio === 1 ||
+          level.ratio === 0.618 ||
+          level.ratio === 0.382;
+
+        candleSeries.createPriceLine({
+          price: level.price,
+          color,
+          lineWidth: isGolden ? 2 : 1,
+          lineStyle: isGolden ? LineStyle.Solid : LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `${level.label ?? `Fib ${level.ratio}`} ($${level.price < 1 ? level.price.toPrecision(4) : level.price.toFixed(2)})`,
+        });
+
+        if (isKey && level.zoneHigh != null && level.zoneLow != null) {
+          candleSeries.createPriceLine({
+            price: level.zoneHigh,
+            color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            axisLabelVisible: false,
+            title: "",
+          });
+          candleSeries.createPriceLine({
+            price: level.zoneLow,
+            color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            axisLabelVisible: false,
+            title: "",
+          });
+        }
+      }
+    }
+
+    // Current price marker
+    candleSeries.createPriceLine({
+      price: currentPrice,
+      color: "#ff0066",
+      lineWidth: 1,
+      lineStyle: LineStyle.SparseDotted,
+      axisLabelVisible: true,
+      title: "Current",
+    });
+
+    // Trendlines
+    if (trendlines && trendlines.length > 0) {
+      const validTrendlines = trendlines.filter((t) => t.isValid);
+      for (const tl of validTrendlines) {
+        const tlColor = tl.type === "support" ? "#00e676" : "#ff1744";
+        const chartStartIdx = Math.max(0, tl.startPoint.index - offsetIdx);
+
+        if (tl.endPoint.index < offsetIdx) continue;
+        if (tl.startPoint.index >= candles.length) continue;
+
+        const drawEndIdx = chartCandles.length - 1;
+        const lineData: { time: number; value: number }[] = [];
+        for (let i = chartStartIdx; i <= drawEndIdx; i++) {
+          const globalIdx = i + offsetIdx;
+          const price = tl.startPoint.price + tl.slope * (globalIdx - tl.startPoint.index);
+          lineData.push({
+            time: Math.floor(chartCandles[i].openTime / 1000),
+            value: price,
+          });
+        }
+
+        if (lineData.length >= 2) {
+          const tlSeries = chart.addSeries(LineSeries, {
+            color: tlColor,
+            lineWidth: 2,
+            lineStyle: LineStyle.Dashed,
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          });
+          tlSeries.setData(lineData as never);
+        }
+      }
+    }
+
+    chart.timeScale().fitContent();
+
+    const handleResize = () => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.remove();
+    };
+  }, [candles, fibLevels, trendlines, bbSeries, currentPrice, height, windowSize]);
+
+  useEffect(() => {
+    const cleanupPromise = initChart();
+    return () => {
+      cleanupPromise?.then((fn) => fn?.());
+      if (chartRef.current) {
+        try {
+          chartRef.current.remove();
+        } catch {
+          // ignore
+        }
+        chartRef.current = null;
+      }
+    };
+  }, [initChart]);
+
+  return (
+    <div className="relative">
+      <div ref={containerRef} className="w-full" style={{ minHeight: height }} />
+      {showLegend && (
+        <div className="flex flex-wrap items-center gap-4 mt-3 px-2">
+          {fibLevels && fibLevels.length > 0 && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 bg-[#FFD700]" />
+                <span className="font-mono text-[10px] text-muted-foreground">0.618 Golden</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 bg-[#ff6b6b]" />
+                <span className="font-mono text-[10px] text-muted-foreground">0.382</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5" style={{ borderTop: "1px dashed #ff0066" }} />
+                <span className="font-mono text-[10px] text-muted-foreground">High/Low</span>
+              </div>
+            </>
+          )}
+          {bbSeries && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-0.5" style={{ borderTop: "1px dashed rgb(180,180,255)" }} />
+              <span className="font-mono text-[10px] text-muted-foreground">BB(20,2)</span>
+            </div>
+          )}
+          {trendlines && trendlines.length > 0 && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5" style={{ borderTop: "2px dashed #00e676" }} />
+                <span className="font-mono text-[10px] text-muted-foreground">Support TL</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5" style={{ borderTop: "2px dashed #ff1744" }} />
+                <span className="font-mono text-[10px] text-muted-foreground">Resistance TL</span>
+              </div>
+            </>
+          )}
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5" style={{ borderTop: "1px dotted #ff0066" }} />
+            <span className="font-mono text-[10px] text-muted-foreground">Current Price</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
