@@ -21,7 +21,7 @@ import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
-import V65MergeStatus from "./pages/admin/HealthCheck";
+import HealthCheck from "./pages/admin/HealthCheck";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -87,7 +87,7 @@ function ProShell() {
         <Route path={"/ai"} component={AIInsight} />
         <Route path={"/backtest"} component={Backtest} />
         <Route path={"/onchain"} component={Onchain} />
-        <Route path={"/v65-merge-status"} component={V65MergeStatus} />
+        <Route path={"/admin/health"} component={HealthCheck} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
