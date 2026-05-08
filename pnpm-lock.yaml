@@ -99,7 +99,7 @@ importers:
         specifier: ^5.90.2
         version: 5.100.9(react@19.2.6)
       '@tradelab/backend':
-        specifier: git+https://github.com/tradelab-hq/tradelab-backend.git#feat/v6.5-merge
+        specifier: git+https://github.com/tradelab-hq/tradelab-backend.git#main
         version: git+https://github.com/tradelab-hq/tradelab-backend.git#9cad2c5232f970e665717c455cad879a736856b4(typescript@5.9.3)
       '@trpc/client':
         specifier: ^11.6.0
