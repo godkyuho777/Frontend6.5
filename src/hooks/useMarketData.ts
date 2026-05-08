@@ -143,6 +143,9 @@ async function scanCoin(
       volumeRatio: ratio,
       volumeConfirmation: volConfirmation,
       candlePatterns,
+      // 클라이언트 사이드 계산은 백엔드의 patternConfluence 합산을 만들지 않음.
+      // 백엔드 trpc.signals.scan 응답이 server-computed 값을 제공.
+      patternConfluence: null,
       bbStructure,
       entryDecision,
       exitDecision,
@@ -225,6 +228,7 @@ async function scanCoinsPage(
             volumeRatio: 1,
             volumeConfirmation: 0,
             candlePatterns: [],
+            patternConfluence: null,
             bbStructure: null,
             entryDecision: null,
             exitDecision: null,

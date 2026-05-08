@@ -86,6 +86,40 @@ function renderPressureCell(pressure: PressureLabel, strong: boolean) {
 }
 
 function renderPatternCell(coin: CoinScanResult) {
+  // Audit-권고 합산이 있으면 score 위주로 표시. 없으면 raw count fallback.
+  const conf = coin.patternConfluence;
+  if (conf) {
+    const bullScore = Math.round(conf.bullishScore * 100);
+    const bearScore = Math.round(conf.bearishScore * 100);
+    if (conf.bullishCount === 0 && conf.bearishCount === 0) {
+      return <span className="font-mono text-[10px] text-muted-foreground">—</span>;
+    }
+    return (
+      <span
+        className="font-mono text-[10px] inline-flex items-center gap-1.5"
+        title={`강세 ${bullScore} (${conf.bullishCount}개) / 약세 ${bearScore} (${conf.bearishCount}개)`}
+      >
+        {conf.bullishCount > 0 && (
+          <span className="text-neon-green inline-flex items-center gap-0.5">
+            <span className="font-bold">{bullScore}</span>
+            {conf.bullishCount > 1 && (
+              <span className="text-[8px] opacity-70">+{conf.bullishCount - 1}</span>
+            )}
+            ↑
+          </span>
+        )}
+        {conf.bearishCount > 0 && (
+          <span className="text-neon-red inline-flex items-center gap-0.5">
+            <span className="font-bold">{bearScore}</span>
+            {conf.bearishCount > 1 && (
+              <span className="text-[8px] opacity-70">+{conf.bearishCount - 1}</span>
+            )}
+            ↓
+          </span>
+        )}
+      </span>
+    );
+  }
   const patterns = coin.candlePatterns ?? [];
   const bullCount = patterns.filter((p) => p.bias === "bullish").length;
   const bearCount = patterns.filter((p) => p.bias === "bearish").length;

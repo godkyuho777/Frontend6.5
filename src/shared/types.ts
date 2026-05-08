@@ -97,6 +97,38 @@ export interface CandlePatternMatch {
   strength: number;
 }
 
+/**
+ * 패턴 컨텍스트 요약 (PATTERN_SYSTEM_AUDIT 권고 #4 #6 #7 #8 적용 결과).
+ *
+ * 강세/약세 별로 다중 패턴 max + bonus 합산 + 거래량/추세 컨텍스트 + TF 차등.
+ * 단독 시그널 X — BBDX 시그널 강도의 multiplier 로만 사용 (헌장 규칙 3 준수).
+ */
+export interface PatternConfluenceSummary {
+  bullishScore: number;
+  bearishScore: number;
+  bullishCount: number;
+  bearishCount: number;
+  bullishBonus: number;
+  bearishBonus: number;
+  bullishPrimaryName: CandlePatternName | null;
+  bearishPrimaryName: CandlePatternName | null;
+  bullishContext: PatternContextDetail | null;
+  bearishContext: PatternContextDetail | null;
+  tf: TimeframeValue;
+}
+
+export interface PatternContextDetail {
+  base: number;
+  volumeMultiplier: number;
+  volumeLabel: "very_high" | "high" | "elevated" | "normal" | "low";
+  volumeRatio: number;
+  trendMultiplier: number;
+  trendLabel: "strong_down" | "mild_down" | "sideways" | "mild_up" | "strong_up";
+  trendCumulativeReturn: number;
+  ageDiscount: number;
+  contextualStrength: number;
+}
+
 /** BB 구조 패턴 */
 export type BBStructure =
   | "upperRiding"
@@ -177,8 +209,13 @@ export interface CoinScanResult {
   volumeRatio: number;
   /** -5 / 0 / +15 — strength 점수 기여분 */
   volumeConfirmation: number;
-  /** dedup된, 최근 5캔들 윈도우 내 감지된 패턴들 */
+  /** 최근 5캔들 윈도우 내 감지된 모든 패턴 (PATTERN_SYSTEM_AUDIT 권고: dedup 제거) */
   candlePatterns: CandlePatternMatch[];
+  /**
+   * Audit-권고 (multi-pattern + 거래량 + 추세 + TF) 적용 합산 신뢰도.
+   * 헌장 규칙 3 준수: BBDX multiplier 로만 사용, 단독 시그널 X.
+   */
+  patternConfluence: PatternConfluenceSummary | null;
   bbStructure: BBStructure | null;
   entryDecision: EntryDecision | null;
   exitDecision: ExitDecision | null;
