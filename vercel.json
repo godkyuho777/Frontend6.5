@@ -1,4 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "git config --global url.\"https://oauth2:${GITHUB_TOKEN}@github.com/\".insteadOf \"https://github.com/\" && pnpm install --frozen-lockfile"
+  "installCommand": "git config --global url.\"https://oauth2:${GITHUB_TOKEN}@github.com/\".insteadOf \"https://github.com/\" && pnpm install --frozen-lockfile",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/proxy?_path=:path*" }
+  ]
 }
