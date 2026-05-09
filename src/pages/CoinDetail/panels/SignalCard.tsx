@@ -8,9 +8,12 @@
 import { HudPanel } from "@/components/HudPanel";
 import { cn } from "@/lib/utils";
 import type { CoinSignal } from "../hooks/useCoinSignal";
+import { VwapMultChip } from "@/pages/Vwap/VwapDetailPanels";
 
 interface SignalCardProps {
   signal: CoinSignal | null;
+  /** v6.5 — VWAP BBDX multiplier (`trpc.vwap.detail.vwapMult`). 미정의 시 "n/a" chip */
+  vwapMult?: number;
 }
 
 const DIMENSION_LABELS = [
@@ -23,10 +26,14 @@ const DIMENSION_LABELS = [
   "MACR",
 ];
 
-export function SignalCard({ signal }: SignalCardProps) {
+export function SignalCard({ signal, vwapMult }: SignalCardProps) {
   if (!signal) {
     return (
-      <HudPanel title="Signal" subtitle="LIVE BBDX">
+      <HudPanel
+        title="Signal"
+        subtitle="LIVE BBDX"
+        headerRight={<VwapMultChip vwapMult={vwapMult} />}
+      >
         <p className="font-mono text-xs text-muted-foreground py-4">
           시그널 데이터 없음
         </p>
@@ -44,6 +51,7 @@ export function SignalCard({ signal }: SignalCardProps) {
       title="Signal"
       subtitle={signal.entry ? "BBDX ENTRY DETECTED" : "NO ENTRY"}
       variant={signal.entry ? "highlight" : "default"}
+      headerRight={<VwapMultChip vwapMult={vwapMult} />}
     >
       <div className="space-y-3">
         {/* Path label */}

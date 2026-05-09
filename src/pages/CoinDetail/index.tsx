@@ -34,6 +34,7 @@ import { AIInsightTab } from "./tabs/AIInsightTab";
 import { useCoinSignal } from "./hooks/useCoinSignal";
 import { useCoinMeta } from "./hooks/useCoinMeta";
 import { useUpcomingEvents } from "./hooks/useUpcomingEvents";
+import { useVwapDetail } from "./hooks/useVwapDetail";
 
 export default function CoinDetailWorkstation() {
   const params = useParams<{ symbol: string }>();
@@ -47,6 +48,11 @@ export default function CoinDetailWorkstation() {
   const { signal } = useCoinSignal(symbol, interval);
   const { meta } = useCoinMeta(symbol);
   const { events, isAvailable: eventsAvailable } = useUpcomingEvents(symbol);
+
+  // v6.5 — vwap.detail 라우트로 BBDX multiplier + Volume Profile + Multi-TF 가져옴
+  const vwapTf: "1h" | "4h" | "1d" =
+    interval === "1h" || interval === "4h" || interval === "1d" ? interval : "4h";
+  const { detail: vwapDetail } = useVwapDetail(symbol, vwapTf);
 
   if (!symbol) {
     return (
@@ -69,7 +75,7 @@ export default function CoinDetailWorkstation() {
 
         {/* Right side panels — col-span 4 on md+, stacked on mobile */}
         <div className="md:col-span-4 order-1 md:order-2 space-y-3">
-          <SignalCard signal={signal} />
+          <SignalCard signal={signal} vwapMult={vwapDetail?.vwapMult} />
           <CoinInfoCard meta={meta} />
           <UpcomingEvents events={events} isAvailable={eventsAvailable} />
         </div>
@@ -123,7 +129,7 @@ export default function CoinDetailWorkstation() {
           <WinRateTab symbol={symbol} tf={interval} />
         </TabsContent>
         <TabsContent value="dimensions" className="mt-3 min-h-96">
-          <DimensionBreakdown signal={signal} />
+          <DimensionBreakdown signal={signal} vwapDetail={vwapDetail} />
         </TabsContent>
         <TabsContent value="trades" className="mt-3 min-h-96">
           <TradeHistoryTab symbol={symbol} />

@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, ShieldAlert, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, ShieldAlert, Activity, Layers } from "lucide-react";
 import type { CoinScanResult } from "@shared/types";
+import { PatternConfluenceCard } from "@/components/PatternConfluenceCard";
 
 type SignalDetailDialogProps = {
   coin: CoinScanResult;
@@ -143,9 +144,19 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
             </div>
           </Section>
 
-          {/* Patterns */}
+          {/* PATTERN_SYSTEM_AUDIT 권고 적용 합산 카드 — multi + 거래량 + 추세 + TF */}
+          {coin.patternConfluence && (
+            <Section
+              title="Pattern Confluence (audit v1)"
+              icon={<Layers className="h-4 w-4 text-neon-cyan" />}
+            >
+              <PatternConfluenceCard summary={coin.patternConfluence} />
+            </Section>
+          )}
+
+          {/* Patterns (raw 매치 리스트) */}
           {(coin.candlePatterns ?? []).length > 0 && (
-            <Section title="Detected Patterns" icon={<Activity className="h-4 w-4 text-neon-pink" />}>
+            <Section title="Detected Patterns (raw)" icon={<Activity className="h-4 w-4 text-neon-pink" />}>
               <div className="space-y-1">
                 {(coin.candlePatterns ?? []).map((p, i) => (
                   <div

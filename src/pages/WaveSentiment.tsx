@@ -7,6 +7,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { useWaveTracker } from "@/hooks/useWaveTracker";
+import { WaveMatrixCard } from "@/components/wave/WaveMatrixCard";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -349,6 +350,9 @@ export default function WaveSentiment() {
           </Button>
         </div>
       )}
+
+      {/* Wave Tracker — Sentiment & Matrix v4.1 종합 카드 (백엔드 wave.combined) */}
+      <WaveMatrixCard symbol="BTCUSDT" />
 
       {/* Main content */}
       {snapshot && analysis && (

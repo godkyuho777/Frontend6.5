@@ -66,14 +66,25 @@ export function BackendBranchIndicator() {
       : "Backend /api/health";
 
   return (
-    <div
-      className="flex items-center gap-2 px-2 py-1.5 mb-2 rounded-sm border border-border/30 bg-background/40 group-data-[collapsible=icon]:justify-center"
-      title={title}
-    >
-      <span className={`h-2 w-2 rounded-full ${dot} shrink-0`} />
-      <span className="text-[10px] font-mono text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
-        Backend: <span className="text-neon-cyan">{text}</span>
-      </span>
+    <div className="space-y-1 mb-2">
+      <div
+        className="flex items-center gap-2 px-2 py-1.5 rounded-sm border border-border/30 bg-background/40 group-data-[collapsible=icon]:justify-center"
+        title={title}
+      >
+        <span className={`h-2 w-2 rounded-full ${dot} shrink-0`} />
+        <span className="text-[10px] font-mono text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
+          Backend: <span className="text-neon-cyan">{text}</span>
+        </span>
+      </div>
+      <div
+        className="flex items-center gap-2 px-2 py-1 rounded-sm border border-emerald-500/30 bg-emerald-500/5 group-data-[collapsible=icon]:hidden"
+        title="PATTERN_SYSTEM_AUDIT v1 권고 적용: 다중 패턴 합산 + 거래량/추세 컨텍스트 + TF 차등 + look-ahead 안전"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+        <span className="text-[9px] font-mono text-emerald-400 truncate">
+          Patterns: audit v1 ✓
+        </span>
+      </div>
     </div>
   );
 }
