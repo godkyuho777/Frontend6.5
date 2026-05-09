@@ -148,6 +148,24 @@ export interface EntryDecision {
   patterns?: CandlePatternMatch[];
   /** BB 경로일 때 사용된 BB 구조 */
   bbStructure?: BBStructure;
+
+  // ── Additional Strategies multiplier (헌장 규칙 3, modifier-only) ──
+  // BBDX 코어 final_confidence 곱셈 체인에 통합 예정. 현재는 surface 만.
+  // optional — null/undefined = neutral (1.0 동치).
+  /** VWAP modifier (5번 structure) */
+  vwapMult?: number;
+  /** EMA Ribbon (3번 trend) — 0.30~1.15 */
+  emaRibbonMult?: number;
+  /** Market Breadth (6번 macro/sentiment) — 0.60~1.30 */
+  marketBreadthMult?: number;
+  /** MACD Divergence (1번 momentum, RSI 와 다른 각도) — 0.80~1.20 */
+  macdDivergenceMult?: number;
+  /** Funding Extreme (6번 macro/perp) — 0.85~1.20 */
+  fundingExtremeMult?: number;
+  /** CVD Divergence (4번 volume/liquidity, 베타) — 0.80~1.20 */
+  cvdDivergenceMult?: number;
+  /** Order Block (5번 structure, 베타) — 0.95~1.05 */
+  orderBlockMult?: number;
 }
 
 /** 매도(EXIT) 결정 */

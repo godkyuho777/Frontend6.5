@@ -84,6 +84,9 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
                     .join(", ")}
                 />
               )}
+
+              {/* Additional Strategies multiplier (audit 03_ADDITIONAL_STRATEGIES) */}
+              <ModifierBreakdown decision={coin.entryDecision} signalStrength={coin.signalStrength} />
             </Section>
           )}
 
@@ -231,6 +234,146 @@ function Row({ label, value }: { label: string; value: string | number }) {
     <div className="flex items-center justify-between font-mono text-[11px]">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground">{value}</span>
+    </div>
+  );
+}
+
+// ─── Additional Strategies modifier breakdown (헌장 규칙 3) ─────────
+//
+// scanner.ts 가 entryDecision 에 EMA Ribbon / MACD Divergence /
+// Order Block multiplier 를 surface 함. v6.5 후속 PR 에서 final_confidence
+// 곱셈 체인에 통합 예정. 현재는 표시만.
+
+const MODIFIER_DEFS: Array<{
+  key:
+    | "vwapMult"
+    | "emaRibbonMult"
+    | "marketBreadthMult"
+    | "macdDivergenceMult"
+    | "fundingExtremeMult"
+    | "cvdDivergenceMult"
+    | "orderBlockMult";
+  label: string;
+  dimension: string;
+  range: string;
+  beta?: boolean;
+}> = [
+  { key: "vwapMult", label: "VWAP", dimension: "5 structure", range: "0.85~1.15" },
+  { key: "emaRibbonMult", label: "EMA Ribbon", dimension: "3 trend", range: "0.30~1.15" },
+  { key: "macdDivergenceMult", label: "MACD Divergence", dimension: "1 momentum", range: "0.80~1.20" },
+  { key: "marketBreadthMult", label: "Market Breadth", dimension: "6 macro", range: "0.60~1.30" },
+  { key: "fundingExtremeMult", label: "Funding Extreme", dimension: "6 macro", range: "0.85~1.20" },
+  { key: "cvdDivergenceMult", label: "CVD Divergence", dimension: "4 volume", range: "0.80~1.20", beta: true },
+  { key: "orderBlockMult", label: "Order Block", dimension: "5 structure", range: "0.95~1.05", beta: true },
+];
+
+function ModifierBreakdown({
+  decision,
+  signalStrength,
+}: {
+  decision: NonNullable<CoinScanResult["entryDecision"]>;
+  signalStrength: number;
+}) {
+  const present = MODIFIER_DEFS.map((d) => ({
+    ...d,
+    value: decision[d.key],
+  })).filter((m) => m.value != null && Number.isFinite(m.value));
+
+  if (present.length === 0) return null;
+
+  // 합산: 곱셈 체인 (헌장 외부 차원 결합)
+  const product = present.reduce((acc, m) => acc * (m.value ?? 1), 1);
+  const adjustedStrength = Math.round(signalStrength * product);
+  const delta = adjustedStrength - signalStrength;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/30">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          Additional Modifiers (audit 03)
+        </span>
+        <span className="font-mono text-[10px] text-neon-cyan">
+          {present.length} active
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        {present.map((m) => (
+          <ModifierCell
+            key={m.key}
+            label={m.label}
+            dimension={m.dimension}
+            range={m.range}
+            value={m.value!}
+            beta={m.beta}
+          />
+        ))}
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-border/20 flex items-center justify-between font-mono text-[11px]">
+        <span className="text-muted-foreground">
+          신호 강도 보정 (= base × Π modifiers)
+        </span>
+        <span
+          className={cn(
+            "font-bold",
+            delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-foreground",
+          )}
+        >
+          {signalStrength} × {product.toFixed(3)} ={" "}
+          <span className="text-base">{adjustedStrength}</span>
+          {delta !== 0 && (
+            <span className="text-[10px] ml-1 opacity-70">
+              ({delta >= 0 ? "+" : ""}
+              {delta})
+            </span>
+          )}
+        </span>
+      </div>
+
+      <p className="mt-1.5 text-[9px] font-mono text-muted-foreground/70 leading-relaxed">
+        ⚠ 단독 신호 X — 헌장 규칙 3. 모든 modifier 는 BBDX (RSI/BB/ADX) 시그널의
+        곱셈 가중치로만 적용. 공식 통합은 v6.5 confidence pipeline 후속 PR.
+      </p>
+    </div>
+  );
+}
+
+function ModifierCell({
+  label,
+  dimension,
+  range,
+  value,
+  beta,
+}: {
+  label: string;
+  dimension: string;
+  range: string;
+  value: number;
+  beta?: boolean;
+}) {
+  // 1.0 = neutral; > 1.0 = boost; < 1.0 = damp
+  const tone =
+    value > 1.05
+      ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
+      : value < 0.95
+      ? "border-red-500/40 bg-red-500/5 text-red-400"
+      : "border-border/30 bg-card/30 text-muted-foreground";
+
+  return (
+    <div className={cn("p-1.5 rounded-sm border text-[10px] font-mono", tone)}>
+      <div className="flex items-center justify-between gap-1">
+        <span className="font-bold truncate">
+          {label}
+          {beta && (
+            <span className="ml-1 text-[8px] opacity-60 uppercase">β</span>
+          )}
+        </span>
+        <span className="font-bold tabular-nums">×{value.toFixed(2)}</span>
+      </div>
+      <div className="text-[8px] opacity-70 mt-0.5">
+        {dimension} · {range}
+      </div>
     </div>
   );
 }
