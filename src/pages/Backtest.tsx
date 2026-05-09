@@ -34,6 +34,8 @@ import {
   BacktestStatCard,
   MetricCards,
 } from "@/components/backtest/MetricCards";
+import { TradeTable } from "@/components/backtest/TradeTable";
+import { CalibrationPanel } from "@/components/backtest/CalibrationPanel";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -78,12 +80,23 @@ function ExitReasonChart({
 }: {
   trades: Array<{ exitReason: string }>;
 }) {
-  const counts = { target_hit: 0, stop_loss: 0, window_expired: 0 };
+  const counts: Record<string, number> = {
+    target_hit: 0,
+    stop_loss: 0,
+    window_expired: 0,
+    // v6.5 Phase 1 tiered exits
+    tier2_full: 0,
+    tier1_then_window: 0,
+    tier1_then_stop: 0,
+  };
   for (const t of trades) {
-    if (t.exitReason in counts) counts[t.exitReason as keyof typeof counts]++;
+    counts[t.exitReason] = (counts[t.exitReason] ?? 0) + 1;
   }
   const data = [
-    { name: "목표가 도달", value: counts.target_hit, color: "#00f5d4" },
+    { name: "T1+T2 둘 다 (≥+5%)", value: counts.tier2_full, color: "#10b981" },
+    { name: "목표가 (legacy)", value: counts.target_hit, color: "#00f5d4" },
+    { name: "T1 후 만료", value: counts.tier1_then_window, color: "#06b6d4" },
+    { name: "T1 후 손절", value: counts.tier1_then_stop, color: "#fb923c" },
     { name: "손절", value: counts.stop_loss, color: "#ff6b6b" },
     { name: "만료", value: counts.window_expired, color: "#ffd166" },
   ].filter((d) => d.value > 0);
@@ -371,6 +384,9 @@ export default function Backtest() {
           </TabsTrigger>
           <TabsTrigger value="results" className="font-mono text-xs h-7 data-[state=active]:text-neon-cyan" disabled={!result}>
             RESULTS {result ? `(${result.overall.totalTrades})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="calibration" className="font-mono text-xs h-7 data-[state=active]:text-neon-pink" disabled={!result}>
+            CALIBRATION (v6.5)
           </TabsTrigger>
           <TabsTrigger value="history" className="font-mono text-xs h-7 data-[state=active]:text-neon-yellow">
             PAST RUNS
@@ -799,6 +815,23 @@ export default function Backtest() {
               <p className="font-mono text-sm text-muted-foreground">아직 실행 결과가 없습니다</p>
               <p className="font-mono text-xs text-muted-foreground/60 mt-1">
                 CONFIG 탭에서 설정 후 RUN BACKTEST 클릭
+              </p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Calibration Tab (v6.5 Phase 3) ── */}
+        <TabsContent value="calibration" className="mt-3 space-y-3">
+          {result?.trades?.length ? (
+            <CalibrationPanel trades={result.trades as any} />
+          ) : (
+            <div className="text-center py-12">
+              <FlaskConical className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="font-mono text-sm text-muted-foreground">
+                백테스트 실행 후 calibration 분석 가능
+              </p>
+              <p className="font-mono text-xs text-muted-foreground/60 mt-1">
+                Phase 1+2 결과 trade 가 ≥ 100 건이어야 통계적으로 유의미.
               </p>
             </div>
           )}

@@ -172,6 +172,26 @@ function renderSignalBadges(coin: CoinScanResult) {
     });
   }
 
+  // SHORT 진입 시그널 (v6.5 dual-system) — backend 의 shortDecision 필드 사용.
+  // 클라이언트 사이드 scanner 가 아직 SHORT 미산출 → 보수적으로 backend 응답에서만.
+  if (coin.shortDecision) {
+    const sStrength = coin.shortSignalStrength ?? 0;
+    const path = coin.shortDecision.path;
+    const isStrong = sStrength >= 70;
+    const colorClass = isStrong
+      ? "bg-neon-red/20 text-neon-red border-neon-red/40"
+      : "bg-neon-orange/20 text-neon-orange border-neon-orange/40";
+    badges.push({
+      key: "short",
+      node: (
+        <Badge className={cn("font-mono text-[10px]", colorClass)}>
+          <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
+          SHORT {path}
+        </Badge>
+      ),
+    });
+  }
+
   if (coin.exitDecision) {
     const label = coin.exitDecision.relaxedToBearish
       ? "EXIT 약세"

@@ -19,6 +19,8 @@ type Recommendation =
   | "HOLD"
   | "SELL"
   | "STRONG_SELL"
+  | "SHORT"
+  | "STRONG_SHORT"
   | "BLOCKED";
 
 interface Props {
@@ -70,6 +72,20 @@ const STYLE: Record<Recommendation, { emoji: string; color: string; bg: string; 
     bg: "bg-neon-red/15",
     text: "text-neon-red",
     default: "강한 매도",
+  },
+  SHORT: {
+    emoji: "🟠",
+    color: "border-neon-orange/40",
+    bg: "bg-neon-orange/10",
+    text: "text-neon-orange",
+    default: "공매도 추천",
+  },
+  STRONG_SHORT: {
+    emoji: "🔻",
+    color: "border-neon-red/50",
+    bg: "bg-neon-red/15",
+    text: "text-neon-red",
+    default: "강한 공매도",
   },
   BLOCKED: {
     emoji: "🛡",

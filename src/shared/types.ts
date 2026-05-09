@@ -136,6 +136,13 @@ export type BBStructure =
   | "squeezeBreakout"
   | "lowerBounce";
 
+/** SHORT BB 구조 패턴 — LONG 미러 */
+export type BBStructureShort =
+  | "lowerRiding"        // 추세 추종 SHORT (하단 타고 내려감)
+  | "middleResistance"   // 중단 저항
+  | "squeezeBreakdown"   // 스퀴즈 하향 이탈
+  | "upperRejection";    // 상단 거부
+
 /** 매수 진입 경로 */
 export type EntryPath = "NUM" | "PTN" | "BB";
 
@@ -165,6 +172,23 @@ export interface EntryDecision {
   /** CVD Divergence (4번 volume/liquidity, 베타) — 0.80~1.20 */
   cvdDivergenceMult?: number;
   /** Order Block (5번 structure, 베타) — 0.95~1.05 */
+  orderBlockMult?: number;
+}
+
+/** SHORT 진입 결정 — EntryDecision 의 미러 (헌장 규칙 3, modifier-only) */
+export interface ShortEntryDecision {
+  path: EntryPath;
+  reasons: string[];
+  patterns?: CandlePatternMatch[];
+  bbStructure?: BBStructureShort;
+
+  // ── Additional Strategies multipliers (LONG 과 동일 시리즈) ──
+  vwapMult?: number;
+  emaRibbonMult?: number;
+  marketBreadthMult?: number;
+  macdDivergenceMult?: number;
+  fundingExtremeMult?: number;
+  cvdDivergenceMult?: number;
   orderBlockMult?: number;
 }
 
@@ -243,6 +267,18 @@ export interface CoinScanResult {
   isStopLossHit: boolean;
   /** -DI > +DI AND ADX > 25 — LONG 진입 차단 */
   isFallingKnife: boolean;
+
+  // ─── SHORT (Phase v6.5 dual-system) ─────────────────────────────────────
+  /** SHORT BB 구조 — LONG 의 bbStructure 미러 */
+  bbStructureShort?: BBStructureShort | null;
+  /** SHORT 진입 결정 (BB > PTN > NUM) — 헌장 규칙 3 modifier-only */
+  shortDecision?: ShortEntryDecision | null;
+  /** BB상단 × 1.03 */
+  shortStopLossPrice?: number;
+  /** SHORT 시그널 강도 0~100 (5-component 미러) */
+  shortSignalStrength?: number;
+  /** +DI > -DI AND ADX > 25 — SHORT 진입 차단 */
+  isRisingKnife?: boolean;
 
   // ─── VWAP Strategy fields ───────────────────────────────────────────────
   /** Volume-weighted average price across the loaded candle range. */

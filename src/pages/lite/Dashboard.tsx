@@ -113,7 +113,7 @@ export default function LiteDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.topBuy.map((c) => (
-              <CoinRecommendationCard key={c.symbol} coin={c} />
+              <CoinRecommendationCard key={c.symbol} coin={c as any} />
             ))}
           </div>
         )}
@@ -143,7 +143,7 @@ export default function LiteDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.topSell.map((c) => (
-              <CoinRecommendationCard key={c.symbol} coin={c} />
+              <CoinRecommendationCard key={c.symbol} coin={c as any} />
             ))}
           </div>
         )}
@@ -184,6 +184,8 @@ function CoinRecommendationCard({
       | "HOLD"
       | "SELL"
       | "STRONG_SELL"
+      | "SHORT"
+      | "STRONG_SHORT"
       | "BLOCKED";
     riskLevel: "very_low" | "low" | "medium" | "high" | "very_high";
     reasons: string[];
@@ -197,9 +199,9 @@ function CoinRecommendationCard({
           variant={
             coin.recommendation === "STRONG_BUY" || coin.recommendation === "BUY"
               ? "good"
-              : coin.recommendation === "STRONG_SELL"
+              : coin.recommendation === "STRONG_SELL" || coin.recommendation === "STRONG_SHORT"
                 ? "bad"
-                : coin.recommendation === "SELL"
+                : coin.recommendation === "SELL" || coin.recommendation === "SHORT"
                   ? "caution"
                   : "default"
           }
