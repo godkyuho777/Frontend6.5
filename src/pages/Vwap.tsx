@@ -26,6 +26,16 @@ import type {
   VwapPosition,
 } from "@shared/types";
 import { useMarketScan } from "@/hooks/useMarketData";
+import { trpc } from "@/lib/trpc";
+import {
+  VwapChartPanel,
+  VolumeProfilePanel,
+  SignalCardV2,
+  AlignmentCard,
+  PullbackQualityCard,
+  VwapMultChip,
+  type VwapDetailLite,
+} from "./Vwap/VwapDetailPanels";
 
 type SortKey = "symbol" | "price" | "change24h" | "vwap" | "ema" | "strength";
 type SortDir = "asc" | "desc";
@@ -92,7 +102,25 @@ export default function Vwap() {
   const [sortKey, setSortKey] = useState<SortKey>("strength");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
+  const [selectedSymbol, setSelectedSymbol] = useState<string>("BTCUSDT");
   const pageSize = 10;
+
+  // VWAP detail (5-component, Volume Profile, multi-TF) — 하단 deep-dive 패널용.
+  // tRPC `vwap.detail` 라우트 (백엔드 v6.5 머지 후 활성화).
+  const detailTf: "1h" | "4h" | "1d" =
+    selectedInterval === "1h" || selectedInterval === "4h" || selectedInterval === "1d"
+      ? selectedInterval
+      : "4h";
+  const detailQuery = trpc.vwap.detail.useQuery(
+    { symbol: selectedSymbol, tf: detailTf },
+    {
+      enabled: !!selectedSymbol,
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    }
+  );
+  const detail = detailQuery.data as VwapDetailLite | undefined;
 
   const {
     data: scanData,
@@ -313,11 +341,18 @@ export default function Vwap() {
                     return (
                       <tr
                         key={coin.symbol}
-                        onClick={() =>
+                        onClick={() => {
+                          setSelectedSymbol(coin.symbol);
+                          // detail 패널은 하단에서 보고, 별도 deep dive 는 더블클릭 등으로 이전.
+                          // 현 클릭은 하단 detail 만 갱신, 이동은 SHIFT 조합 등으로 이전.
+                        }}
+                        onDoubleClick={() =>
                           setLocation(`/coin/${coin.symbol}?tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
+                          coin.symbol === selectedSymbol &&
+                            "ring-1 ring-neon-pink/40",
                           sig?.side === "LONG"
                             ? "bg-neon-green/5 hover:bg-neon-green/10 border-l-2 border-l-neon-green"
                             : sig?.side === "SHORT"
@@ -457,6 +492,74 @@ export default function Vwap() {
               </div>
             </div>
           </>
+        )}
+      </HudPanel>
+
+      {/* ============================================================ */}
+      {/* DEEP DIVE — vwap.detail 응답 시각화 (5-component / VP / multi-TF) */}
+      {/* 사용자가 row 클릭 → selectedSymbol 갱신 → trpc.vwap.detail 자동 fetch */}
+      {/* ============================================================ */}
+      <HudPanel
+        title={`Deep Dive — ${selectedSymbol.replace("USDT", "")}`}
+        subtitle={`${detailTf.toUpperCase()} · click row above to switch · double-click to open coin page`}
+        variant="highlight"
+        headerRight={
+          detail ? <VwapMultChip vwapMult={detail.vwapMult} /> : null
+        }
+      >
+        {detailQuery.isLoading && (
+          <div className="flex items-center gap-2 py-6 justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
+            <span className="font-mono text-xs text-muted-foreground">
+              Loading VWAP detail for {selectedSymbol}...
+            </span>
+          </div>
+        )}
+
+        {detailQuery.isError && (
+          <div className="flex flex-col items-center gap-2 py-6">
+            <AlertCircle className="h-5 w-5 text-neon-red" />
+            <p className="font-mono text-xs text-neon-red">
+              VWAP detail 라우트 호출 실패 — 백엔드가 v6.5 머지 후 부팅되었는지
+              확인하세요.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => detailQuery.refetch()}
+              className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" /> RETRY
+            </Button>
+          </div>
+        )}
+
+        {detail && !detailQuery.isLoading && (
+          <div className="space-y-4">
+            {/* 좌 70% (chart + signalV2) / 우 30% (volume profile) */}
+            <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
+              <div className="md:col-span-7 space-y-4">
+                <div className="rounded-sm border border-border/30 bg-card/40 p-3">
+                  <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+                    Price · VWAP · EMA(9) · ±1/2/3σ Bands
+                  </div>
+                  <VwapChartPanel detail={detail} />
+                </div>
+                <SignalCardV2 detail={detail} />
+              </div>
+              <div className="md:col-span-3">
+                <HudPanel title="Volume Profile" subtitle="POC · HVN · LVN · VA">
+                  <VolumeProfilePanel profile={detail.volumeProfile} />
+                </HudPanel>
+              </div>
+            </div>
+
+            {/* Multi-TF + Pullback 카드 (2열) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AlignmentCard alignment={detail.multiTfAlignment} />
+              <PullbackQualityCard pullback={detail.pullbackV2} />
+            </div>
+          </div>
         )}
       </HudPanel>
     </div>
