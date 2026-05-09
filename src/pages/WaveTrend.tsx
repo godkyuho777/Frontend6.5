@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { CandleChartLW, type ChartFibLevel } from "@/components/CandleChartLW";
 import { useCoinDetail } from "@/hooks/useMarketData";
 import { cn } from "@/lib/utils";
+import MultiTFTrendPanel from "@/components/wave/MultiTFTrendPanel";
 import type { Trendline as FibTrendline } from "@/lib/fibonacci-engine";
 import { TOP_COINS } from "@shared/types";
 import type { Candle, TimeframeValue } from "@shared/types";
@@ -421,6 +422,14 @@ export default function WaveTrend() {
               height={500}
               windowSize={candles.length}
             />
+          </HudPanel>
+
+          {/* Trend Analysis Engine v2.0 — 멀티 TF + 추세선 + EMA + ADX + HH/HL + 브레이크아웃 */}
+          <HudPanel
+            title="Multi-TF Trend Engine v2.0"
+            subtitle="추세선 + EMA + ADX + 거래량 + HH/HL — 4 TF 종합"
+          >
+            <MultiTFTrendPanel symbol={symbol} />
           </HudPanel>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
