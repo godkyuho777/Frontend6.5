@@ -22,6 +22,12 @@ import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
 import HealthCheck from "./pages/admin/HealthCheck";
+import EmaRibbon from "./pages/strategies/EmaRibbon";
+import MarketBreadth from "./pages/strategies/MarketBreadth";
+import MacdDivergence from "./pages/strategies/MacdDivergence";
+import FundingExtreme from "./pages/strategies/FundingExtreme";
+import OrderBlock from "./pages/strategies/OrderBlock";
+import CvdDivergence from "./pages/strategies/CvdDivergence";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -73,6 +79,13 @@ function ProShell() {
         <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
+        {/* Additional Modifier Strategies — 03_ADDITIONAL_STRATEGIES.md §0~§10. */}
+        <Route path={"/strategies/ema-ribbon"} component={EmaRibbon} />
+        <Route path={"/strategies/market-breadth"} component={MarketBreadth} />
+        <Route path={"/strategies/macd-divergence"} component={MacdDivergence} />
+        <Route path={"/strategies/funding-extreme"} component={FundingExtreme} />
+        <Route path={"/strategies/order-block"} component={OrderBlock} />
+        <Route path={"/strategies/cvd"} component={CvdDivergence} />
         {/* Wave Tracker — split into Sentiment & Matrix and Trend Analysis. */}
         <Route path={"/wave/sentiment"} component={WaveSentiment} />
         <Route path={"/wave/trend"} component={WaveTrend} />
