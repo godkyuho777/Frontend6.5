@@ -9,7 +9,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "push:mirrors": "node scripts/push-mirrors.mjs",
+    "push:mirrors:all": "node scripts/push-mirrors.mjs --include-main"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
