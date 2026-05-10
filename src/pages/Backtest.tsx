@@ -54,30 +54,45 @@ interface BacktestConfig {
   strategy: StrategyOption;
 }
 
-// 전략 메타 (백엔드 listStrategies 와 동일 enum)
+// 전략 메타 (백엔드 listStrategies 와 동일 enum).
+// Tailwind 정적 분석을 위해 색상별 클래스 문자열을 explicit 하게 명시.
 const STRATEGY_META: Record<
   StrategyOption,
-  { label: string; description: string; color: string }
+  {
+    label: string;
+    description: string;
+    activeClass: string; // 선택 상태 (border + text + bg)
+    badgeClass: string;  // RESULTS 탭 badge
+    textClass: string;
+  }
 > = {
   bbdx: {
     label: "BBDX",
     description: "RSI + BB + ADX 멀티-패스 (BB → PTN → NUM)",
-    color: "neon-pink",
+    activeClass: "border-neon-pink text-neon-pink bg-neon-pink/10",
+    badgeClass: "text-neon-pink border-neon-pink/40 bg-neon-pink/10",
+    textClass: "text-neon-pink",
   },
   fibonacci: {
     label: "Fibonacci",
     description: "Golden zone 0.382~0.618 진입 + Fib 1.0/1.272 타겟",
-    color: "neon-yellow",
+    activeClass: "border-neon-yellow text-neon-yellow bg-neon-yellow/10",
+    badgeClass: "text-neon-yellow border-neon-yellow/40 bg-neon-yellow/10",
+    textClass: "text-neon-yellow",
   },
   vwap: {
     label: "VWAP",
     description: "VWAP + EMA9 풀백 진입 + 1σ/2σ 밴드",
-    color: "neon-cyan",
+    activeClass: "border-neon-cyan text-neon-cyan bg-neon-cyan/10",
+    badgeClass: "text-neon-cyan border-neon-cyan/40 bg-neon-cyan/10",
+    textClass: "text-neon-cyan",
   },
   trend: {
     label: "Trend (Wave)",
     description: "멀티 TF 추세 정합 (EMA9>21>50 + ADX≥20 + HH/HL)",
-    color: "neon-green",
+    activeClass: "border-neon-green text-neon-green bg-neon-green/10",
+    badgeClass: "text-neon-green border-neon-green/40 bg-neon-green/10",
+    textClass: "text-neon-green",
   },
 };
 
@@ -444,7 +459,7 @@ export default function Backtest() {
                         className={cn(
                           "text-left font-mono text-[10px] px-3 py-2 rounded-sm border transition-all",
                           active
-                            ? `border-${meta.color} text-${meta.color} bg-${meta.color}/10`
+                            ? meta.activeClass
                             : "border-border/30 text-muted-foreground hover:border-border/60"
                         )}
                       >
@@ -654,7 +669,10 @@ export default function Backtest() {
           </HudPanel>
 
           {/* How it works */}
-          <HudPanel title="작동 원리" subtitle="Lookahead-free BBDX 시그널 재생">
+          <HudPanel
+            title="작동 원리"
+            subtitle={`Lookahead-free 시그널 재생 — ${STRATEGY_META[config.strategy].label}`}
+          >
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               {[
                 {
@@ -666,8 +684,8 @@ export default function Backtest() {
                 {
                   step: "02",
                   color: "text-neon-pink",
-                  title: "시그널 재생",
-                  desc: "각 캔들 시점에서 RSI/BB/ADX 지표 계산 → BBDX 진입 조건 체크 (미래 데이터 사용 안 함)",
+                  title: `${STRATEGY_META[config.strategy].label} 시그널 재생`,
+                  desc: `각 캔들 시점에서 ${STRATEGY_META[config.strategy].description} → 진입 조건 체크 (미래 데이터 사용 안 함)`,
                 },
                 {
                   step: "03",
@@ -700,8 +718,17 @@ export default function Backtest() {
           {result && overall ? (
             <>
               {/* Run summary */}
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Strategy badge — 어떤 전략으로 돌렸는지 표기 */}
+                  <Badge
+                    className={cn(
+                      "font-mono text-[10px] border uppercase tracking-wider",
+                      STRATEGY_META[config.strategy].badgeClass
+                    )}
+                  >
+                    STRATEGY: {STRATEGY_META[config.strategy].label}
+                  </Badge>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     완료: {new Date(result.runAt).toLocaleString("ko-KR")}
                     {" · "}소요: {(result.durationMs / 1000).toFixed(1)}초
