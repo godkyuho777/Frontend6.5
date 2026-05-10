@@ -40,6 +40,7 @@ import { CalibrationPanel } from "@/components/backtest/CalibrationPanel";
 // ─── Types ────────────────────────────────────────────────
 
 type TfOption = "1h" | "4h" | "6h" | "1d" | "1w";
+type StrategyOption = "bbdx" | "fibonacci" | "vwap" | "trend";
 
 interface BacktestConfig {
   symbolsText: string;
@@ -50,7 +51,35 @@ interface BacktestConfig {
   cooldownCandles: number;
   saveToDb: boolean;
   runName: string;
+  strategy: StrategyOption;
 }
+
+// 전략 메타 (백엔드 listStrategies 와 동일 enum)
+const STRATEGY_META: Record<
+  StrategyOption,
+  { label: string; description: string; color: string }
+> = {
+  bbdx: {
+    label: "BBDX",
+    description: "RSI + BB + ADX 멀티-패스 (BB → PTN → NUM)",
+    color: "neon-pink",
+  },
+  fibonacci: {
+    label: "Fibonacci",
+    description: "Golden zone 0.382~0.618 진입 + Fib 1.0/1.272 타겟",
+    color: "neon-yellow",
+  },
+  vwap: {
+    label: "VWAP",
+    description: "VWAP + EMA9 풀백 진입 + 1σ/2σ 밴드",
+    color: "neon-cyan",
+  },
+  trend: {
+    label: "Trend (Wave)",
+    description: "멀티 TF 추세 정합 (EMA9>21>50 + ADX≥20 + HH/HL)",
+    color: "neon-green",
+  },
+};
 
 type SortKey =
   | "symbol"
@@ -311,6 +340,7 @@ export default function Backtest() {
     cooldownCandles: 5,
     saveToDb: true,
     runName: "",
+    strategy: "bbdx",
   });
   const [activeTab, setActiveTab] = useState("config");
   const [tradeWinFilter, setTradeWinFilter] = useState<"all" | "win" | "loss">("all");
@@ -360,6 +390,7 @@ export default function Backtest() {
       cooldownCandles: config.cooldownCandles,
       saveToDb: config.saveToDb,
       runName: config.runName || undefined,
+      strategy: config.strategy,
     });
   };
 
@@ -373,7 +404,7 @@ export default function Backtest() {
           BACKTESTING ENGINE
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          BBDX SIGNAL TRACKER // HISTORICAL PERFORMANCE CALIBRATION
+          MULTI-STRATEGY // BBDX · FIBONACCI · VWAP · TREND // HISTORICAL CALIBRATION
         </p>
       </div>
 
@@ -397,6 +428,42 @@ export default function Backtest() {
         <TabsContent value="config" className="mt-3 space-y-3">
           <HudPanel title="Backtest Configuration" subtitle="시그널 전략 파라미터 설정">
             <div className="space-y-4">
+              {/* Strategy Selector — Signal Tracker 4 전략 + Wave Tracker Trend */}
+              <div>
+                <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Strategy (시그널 전략)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(Object.keys(STRATEGY_META) as StrategyOption[]).map((s) => {
+                    const meta = STRATEGY_META[s];
+                    const active = config.strategy === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setConfig((c) => ({ ...c, strategy: s }))}
+                        className={cn(
+                          "text-left font-mono text-[10px] px-3 py-2 rounded-sm border transition-all",
+                          active
+                            ? `border-${meta.color} text-${meta.color} bg-${meta.color}/10`
+                            : "border-border/30 text-muted-foreground hover:border-border/60"
+                        )}
+                      >
+                        <div className="font-bold uppercase tracking-wider mb-0.5">
+                          {meta.label}
+                          {active ? " ●" : ""}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground/80 leading-tight">
+                          {meta.description}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="font-mono text-[10px] text-muted-foreground/60 mt-1.5">
+                  각 전략별 시그널 발생 시점을 lookahead-free 로 재생하여 정밀한 승률 측정
+                </p>
+              </div>
+
               {/* Symbol Presets */}
               <div>
                 <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
