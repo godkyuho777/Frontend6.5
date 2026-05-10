@@ -21,6 +21,9 @@ import {
   Brain,
   Compass,
   Zap,
+  Globe,
+  Shield,
+  ShieldAlert,
 } from "lucide-react";
 
 interface Props {
@@ -32,6 +35,64 @@ const SIGNAL_COLOR = {
   bearish: { text: "text-neon-red", bg: "bg-neon-red/15", border: "border-neon-red/40", emoji: "🔴" },
   neutral: { text: "text-neon-yellow", bg: "bg-neon-yellow/15", border: "border-neon-yellow/40", emoji: "🟡" },
 } as const;
+
+// v4.2 Macro Stance — 거시 스탠스 5단계.
+// Tailwind 정적 분석을 위해 explicit class strings.
+const MACRO_STANCE_META = {
+  RISK_ON: {
+    icon: "🚀",
+    title: "RISK ON",
+    cardClass: "border-neon-green/40 bg-neon-green/10",
+    textClass: "text-neon-green",
+    badgeClass: "bg-neon-green/20 text-neon-green border-neon-green/50",
+  },
+  NEUTRAL_BULL: {
+    icon: "📈",
+    title: "NEUTRAL BULL",
+    cardClass: "border-neon-cyan/40 bg-neon-cyan/10",
+    textClass: "text-neon-cyan",
+    badgeClass: "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/50",
+  },
+  NEUTRAL: {
+    icon: "🟡",
+    title: "NEUTRAL",
+    cardClass: "border-neon-yellow/40 bg-neon-yellow/10",
+    textClass: "text-neon-yellow",
+    badgeClass: "bg-neon-yellow/20 text-neon-yellow border-neon-yellow/50",
+  },
+  NEUTRAL_BEAR: {
+    icon: "📉",
+    title: "NEUTRAL BEAR",
+    cardClass: "border-orange-400/40 bg-orange-400/10",
+    textClass: "text-orange-400",
+    badgeClass: "bg-orange-400/20 text-orange-400 border-orange-400/50",
+  },
+  RISK_OFF: {
+    icon: "⚠️",
+    title: "RISK OFF",
+    cardClass: "border-neon-red/40 bg-neon-red/10",
+    textClass: "text-neon-red",
+    badgeClass: "bg-neon-red/20 text-neon-red border-neon-red/50",
+  },
+  DEFENSIVE: {
+    icon: "🛡️",
+    title: "DEFENSIVE",
+    cardClass: "border-neon-red/60 bg-neon-red/15",
+    textClass: "text-neon-red",
+    badgeClass: "bg-neon-red/25 text-neon-red border-neon-red/60",
+  },
+} as const;
+
+type MacroStanceKey = keyof typeof MACRO_STANCE_META;
+
+function MacroStanceIcon({ stance }: { stance: MacroStanceKey }) {
+  if (stance === "DEFENSIVE") return <Shield className="h-5 w-5" />;
+  if (stance === "RISK_OFF") return <ShieldAlert className="h-5 w-5" />;
+  if (stance === "RISK_ON") return <TrendingUp className="h-5 w-5" />;
+  if (stance === "NEUTRAL_BULL") return <TrendingUp className="h-4 w-4" />;
+  if (stance === "NEUTRAL_BEAR") return <TrendingDown className="h-4 w-4" />;
+  return <Globe className="h-5 w-5" />;
+}
 
 const PHASE_META = {
   ACCUMULATION: { label: "축적 (Accumulation)", color: "text-neon-cyan", desc: "공포 + OI 증가 → 스마트머니 매집 중" },
@@ -133,8 +194,75 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
   // FnG gauge 위치 (0~100 → 백분율)
   const fngPct = sentiment.compositeScore;
 
+  // v4.2 — macroStance / isTie / counts 는 백엔드 v4.2 에서 추가됨.
+  // 구버전 응답 호환을 위해 optional 처리.
+  const macroStance =
+    (matrix as any).macroStance as
+      | {
+          stance: MacroStanceKey;
+          label: string;
+          description: string;
+          recommendedAction: string;
+          stanceConfidence: number;
+        }
+      | undefined;
+  const isTie = (matrix as any).isTie as boolean | undefined;
+  const bullishCount = (matrix as any).bullishCount as number | undefined;
+  const bearishCount = (matrix as any).bearishCount as number | undefined;
+
   return (
     <div className="space-y-3">
+      {/* ── 0. Macro Stance (v4.2 — 거시 스탠스 신설) ─────── */}
+      {macroStance && (
+        <div
+          className={cn(
+            "rounded-sm border p-4 flex items-start gap-3",
+            MACRO_STANCE_META[macroStance.stance].cardClass
+          )}
+        >
+          <div
+            className={cn(
+              "shrink-0 mt-0.5",
+              MACRO_STANCE_META[macroStance.stance].textClass
+            )}
+          >
+            <MacroStanceIcon stance={macroStance.stance} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "font-display text-base font-bold tracking-wider uppercase",
+                    MACRO_STANCE_META[macroStance.stance].textClass
+                  )}
+                >
+                  MACRO STANCE: {MACRO_STANCE_META[macroStance.stance].title}
+                </span>
+                <span aria-hidden className="text-base">
+                  {MACRO_STANCE_META[macroStance.stance].icon}
+                </span>
+              </div>
+              <span
+                className={cn(
+                  "font-mono text-[10px] px-2 py-0.5 rounded-sm border uppercase tracking-wider font-bold",
+                  MACRO_STANCE_META[macroStance.stance].badgeClass
+                )}
+              >
+                stance conf {macroStance.stanceConfidence}%
+              </span>
+            </div>
+            <div className="font-mono text-xs text-foreground/90 leading-relaxed mb-1.5">
+              {macroStance.label} — {macroStance.description}
+            </div>
+            <div className="font-mono text-[11px] text-foreground/70 leading-relaxed border-t border-border/20 pt-1.5">
+              <span className="text-muted-foreground">권장 액션:</span>{" "}
+              {macroStance.recommendedAction}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 1. Fear & Greed Gauge ─────────────────────── */}
       <HudPanel
         title="Fear & Greed Index"
@@ -206,24 +334,38 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
           />
         </div>
 
-        {/* 종합 편향 + 신뢰도 */}
+        {/* 종합 편향 + 신뢰도 (v4.2 — symmetric, tie 처리) */}
         <div className={cn(
           "mt-3 p-3 rounded-sm border space-y-2",
-          biasColor.bg,
-          biasColor.border
+          isTie ? "bg-neon-yellow/10 border-neon-yellow/40" : biasColor.bg,
+          isTie ? "" : biasColor.border
         )}>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <BiasIcon className={cn("h-5 w-5", biasColor.text)} />
-              <span className={cn("font-display text-base font-bold tracking-wider", biasColor.text)}>
-                종합 편향: {matrix.overallBias.toUpperCase()}
+              <BiasIcon className={cn("h-5 w-5", isTie ? "text-neon-yellow" : biasColor.text)} />
+              <span className={cn(
+                "font-display text-base font-bold tracking-wider",
+                isTie ? "text-neon-yellow" : biasColor.text,
+              )}>
+                {isTie
+                  ? "신호 미정 (TIE)"
+                  : `종합 편향: ${matrix.overallBias.toUpperCase()}`}
               </span>
+              {/* v4.2 — vote count badge */}
+              {bullishCount != null && bearishCount != null && (
+                <span className="font-mono text-[10px] text-muted-foreground bg-background/40 px-2 py-0.5 rounded-sm border border-border/30">
+                  🟢 {bullishCount} / 🔴 {bearishCount} / 🟡 {4 - bullishCount - bearishCount}
+                </span>
+              )}
             </div>
             <div className="text-right">
               <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                신뢰도
+                신뢰도 {isTie && <span className="text-neon-yellow">(tied)</span>}
               </div>
-              <div className={cn("font-display text-xl font-bold", biasColor.text)}>
+              <div className={cn(
+                "font-display text-xl font-bold",
+                isTie ? "text-neon-yellow" : biasColor.text,
+              )}>
                 {matrix.confidence}%
               </div>
             </div>
@@ -233,6 +375,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
             <div
               className={cn(
                 "h-full transition-all",
+                isTie ? "bg-neon-yellow" :
                 matrix.overallBias === "bullish" ? "bg-neon-green" :
                 matrix.overallBias === "bearish" ? "bg-neon-red" :
                 "bg-neon-yellow"
