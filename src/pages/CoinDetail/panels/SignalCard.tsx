@@ -14,6 +14,51 @@ interface SignalCardProps {
   signal: CoinSignal | null;
   /** v6.5 — VWAP BBDX multiplier (`trpc.vwap.detail.vwapMult`). 미정의 시 "n/a" chip */
   vwapMult?: number;
+  /** v6.5+ — Trend Analysis v2.0 BBDX multiplier (`trpc.trend.analyze.waveMult`).
+   *  미정의 시 "n/a" chip. 헌장 규칙 3 — modifier-only. */
+  waveMult?: number;
+}
+
+/**
+ * WaveMult chip — VwapMultChip 와 동일 패턴.
+ * > 1.05 → 녹색 "+N%", 0.95~1.05 → 회색 "neutral", < 0.95 → 빨강 "-N%".
+ * 헌장 규칙 3 — Wave Alignment 는 BBDX final_confidence 곱셈 multiplier 로만 사용.
+ */
+function WaveMultChip({ waveMult }: { waveMult: number | undefined }) {
+  if (waveMult == null || !Number.isFinite(waveMult)) {
+    return (
+      <span
+        className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm border border-border/30 text-muted-foreground"
+        title="Wave Alignment multiplier 데이터 없음"
+      >
+        WAVE n/a
+      </span>
+    );
+  }
+  const pct = (waveMult - 1) * 100;
+  const isPos = waveMult > 1.05;
+  const isNeg = waveMult < 0.95;
+  const cls = isPos
+    ? "border-neon-green/40 text-neon-green bg-neon-green/5"
+    : isNeg
+      ? "border-neon-red/40 text-neon-red bg-neon-red/5"
+      : "border-border/30 text-muted-foreground";
+  const label = isPos
+    ? `WAVE +${pct.toFixed(0)}%`
+    : isNeg
+      ? `WAVE ${pct.toFixed(0)}%`
+      : "WAVE neutral";
+  return (
+    <span
+      className={cn(
+        "font-mono text-[10px] px-1.5 py-0.5 rounded-sm border",
+        cls
+      )}
+      title={`헌장 규칙 3 — Wave Alignment 는 BBDX 진입 신뢰도 multiplier 로 통합. (현재 ${waveMult.toFixed(2)}, 0.30~1.30 범위)`}
+    >
+      {label}
+    </span>
+  );
 }
 
 const DIMENSION_LABELS = [
@@ -26,13 +71,18 @@ const DIMENSION_LABELS = [
   "MACR",
 ];
 
-export function SignalCard({ signal, vwapMult }: SignalCardProps) {
+export function SignalCard({ signal, vwapMult, waveMult }: SignalCardProps) {
   if (!signal) {
     return (
       <HudPanel
         title="Signal"
         subtitle="LIVE BBDX"
-        headerRight={<VwapMultChip vwapMult={vwapMult} />}
+        headerRight={
+          <div className="flex items-center gap-1">
+            <VwapMultChip vwapMult={vwapMult} />
+            <WaveMultChip waveMult={waveMult} />
+          </div>
+        }
       >
         <p className="font-mono text-xs text-muted-foreground py-4">
           시그널 데이터 없음
@@ -51,7 +101,12 @@ export function SignalCard({ signal, vwapMult }: SignalCardProps) {
       title="Signal"
       subtitle={signal.entry ? "BBDX ENTRY DETECTED" : "NO ENTRY"}
       variant={signal.entry ? "highlight" : "default"}
-      headerRight={<VwapMultChip vwapMult={vwapMult} />}
+      headerRight={
+        <div className="flex items-center gap-1">
+          <VwapMultChip vwapMult={vwapMult} />
+          <WaveMultChip waveMult={waveMult} />
+        </div>
+      }
     >
       <div className="space-y-3">
         {/* Path label */}

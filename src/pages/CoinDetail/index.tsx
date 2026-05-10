@@ -35,6 +35,7 @@ import { useCoinSignal } from "./hooks/useCoinSignal";
 import { useCoinMeta } from "./hooks/useCoinMeta";
 import { useUpcomingEvents } from "./hooks/useUpcomingEvents";
 import { useVwapDetail } from "./hooks/useVwapDetail";
+import { useTrendAnalysis } from "./hooks/useTrendAnalysis";
 
 export default function CoinDetailWorkstation() {
   const params = useParams<{ symbol: string }>();
@@ -53,6 +54,10 @@ export default function CoinDetailWorkstation() {
   const vwapTf: "1h" | "4h" | "1d" =
     interval === "1h" || interval === "4h" || interval === "1d" ? interval : "4h";
   const { detail: vwapDetail } = useVwapDetail(symbol, vwapTf);
+
+  // v6.5+ — trend.analyze 라우트로 Wave Alignment + waveMult (BBDX multiplier)
+  // 가져옴. SignalCard 헤더에 chip 으로 표시. 헌장 규칙 3 — modifier-only.
+  const { data: trendData } = useTrendAnalysis(symbol);
 
   if (!symbol) {
     return (
@@ -75,7 +80,11 @@ export default function CoinDetailWorkstation() {
 
         {/* Right side panels — col-span 4 on md+, stacked on mobile */}
         <div className="md:col-span-4 order-1 md:order-2 space-y-3">
-          <SignalCard signal={signal} vwapMult={vwapDetail?.vwapMult} />
+          <SignalCard
+            signal={signal}
+            vwapMult={vwapDetail?.vwapMult}
+            waveMult={trendData?.waveMult}
+          />
           <CoinInfoCard meta={meta} />
           <UpcomingEvents events={events} isAvailable={eventsAvailable} />
         </div>
