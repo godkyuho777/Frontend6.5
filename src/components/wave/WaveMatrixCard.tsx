@@ -210,8 +210,93 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
   const bullishCount = (matrix as any).bullishCount as number | undefined;
   const bearishCount = (matrix as any).bearishCount as number | undefined;
 
+  // v4.3 Phase C — multi-period 필드
+  const oiChange7d = (matrix as any).oiChange7d as number | undefined;
+  const fundingAvg7d = (matrix as any).fundingAvg7d as number | undefined;
+  const fundingTrend7d = (matrix as any).fundingTrend7d as
+    | "rising"
+    | "falling"
+    | "flat"
+    | undefined;
+  const oiDivergence = (matrix as any).oiDivergence as
+    | "BULL_REVERSAL"
+    | "BEAR_REVERSAL"
+    | "BULL_ACCEL"
+    | "BEAR_ACCEL"
+    | "CHOPPY"
+    | undefined;
+  const oiDivergenceKo = (matrix as any).oiDivergenceKo as string | undefined;
+
+  // v4.3 Phase D — prediction action + source health
+  const recommendedAction = (matrix as any).recommendedAction as
+    | string
+    | undefined;
+  const sourceHealth = (data as any).sourceHealth as
+    | {
+        fearGreed: { status: "live" | "stale" | "fallback"; ageSec: number };
+        globalMarket: { status: "live" | "stale" | "fallback"; ageSec: number };
+        bybitDerivatives: { status: "live" | "stale" | "fallback"; ageSec: number };
+        bybitLongShort: { status: "live" | "stale" | "fallback"; ageSec: number };
+        healthScore: number;
+      }
+    | undefined;
+
+  // 헬퍼들
+  const sourceColor = (s?: "live" | "stale" | "fallback") =>
+    s === "live"
+      ? "text-neon-green"
+      : s === "stale"
+        ? "text-neon-yellow"
+        : "text-neon-red";
+  const sourceDot = (s?: "live" | "stale" | "fallback") =>
+    s === "live" ? "🟢" : s === "stale" ? "🟡" : "🔴";
+  const ageStr = (sec: number) =>
+    sec >= Number.MAX_SAFE_INTEGER / 2
+      ? "—"
+      : sec < 60
+        ? `${sec}s`
+        : sec < 3600
+          ? `${Math.floor(sec / 60)}m`
+          : `${Math.floor(sec / 3600)}h`;
+
+  // OI Divergence 메타
+  const DIVERGENCE_META: Record<
+    NonNullable<typeof oiDivergence>,
+    { label: string; cls: string }
+  > = {
+    BULL_REVERSAL: { label: "BULL REVERSAL", cls: "text-neon-green border-neon-green/50 bg-neon-green/10" },
+    BEAR_REVERSAL: { label: "BEAR REVERSAL", cls: "text-neon-red border-neon-red/50 bg-neon-red/10" },
+    BULL_ACCEL: { label: "BULL ACCEL", cls: "text-neon-green border-neon-green/50 bg-neon-green/15" },
+    BEAR_ACCEL: { label: "BEAR ACCEL", cls: "text-neon-red border-neon-red/50 bg-neon-red/15" },
+    CHOPPY: { label: "CHOPPY", cls: "text-muted-foreground border-border/40 bg-card/30" },
+  };
+
   return (
     <div className="space-y-3">
+      {/* ── -1. Source Health (v4.3 Phase D) ─────────────────── */}
+      {sourceHealth && (
+        <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono px-3 py-2 rounded-sm border border-border/30 bg-card/30">
+          <span className="text-muted-foreground uppercase tracking-wider">
+            data sources:
+          </span>
+          <span className={cn("flex items-center gap-1", sourceColor(sourceHealth.fearGreed.status))}>
+            {sourceDot(sourceHealth.fearGreed.status)} F&G ({ageStr(sourceHealth.fearGreed.ageSec)})
+          </span>
+          <span className={cn("flex items-center gap-1", sourceColor(sourceHealth.globalMarket.status))}>
+            {sourceDot(sourceHealth.globalMarket.status)} Global ({ageStr(sourceHealth.globalMarket.ageSec)})
+          </span>
+          <span className={cn("flex items-center gap-1", sourceColor(sourceHealth.bybitDerivatives.status))}>
+            {sourceDot(sourceHealth.bybitDerivatives.status)} Bybit OI ({ageStr(sourceHealth.bybitDerivatives.ageSec)})
+          </span>
+          <span className={cn("flex items-center gap-1", sourceColor(sourceHealth.bybitLongShort.status))}>
+            {sourceDot(sourceHealth.bybitLongShort.status)} L/S ({ageStr(sourceHealth.bybitLongShort.ageSec)})
+          </span>
+          <span className="ml-auto text-muted-foreground">
+            health {sourceHealth.healthScore}/4
+          </span>
+        </div>
+      )}
+
       {/* ── 0. Macro Stance (v4.2 — 거시 스탠스 신설) ─────── */}
       {macroStance && (
         <div
@@ -386,7 +471,66 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
           <p className="font-mono text-[11px] text-foreground leading-relaxed pt-1">
             {matrix.predictionKo}
           </p>
+          {/* v4.3 Phase D — 권장 액션 카드 */}
+          {recommendedAction && (
+            <div className="mt-2 pt-2 border-t border-border/20">
+              <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                권장 액션
+              </div>
+              <p className="font-mono text-[11px] text-foreground/90 leading-relaxed">
+                {recommendedAction}
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* v4.3 Phase C — OI Divergence + 7d Multi-period 뱃지 */}
+        {(oiDivergence || oiChange7d != null || fundingTrend7d) && (
+          <div className="mt-3 p-2 bg-background/40 border border-border/30 rounded-sm space-y-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">
+                Multi-Period (v4.3)
+              </span>
+              {oiDivergence && oiDivergence !== "CHOPPY" && (
+                <span
+                  className={cn(
+                    "font-mono text-[10px] px-2 py-0.5 rounded-sm border uppercase tracking-wider font-bold",
+                    DIVERGENCE_META[oiDivergence].cls
+                  )}
+                >
+                  {DIVERGENCE_META[oiDivergence].label}
+                </span>
+              )}
+              {oiChange7d != null && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  OI 7d: <span className={cn(
+                    "font-bold",
+                    oiChange7d > 5 ? "text-neon-green" :
+                    oiChange7d < -5 ? "text-neon-red" :
+                    "text-foreground/80",
+                  )}>{oiChange7d >= 0 ? "+" : ""}{oiChange7d.toFixed(1)}%</span>
+                </span>
+              )}
+              {fundingTrend7d && fundingTrend7d !== "flat" && fundingAvg7d != null && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  Funding 7d avg: <span className={cn(
+                    "font-bold",
+                    fundingAvg7d > 0.005 ? "text-neon-green" :
+                    fundingAvg7d < -0.005 ? "text-neon-red" :
+                    "text-foreground/80",
+                  )}>
+                    {fundingAvg7d >= 0 ? "+" : ""}{fundingAvg7d.toFixed(4)}% {fundingTrend7d === "rising" ? "↑" : "↓"}
+                  </span>
+                </span>
+              )}
+            </div>
+            {oiDivergenceKo && (
+              <p className="font-mono text-[10px] text-foreground/70 leading-relaxed">
+                {oiDivergenceKo}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* OI 복합 해석 */}
         <div className="mt-3 p-2 bg-background/40 border border-border/30 rounded-sm">
