@@ -86,6 +86,12 @@ export default function HealthCheck() {
     { staleTime: 60_000, retry: 0 }
   );
 
+  // P1-#4 (2026-05-10): onchain provider status 패널
+  const providerStatusQuery = trpc.onchain.providerStatus.useQuery(undefined, {
+    staleTime: 5 * 60_000,
+    retry: 0,
+  });
+
   function previewJson(value: unknown, max = 100): string {
     try {
       const s = JSON.stringify(value);
@@ -265,6 +271,68 @@ export default function HealthCheck() {
       </div>
 
       {/* TODO: v6.5 머지 후 charter.validate, decideEntry 카드 추가 */}
+
+      {/* ── P1-#4 Onchain Provider Status (2026-05-10) ──────────────── */}
+      <div className="border border-neon-cyan/30 rounded-sm p-4 bg-neon-cyan/5">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-lg font-display font-bold text-neon-cyan">
+            🔗 Onchain Provider Status
+          </h2>
+          {providerStatusQuery.data && (
+            <span className="text-xs font-mono text-muted-foreground">
+              effective {providerStatusQuery.data.summary.effective}/
+              {providerStatusQuery.data.summary.total} (real=
+              {providerStatusQuery.data.summary.real}, mock=
+              {providerStatusQuery.data.summary.mock}, stub=
+              {providerStatusQuery.data.summary.stub})
+            </span>
+          )}
+        </div>
+        <p className="text-[10px] font-mono text-muted-foreground mb-3 leading-relaxed">
+          7-modifier 데이터 소스 모드. <span className="text-emerald-400">real</span>{" "}
+          = 실데이터 활성, <span className="text-neon-orange">mock</span> = ONCHAIN_MOCK=1
+          결정론 mock, <span className="text-muted-foreground">stub</span> = 미설정 (BBDX 영향 X).
+        </p>
+        {providerStatusQuery.isLoading ? (
+          <p className="text-xs font-mono text-neon-cyan">⏳ loading…</p>
+        ) : providerStatusQuery.isError ? (
+          <p className="text-xs font-mono text-red-400">
+            ✗ {providerStatusQuery.error?.message ?? "unknown error"}
+          </p>
+        ) : providerStatusQuery.data ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {providerStatusQuery.data.modifiers.map((m) => {
+              const modeColor =
+                m.mode === "real"
+                  ? "border-emerald-400/40 bg-emerald-500/5 text-emerald-400"
+                  : m.mode === "mock"
+                    ? "border-neon-orange/40 bg-neon-orange/5 text-neon-orange"
+                    : "border-border/30 bg-muted/20 text-muted-foreground";
+              return (
+                <div
+                  key={m.key}
+                  className={`p-2 rounded-sm border ${modeColor}`}
+                >
+                  <div className="flex items-baseline justify-between gap-2 mb-1">
+                    <span className="text-xs font-display font-bold uppercase tracking-wider">
+                      {m.label}
+                    </span>
+                    <span className="text-[10px] font-mono uppercase">
+                      {m.mode}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-muted-foreground leading-tight">
+                    {m.detail}
+                  </p>
+                  <p className="text-[10px] font-mono text-muted-foreground/70 mt-1">
+                    requires: {m.requires}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
 
       <div className="text-[10px] font-mono text-muted-foreground border-t border-border/30 pt-3">
         영구 시스템 헬스 페이지 · 푸시 후 Vercel/Railway 부팅 검증, modifier 키

@@ -7,7 +7,13 @@
  * HOLD       ⚪ 지금은 추천 없음
  * SELL       🟡 매도 고려
  * STRONG_SELL🔴 강한 매도
+ * SHORT      🟠 공매도 추천 (검증 단계 — 백테스트 alpha 미입증)
+ * STRONG_SHORT🔻 강한 공매도 (검증 단계)
  * BLOCKED    ⚪ 지금은 추천 없음 (보호)
+ *
+ * (다-2) 2026-05-10: SHORT 라벨에 "검증 단계" 시각 표시.
+ *   `(가)` SHORT 백테스트 결과 winRate 37.0%, Sharpe -0.17, PF 0.66 →
+ *   알파 미입증. 사용자에게 production 신뢰도 X 명시.
  */
 
 import { cn } from "@/lib/utils";
@@ -28,7 +34,15 @@ interface Props {
   label?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /**
+   * 검증 단계 표시 — true 시 라벨 옆에 "(검증중)" 작은 배지.
+   * 기본 false. SHORT/STRONG_SHORT 는 자동으로 표시.
+   */
+  showBetaTag?: boolean;
 }
+
+/** 자동 beta 표시 — alpha 미입증 라벨 (다-2 2026-05-10). */
+const AUTO_BETA: ReadonlySet<Recommendation> = new Set(["SHORT", "STRONG_SHORT"]);
 
 const STYLE: Record<Recommendation, { emoji: string; color: string; bg: string; text: string; default: string }> = {
   STRONG_BUY: {
@@ -107,21 +121,33 @@ export function LiteRecommendationBadge({
   label,
   size = "md",
   className,
+  showBetaTag,
 }: Props) {
   const s = STYLE[recommendation];
+  const showBeta = showBetaTag ?? AUTO_BETA.has(recommendation);
   return (
-    <span
-      className={cn(
-        "inline-flex items-center font-display font-bold tracking-wider rounded-full border",
-        SIZE[size],
-        s.color,
-        s.bg,
-        s.text,
-        className
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className={cn(
+          "inline-flex items-center font-display font-bold tracking-wider rounded-full border",
+          SIZE[size],
+          s.color,
+          s.bg,
+          s.text,
+          className,
+        )}
+      >
+        <span aria-hidden>{s.emoji}</span>
+        <span>{label ?? s.default}</span>
+      </span>
+      {showBeta && (
+        <span
+          title="이 신호는 백테스트 alpha 미입증 단계 — 참고용으로만 사용."
+          className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-neon-yellow/40 bg-neon-yellow/10 text-neon-yellow font-mono text-[9px] uppercase tracking-wider"
+        >
+          검증중
+        </span>
       )}
-    >
-      <span aria-hidden>{s.emoji}</span>
-      <span>{label ?? s.default}</span>
     </span>
   );
 }
