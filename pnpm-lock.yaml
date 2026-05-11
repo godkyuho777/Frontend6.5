@@ -100,7 +100,7 @@ importers:
         version: 5.100.9(react@19.2.6)
       '@tradelab/backend':
         specifier: github:godkyuho777/6.5SUM#dev
-        version: https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/5f2861ea3334f03191d13b8d312b9885ad316fdb(typescript@5.9.3)
+        version: https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/d581a33be0c1c053dbdfacd2a7fcdd53ecbfc5eb(typescript@5.9.3)
       '@trpc/client':
         specifier: ^11.6.0
         version: 11.17.0(@trpc/server@11.17.0(typescript@5.9.3))(typescript@5.9.3)
@@ -1469,8 +1469,8 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
-  '@tradelab/backend@https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/5f2861ea3334f03191d13b8d312b9885ad316fdb':
-    resolution: {tarball: https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/5f2861ea3334f03191d13b8d312b9885ad316fdb}
+  '@tradelab/backend@https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/d581a33be0c1c053dbdfacd2a7fcdd53ecbfc5eb':
+    resolution: {tarball: https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/d581a33be0c1c053dbdfacd2a7fcdd53ecbfc5eb}
     version: 0.1.0
 
   '@trpc/client@11.17.0':
@@ -4553,7 +4553,7 @@ snapshots:
       '@tanstack/query-core': 5.100.9
       react: 19.2.6
 
-  '@tradelab/backend@https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/5f2861ea3334f03191d13b8d312b9885ad316fdb(typescript@5.9.3)':
+  '@tradelab/backend@https://codeload.github.com/godkyuho777/6.5SUM/tar.gz/d581a33be0c1c053dbdfacd2a7fcdd53ecbfc5eb(typescript@5.9.3)':
     dependencies:
       '@trpc/server': 11.17.0(typescript@5.9.3)
       axios: 1.16.0
