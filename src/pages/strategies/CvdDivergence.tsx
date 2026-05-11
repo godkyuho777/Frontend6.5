@@ -6,6 +6,7 @@ import {
   StrategyHeader,
   type StrategyTf,
 } from "@/components/strategies/StrategyHeader";
+import { TrackerBreadcrumb } from "@/components/trackers/TrackerBreadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Construction, Loader2 } from "lucide-react";
@@ -29,6 +30,11 @@ export default function CvdDivergence() {
 
   return (
     <div className="space-y-4 max-w-5xl">
+      <TrackerBreadcrumb
+        layer="signal"
+        modifierName="CVD Divergence"
+        dimensions={[4]}
+      />
       <StrategyHeader
         title="CVD Divergence"
         subtitle="Cumulative Volume Delta divergence — 4차원 거래량/유동성"

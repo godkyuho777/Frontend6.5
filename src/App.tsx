@@ -18,6 +18,7 @@ import AlertSettings from "./pages/AlertSettings";
 import AIInsight from "./pages/AIInsight";
 import WaveSentiment from "./pages/WaveSentiment";
 import WaveTrend from "./pages/WaveTrend";
+import MacroWave from "./pages/wave/MacroWave";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
@@ -28,6 +29,10 @@ import MacdDivergence from "./pages/strategies/MacdDivergence";
 import FundingExtreme from "./pages/strategies/FundingExtreme";
 import OrderBlock from "./pages/strategies/OrderBlock";
 import CvdDivergence from "./pages/strategies/CvdDivergence";
+import TrackersIndex from "./pages/trackers/TrackersIndex";
+import SignalTrackerHub from "./pages/trackers/SignalTrackerHub";
+import WaveTrackerHub from "./pages/trackers/WaveTrackerHub";
+import MacroTrackerHub from "./pages/trackers/MacroTrackerHub";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -79,16 +84,43 @@ function ProShell() {
         <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
-        {/* Additional Modifier Strategies — 03_ADDITIONAL_STRATEGIES.md §0~§10. */}
-        <Route path={"/strategies/ema-ribbon"} component={EmaRibbon} />
-        <Route path={"/strategies/market-breadth"} component={MarketBreadth} />
-        <Route path={"/strategies/macd-divergence"} component={MacdDivergence} />
-        <Route path={"/strategies/funding-extreme"} component={FundingExtreme} />
-        <Route path={"/strategies/order-block"} component={OrderBlock} />
-        <Route path={"/strategies/cvd"} component={CvdDivergence} />
-        {/* Wave Tracker — split into Sentiment & Matrix and Trend Analysis. */}
+        {/* 3-Layer Tracker Hub — canonical URLs (Phase 2 mirror).
+            Layer 1 = Signal, Layer 2 = Wave, Layer 3 = Macro. */}
+        <Route path={"/trackers/signal/macd-divergence"} component={MacdDivergence} />
+        <Route path={"/trackers/signal/cvd-divergence"} component={CvdDivergence} />
+        <Route path={"/trackers/wave/ema-ribbon"} component={EmaRibbon} />
+        <Route path={"/trackers/wave/order-block"} component={OrderBlock} />
+        <Route path={"/trackers/macro/funding-extreme"} component={FundingExtreme} />
+        <Route path={"/trackers/macro/market-breadth"} component={MarketBreadth} />
+        {/* 3-Layer Hub pages — 구체적인 modifier route 들 다음에 배치하여
+            wouter 의 top-down 매칭에서 정확한 우선순위 보장. */}
+        <Route path={"/trackers/signal"} component={SignalTrackerHub} />
+        <Route path={"/trackers/wave"} component={WaveTrackerHub} />
+        <Route path={"/trackers/macro"} component={MacroTrackerHub} />
+        <Route path={"/trackers"} component={TrackersIndex} />
+        {/* Legacy /strategies/* URLs → redirect to new canonical /trackers/* URLs. */}
+        <Route path={"/strategies/macd-divergence"}>
+          <Redirect to="/trackers/signal/macd-divergence" />
+        </Route>
+        <Route path={"/strategies/cvd"}>
+          <Redirect to="/trackers/signal/cvd-divergence" />
+        </Route>
+        <Route path={"/strategies/ema-ribbon"}>
+          <Redirect to="/trackers/wave/ema-ribbon" />
+        </Route>
+        <Route path={"/strategies/order-block"}>
+          <Redirect to="/trackers/wave/order-block" />
+        </Route>
+        <Route path={"/strategies/funding-extreme"}>
+          <Redirect to="/trackers/macro/funding-extreme" />
+        </Route>
+        <Route path={"/strategies/market-breadth"}>
+          <Redirect to="/trackers/macro/market-breadth" />
+        </Route>
+        {/* Wave Tracker — split into Sentiment & Matrix, Trend Analysis, Macro v2. */}
         <Route path={"/wave/sentiment"} component={WaveSentiment} />
         <Route path={"/wave/trend"} component={WaveTrend} />
+        <Route path={"/wave/macro"} component={MacroWave} />
         <Route path={"/wave"}>
           <Redirect to="/wave/sentiment" />
         </Route>

@@ -6,6 +6,7 @@ import {
   StrategyHeader,
   type StrategyTf,
 } from "@/components/strategies/StrategyHeader";
+import { TrackerBreadcrumb } from "@/components/trackers/TrackerBreadcrumb";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -64,6 +65,11 @@ export default function OrderBlock() {
 
   return (
     <div className="space-y-4 max-w-5xl">
+      <TrackerBreadcrumb
+        layer="wave"
+        modifierName="Order Block"
+        dimensions={[5]}
+      />
       <StrategyHeader
         title="Order Block"
         subtitle="ICT/SMC heuristic — swing liquidity sweep 탐지 (5차원 structure)"

@@ -6,6 +6,7 @@ import {
   StrategyHeader,
   type StrategyTf,
 } from "@/components/strategies/StrategyHeader";
+import { TrackerBreadcrumb } from "@/components/trackers/TrackerBreadcrumb";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -82,6 +83,11 @@ export default function FundingExtreme() {
 
   return (
     <div className="space-y-4 max-w-5xl">
+      <TrackerBreadcrumb
+        layer="macro"
+        modifierName="Funding Extreme"
+        dimensions={[6]}
+      />
       <StrategyHeader
         title="Funding Extreme"
         subtitle="Bybit V5 perp funding rate 8h 기준 5단계 regime — 6차원 macro"

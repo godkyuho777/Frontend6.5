@@ -6,6 +6,7 @@ import {
   StrategyHeader,
   type StrategyTf,
 } from "@/components/strategies/StrategyHeader";
+import { TrackerBreadcrumb } from "@/components/trackers/TrackerBreadcrumb";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -112,6 +113,11 @@ export default function MarketBreadth() {
 
   return (
     <div className="space-y-4 max-w-5xl">
+      <TrackerBreadcrumb
+        layer="macro"
+        modifierName="Market Breadth"
+        dimensions={[6]}
+      />
       <StrategyHeader
         title="Market Breadth"
         subtitle="96 코인 universe 일괄 RSI 분포 → 5단계 sentiment (역행 베팅)"

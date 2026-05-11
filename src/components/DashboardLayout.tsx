@@ -26,14 +26,11 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Activity,
-  ArrowLeftRight,
   BarChart2,
   BarChart3,
   Bell,
   Bot,
-  Box,
   Database,
-  Flame,
   FlaskConical,
   HeartPulse,
   History,
@@ -42,7 +39,6 @@ import {
   LogOut,
   PanelLeft,
   Ruler,
-  Sigma,
   Sparkles,
   Target,
   TrendingUp,
@@ -72,41 +68,29 @@ const menuItems: MenuItem[] = [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
-      { icon: Layers, label: "EMA Ribbon", path: "/strategies/ema-ribbon" },
-      {
-        icon: BarChart2,
-        label: "Market Breadth",
-        path: "/strategies/market-breadth",
-      },
-      {
-        icon: Sigma,
-        label: "MACD Divergence",
-        path: "/strategies/macd-divergence",
-      },
-      {
-        icon: Flame,
-        label: "Funding Extreme",
-        path: "/strategies/funding-extreme",
-      },
-      {
-        icon: Box,
-        label: "Order Block (Beta)",
-        path: "/strategies/order-block",
-      },
-      {
-        icon: ArrowLeftRight,
-        label: "CVD Divergence (Beta)",
-        path: "/strategies/cvd",
-      },
     ],
   },
+  // 3-Layer Tracker Hub — Phase 3b 신규 그룹.
+  // 기존 Signal Scanner 의 6개 modifier children 은 본 그룹의 Hub 안에서 카드로 접근.
+  {
+    icon: Layers,
+    label: "Trackers",
+    path: "/trackers",
+    children: [
+      { icon: BarChart3, label: "Signal Tracker", path: "/trackers/signal" },
+      { icon: Waves, label: "Wave Tracker", path: "/trackers/wave" },
+      { icon: BarChart2, label: "Macro Tracker", path: "/trackers/macro" },
+    ],
+  },
+  // 기존 Wave Tracker — 이름 충돌 회피를 위해 "Wave Analysis" 로 표시 (라우트 /wave 는 유지)
   {
     icon: Waves,
-    label: "Wave Tracker",
+    label: "Wave Analysis",
     path: "/wave",
     children: [
       { icon: Waves, label: "Sentiment & Matrix", path: "/wave/sentiment" },
       { icon: TrendingUp, label: "Trend Analysis", path: "/wave/trend" },
+      { icon: TrendingUp, label: "Macro Wave (v2)", path: "/wave/macro" },
     ],
   },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },

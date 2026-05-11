@@ -6,6 +6,7 @@ import {
   StrategyHeader,
   type StrategyTf,
 } from "@/components/strategies/StrategyHeader";
+import { TrackerBreadcrumb } from "@/components/trackers/TrackerBreadcrumb";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -88,6 +89,11 @@ export default function MacdDivergence() {
 
   return (
     <div className="space-y-4 max-w-6xl">
+      <TrackerBreadcrumb
+        layer="signal"
+        modifierName="MACD Divergence"
+        dimensions={[1]}
+      />
       <StrategyHeader
         title="MACD Divergence"
         subtitle="MACD(12,26,9) histogram swing vs 가격 swing 비교 — 1차원 모멘텀"
