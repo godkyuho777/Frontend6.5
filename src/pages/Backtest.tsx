@@ -36,6 +36,8 @@ import {
 } from "@/components/backtest/MetricCards";
 import { TradeTable } from "@/components/backtest/TradeTable";
 import { CalibrationPanel } from "@/components/backtest/CalibrationPanel";
+import EngineATab from "./backtest/EngineATab";
+import EngineBTab from "./backtest/EngineBTab";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -436,6 +438,12 @@ export default function Backtest() {
           </TabsTrigger>
           <TabsTrigger value="history" className="font-mono text-xs h-7 data-[state=active]:text-neon-yellow">
             PAST RUNS
+          </TabsTrigger>
+          <TabsTrigger value="engine_a" className="font-mono text-xs h-7 data-[state=active]:text-neon-cyan">
+            ENGINE A
+          </TabsTrigger>
+          <TabsTrigger value="engine_b" className="font-mono text-xs h-7 data-[state=active]:text-neon-pink">
+            ENGINE B
           </TabsTrigger>
         </TabsList>
 
@@ -1033,6 +1041,16 @@ export default function Backtest() {
               </div>
             )}
           </HudPanel>
+        </TabsContent>
+
+        {/* ── Engine A Tab (Dual Backtest §2) ── */}
+        <TabsContent value="engine_a" className="mt-3">
+          <EngineATab />
+        </TabsContent>
+
+        {/* ── Engine B Tab (Dual Backtest §3 — Phase 1 templates) ── */}
+        <TabsContent value="engine_b" className="mt-3">
+          <EngineBTab />
         </TabsContent>
       </Tabs>
     </div>
