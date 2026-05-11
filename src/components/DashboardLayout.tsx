@@ -26,11 +26,14 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Activity,
+  ArrowLeftRight,
   BarChart2,
   BarChart3,
   Bell,
   Bot,
+  Box,
   Database,
+  Flame,
   FlaskConical,
   HeartPulse,
   History,
@@ -39,6 +42,7 @@ import {
   LogOut,
   PanelLeft,
   Ruler,
+  Sigma,
   Sparkles,
   Target,
   TrendingUp,
@@ -59,6 +63,9 @@ type MenuItem = {
   children?: MenuChild[];
 };
 
+// IA 정정 (2026-05-12) — Tracker Hub 폐기, Signal Scanner / Wave Tracker
+// 원래 children 복원, Macro Liquidity Tracker 단일 신규 그룹 추가.
+// 자세한 사유: IA_CORRECTION.md §2.
 const menuItems: MenuItem[] = [
   {
     icon: Activity,
@@ -68,29 +75,36 @@ const menuItems: MenuItem[] = [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
+      { icon: Layers, label: "EMA Ribbon", path: "/strategies/ema-ribbon" },
+      { icon: Sigma, label: "MACD Divergence", path: "/strategies/macd-divergence" },
+      { icon: Box, label: "Order Block (Beta)", path: "/strategies/order-block" },
+      { icon: ArrowLeftRight, label: "CVD Divergence (Beta)", path: "/strategies/cvd" },
     ],
   },
-  // 3-Layer Tracker Hub — Phase 3b 신규 그룹.
-  // 기존 Signal Scanner 의 6개 modifier children 은 본 그룹의 Hub 안에서 카드로 접근.
-  {
-    icon: Layers,
-    label: "Trackers",
-    path: "/trackers",
-    children: [
-      { icon: BarChart3, label: "Signal Tracker", path: "/trackers/signal" },
-      { icon: Waves, label: "Wave Tracker", path: "/trackers/wave" },
-      { icon: BarChart2, label: "Macro Tracker", path: "/trackers/macro" },
-    ],
-  },
-  // 기존 Wave Tracker — 이름 충돌 회피를 위해 "Wave Analysis" 로 표시 (라우트 /wave 는 유지)
   {
     icon: Waves,
-    label: "Wave Analysis",
+    label: "Wave Tracker",
     path: "/wave",
     children: [
       { icon: Waves, label: "Sentiment & Matrix", path: "/wave/sentiment" },
       { icon: TrendingUp, label: "Trend Analysis", path: "/wave/trend" },
-      { icon: TrendingUp, label: "Macro Wave (v2)", path: "/wave/macro" },
+    ],
+  },
+  // Macro Liquidity Tracker — 6차원 매크로 modifier 단일 집결지 (NEW).
+  // Overview = MacroWave v2 흡수 / Funding & Breadth 이전 + 5개 FRED placeholder.
+  {
+    icon: BarChart2,
+    label: "Macro Liquidity Tracker",
+    path: "/macro",
+    children: [
+      { icon: Activity, label: "Overview (Composite)", path: "/macro" },
+      { icon: Flame, label: "Funding Extreme", path: "/macro/funding-extreme" },
+      { icon: BarChart2, label: "Market Breadth", path: "/macro/market-breadth" },
+      { icon: TrendingUp, label: "SOFR-IORB Spread", path: "/macro/sofr" },
+      { icon: TrendingUp, label: "Yield Curve", path: "/macro/yield-curve" },
+      { icon: Database, label: "Fed Balance Sheet", path: "/macro/walcl" },
+      { icon: BarChart3, label: "DXY / VIX", path: "/macro/dxy-vix" },
+      { icon: TrendingUp, label: "Real Rate", path: "/macro/real-rate" },
     ],
   },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },
@@ -101,6 +115,8 @@ const menuItems: MenuItem[] = [
   { icon: History, label: "Signal History", path: "/history" },
   { icon: Bell, label: "Alert Settings", path: "/alerts" },
   { icon: Bot, label: "AI Insight", path: "/ai" },
+  // Charter / Vision — 사이트의 *왜* 를 담는 비전 페이지 (footer 직전)
+  { icon: Sparkles, label: "Charter / Vision", path: "/charter" },
   { icon: HeartPulse, label: "Admin / Health", path: "/admin/health" },
 ];
 

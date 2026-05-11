@@ -1,13 +1,17 @@
 /**
- * Macro Wave v2 — MACRO_LIQUIDITY_TRACKER_v2 시각화 페이지.
+ * Macro Liquidity Tracker — Overview (Composite C1~C4).
  *
+ * Macro Hub 의 default 탭. MACRO_LIQUIDITY_TRACKER_v2 시각화로
  * 7개 단일 지표 + 4개 composite signal (C1/C2/C3/C4) + Korea + FRED 시계열
- * 차트 + BBDX impact 카드. 본 페이지는 헌장 R3 (modifier-only) 면책 텍스트를
- * 명시하여, multiplier 가 BBDX 진입 신뢰도에 곱해지는 보조 차원임을 강조.
+ * 차트 + BBDX impact 카드를 보여준다. 본 페이지는 헌장 R3 (modifier-only)
+ * 면책 텍스트를 명시하여, multiplier 가 BBDX 진입 신뢰도에 곱해지는
+ * 보조 차원임을 강조.
  *
  * tRPC:
  *   - macroV2.snapshot — 현재 layer 객체
  *   - macroV2.history  — FRED 시계열 (seriesId + period)
+ *
+ * 라우트: `/macro` (외부 북마크 호환을 위해 `/wave/macro` 는 redirect)
  */
 
 import { useMemo, useState } from "react";
@@ -652,7 +656,7 @@ function TimeSeriesChart() {
 
 // ── Main page ──────────────────────────────────────────────
 
-export default function MacroWave() {
+export default function MacroHub() {
   const snapshotQuery = trpc.macroV2.snapshot.useQuery(undefined, {
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
@@ -669,10 +673,10 @@ export default function MacroWave() {
         <div>
           <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-2">
             <Waves className="h-6 w-6" />
-            MACRO WAVE (v2)
+            MACRO LIQUIDITY TRACKER · OVERVIEW (COMPOSITE C1~C4)
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            FRED / ALFRED · C1~C4 COMPOSITES · BBDX MULTIPLIER (CHARTER R3)
+            6차원 매크로 — FRED / ALFRED · C1~C4 COMPOSITES · BBDX MULTIPLIER (CHARTER R3)
           </p>
         </div>
         <Button

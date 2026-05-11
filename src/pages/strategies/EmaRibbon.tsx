@@ -6,7 +6,6 @@ import {
   StrategyHeader,
   type StrategyTf,
 } from "@/components/strategies/StrategyHeader";
-import { TrackerBreadcrumb } from "@/components/trackers/TrackerBreadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -104,11 +103,6 @@ export default function EmaRibbon() {
 
   return (
     <div className="space-y-4 max-w-6xl">
-      <TrackerBreadcrumb
-        layer="wave"
-        modifierName="EMA Ribbon"
-        dimensions={[3]}
-      />
       <StrategyHeader
         title="EMA Ribbon"
         subtitle="EMA(9, 21, 50, 100, 200) 정렬 + ribbon expansion 으로 추세 건강도 측정"

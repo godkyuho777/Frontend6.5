@@ -18,21 +18,26 @@ import AlertSettings from "./pages/AlertSettings";
 import AIInsight from "./pages/AIInsight";
 import WaveSentiment from "./pages/WaveSentiment";
 import WaveTrend from "./pages/WaveTrend";
-import MacroWave from "./pages/wave/MacroWave";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
+import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
 import EmaRibbon from "./pages/strategies/EmaRibbon";
-import MarketBreadth from "./pages/strategies/MarketBreadth";
 import MacdDivergence from "./pages/strategies/MacdDivergence";
-import FundingExtreme from "./pages/strategies/FundingExtreme";
 import OrderBlock from "./pages/strategies/OrderBlock";
 import CvdDivergence from "./pages/strategies/CvdDivergence";
-import TrackersIndex from "./pages/trackers/TrackersIndex";
-import SignalTrackerHub from "./pages/trackers/SignalTrackerHub";
-import WaveTrackerHub from "./pages/trackers/WaveTrackerHub";
-import MacroTrackerHub from "./pages/trackers/MacroTrackerHub";
+// 참고: FundingExtreme / MarketBreadth 컴포넌트는 /macro/* 라우트에서 재export 로
+// 사용되며, /strategies/funding-extreme · /strategies/market-breadth 는 redirect 만
+// 처리하므로 App.tsx 에서 직접 import 하지 않는다.
+import MacroHub from "./pages/macro/MacroHub";
+import MacroFundingExtreme from "./pages/macro/MacroFundingExtreme";
+import MacroMarketBreadth from "./pages/macro/MacroMarketBreadth";
+import MacroSofr from "./pages/macro/MacroSofr";
+import MacroYieldCurve from "./pages/macro/MacroYieldCurve";
+import MacroWalcl from "./pages/macro/MacroWalcl";
+import MacroDxyVix from "./pages/macro/MacroDxyVix";
+import MacroRealRate from "./pages/macro/MacroRealRate";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -80,47 +85,38 @@ function ProShell() {
     <DashboardLayout>
       <Switch>
         <Route path={"/"} component={Home} />
-        {/* Signal Scanner sub-pages — distinct strategies per the v6.1 doc. */}
+        {/* Signal Scanner sub-pages — 원위치 (IA 정정, /strategies/* 직접 마운트). */}
         <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
-        {/* 3-Layer Tracker Hub — canonical URLs (Phase 2 mirror).
-            Layer 1 = Signal, Layer 2 = Wave, Layer 3 = Macro. */}
-        <Route path={"/trackers/signal/macd-divergence"} component={MacdDivergence} />
-        <Route path={"/trackers/signal/cvd-divergence"} component={CvdDivergence} />
-        <Route path={"/trackers/wave/ema-ribbon"} component={EmaRibbon} />
-        <Route path={"/trackers/wave/order-block"} component={OrderBlock} />
-        <Route path={"/trackers/macro/funding-extreme"} component={FundingExtreme} />
-        <Route path={"/trackers/macro/market-breadth"} component={MarketBreadth} />
-        {/* 3-Layer Hub pages — 구체적인 modifier route 들 다음에 배치하여
-            wouter 의 top-down 매칭에서 정확한 우선순위 보장. */}
-        <Route path={"/trackers/signal"} component={SignalTrackerHub} />
-        <Route path={"/trackers/wave"} component={WaveTrackerHub} />
-        <Route path={"/trackers/macro"} component={MacroTrackerHub} />
-        <Route path={"/trackers"} component={TrackersIndex} />
-        {/* Legacy /strategies/* URLs → redirect to new canonical /trackers/* URLs. */}
-        <Route path={"/strategies/macd-divergence"}>
-          <Redirect to="/trackers/signal/macd-divergence" />
-        </Route>
-        <Route path={"/strategies/cvd"}>
-          <Redirect to="/trackers/signal/cvd-divergence" />
-        </Route>
-        <Route path={"/strategies/ema-ribbon"}>
-          <Redirect to="/trackers/wave/ema-ribbon" />
-        </Route>
-        <Route path={"/strategies/order-block"}>
-          <Redirect to="/trackers/wave/order-block" />
-        </Route>
+        <Route path={"/strategies/macd-divergence"} component={MacdDivergence} />
+        <Route path={"/strategies/cvd"} component={CvdDivergence} />
+        <Route path={"/strategies/ema-ribbon"} component={EmaRibbon} />
+        <Route path={"/strategies/order-block"} component={OrderBlock} />
+        {/* /strategies/funding-extreme & market-breadth — Macro Hub 로 이동 (외부 링크 호환). */}
         <Route path={"/strategies/funding-extreme"}>
-          <Redirect to="/trackers/macro/funding-extreme" />
+          <Redirect to="/macro/funding-extreme" />
         </Route>
         <Route path={"/strategies/market-breadth"}>
-          <Redirect to="/trackers/macro/market-breadth" />
+          <Redirect to="/macro/market-breadth" />
         </Route>
-        {/* Wave Tracker — split into Sentiment & Matrix, Trend Analysis, Macro v2. */}
+        {/* Macro Liquidity Tracker — 6차원 매크로 단일 hub (Overview + 7 sub-tabs).
+            구체 라우트를 인덱스보다 위에 배치하여 wouter top-down 매칭 우선순위 보장. */}
+        <Route path={"/macro/funding-extreme"} component={MacroFundingExtreme} />
+        <Route path={"/macro/market-breadth"} component={MacroMarketBreadth} />
+        <Route path={"/macro/sofr"} component={MacroSofr} />
+        <Route path={"/macro/yield-curve"} component={MacroYieldCurve} />
+        <Route path={"/macro/walcl"} component={MacroWalcl} />
+        <Route path={"/macro/dxy-vix"} component={MacroDxyVix} />
+        <Route path={"/macro/real-rate"} component={MacroRealRate} />
+        <Route path={"/macro"} component={MacroHub} />
+        {/* Wave Tracker — Sentiment & Matrix, Trend Analysis (원위치). */}
         <Route path={"/wave/sentiment"} component={WaveSentiment} />
         <Route path={"/wave/trend"} component={WaveTrend} />
-        <Route path={"/wave/macro"} component={MacroWave} />
+        {/* Legacy `/wave/macro` → 신규 Macro Hub (외부 북마크 호환). */}
+        <Route path={"/wave/macro"}>
+          <Redirect to="/macro" />
+        </Route>
         <Route path={"/wave"}>
           <Redirect to="/wave/sentiment" />
         </Route>
@@ -132,6 +128,7 @@ function ProShell() {
         <Route path={"/ai"} component={AIInsight} />
         <Route path={"/backtest"} component={Backtest} />
         <Route path={"/onchain"} component={Onchain} />
+        <Route path={"/charter"} component={Charter} />
         <Route path={"/admin/health"} component={HealthCheck} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
