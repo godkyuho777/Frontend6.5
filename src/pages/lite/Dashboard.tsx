@@ -158,11 +158,13 @@ export default function LiteDashboard() {
         <p className="font-mono text-sm text-muted-foreground mb-2">
           RSI, BB, ADX 같은 단어를 클릭 한 번에 쉽게 풀어드려요.
         </p>
-        <Link href="/lite/learn">
-          <a className="inline-flex items-center gap-1 font-mono text-sm text-neon-cyan hover:underline cursor-pointer">
-            <Sparkles className="h-3.5 w-3.5" />
-            용어 사전 보기 →
-          </a>
+        {/* wouter v3 — Link 가 이미 <a> 를 렌더. 안에 <a> 박지 말 것 (hydration error). */}
+        <Link
+          href="/lite/learn"
+          className="inline-flex items-center gap-1 font-mono text-sm text-neon-cyan hover:underline cursor-pointer"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          용어 사전 보기 →
         </Link>
       </LiteCard>
     </div>
@@ -193,57 +195,56 @@ function CoinRecommendationCard({
   };
 }) {
   return (
-    <Link href={`/lite/coin/${coin.symbol}`}>
-      <a className="block">
-        <LiteCard
-          variant={
-            coin.recommendation === "STRONG_BUY" || coin.recommendation === "BUY"
-              ? "good"
-              : coin.recommendation === "STRONG_SELL" || coin.recommendation === "STRONG_SHORT"
-                ? "bad"
-                : coin.recommendation === "SELL" || coin.recommendation === "SHORT"
-                  ? "caution"
-                  : "default"
-          }
-          onClick={() => {}}
-        >
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between gap-2 flex-wrap">
-              <div>
-                <div className="font-display text-xl font-bold tracking-wide text-foreground">
-                  {coin.base}
-                </div>
-                <div className="font-mono text-sm text-muted-foreground">
-                  ${formatPrice(coin.price)}{" "}
-                  <span
-                    className={cn(
-                      "ml-1 text-[11px]",
-                      coin.change24h >= 0 ? "text-neon-green" : "text-neon-red"
-                    )}
-                  >
-                    {coin.change24h >= 0 ? "+" : ""}
-                    {coin.change24h.toFixed(2)}%
-                  </span>
-                </div>
+    // wouter v3 — Link 가 이미 <a> 를 렌더. 안에 <a> 박지 말 것 (hydration error).
+    <Link href={`/lite/coin/${coin.symbol}`} className="block">
+      <LiteCard
+        variant={
+          coin.recommendation === "STRONG_BUY" || coin.recommendation === "BUY"
+            ? "good"
+            : coin.recommendation === "STRONG_SELL" || coin.recommendation === "STRONG_SHORT"
+              ? "bad"
+              : coin.recommendation === "SELL" || coin.recommendation === "SHORT"
+                ? "caution"
+                : "default"
+        }
+        onClick={() => {}}
+      >
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <div>
+              <div className="font-display text-xl font-bold tracking-wide text-foreground">
+                {coin.base}
               </div>
-              <LiteRecommendationBadge
-                recommendation={coin.recommendation}
-                size="sm"
-              />
+              <div className="font-mono text-sm text-muted-foreground">
+                ${formatPrice(coin.price)}{" "}
+                <span
+                  className={cn(
+                    "ml-1 text-[11px]",
+                    coin.change24h >= 0 ? "text-neon-green" : "text-neon-red"
+                  )}
+                >
+                  {coin.change24h >= 0 ? "+" : ""}
+                  {coin.change24h.toFixed(2)}%
+                </span>
+              </div>
             </div>
-
-            {coin.reasons.length > 0 && (
-              <ul className="font-mono text-[11px] text-muted-foreground space-y-0.5">
-                {coin.reasons.map((r, i) => (
-                  <li key={i} className="leading-snug">• {r}</li>
-                ))}
-              </ul>
-            )}
-
-            <LiteRiskGauge level={coin.riskLevel} />
+            <LiteRecommendationBadge
+              recommendation={coin.recommendation}
+              size="sm"
+            />
           </div>
-        </LiteCard>
-      </a>
+
+          {coin.reasons.length > 0 && (
+            <ul className="font-mono text-[11px] text-muted-foreground space-y-0.5">
+              {coin.reasons.map((r, i) => (
+                <li key={i} className="leading-snug">• {r}</li>
+              ))}
+            </ul>
+          )}
+
+          <LiteRiskGauge level={coin.riskLevel} />
+        </div>
+      </LiteCard>
     </Link>
   );
 }

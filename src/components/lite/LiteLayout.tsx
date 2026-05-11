@@ -40,20 +40,19 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
       {/* Top nav */}
       <header className="sticky top-0 z-30 border-b border-border/40 bg-card/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-3">
-          <Link href="/lite">
-            <a className="flex items-center gap-2 cursor-pointer">
-              <div className="h-8 w-8 rounded-lg bg-neon-pink/20 border border-neon-pink/40 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-neon-pink" />
+          {/* wouter v3 — Link 가 이미 <a> 를 렌더. 안에 <a> 박지 말 것 (hydration error). */}
+          <Link href="/lite" className="flex items-center gap-2 cursor-pointer">
+            <div className="h-8 w-8 rounded-lg bg-neon-pink/20 border border-neon-pink/40 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-neon-pink" />
+            </div>
+            <div>
+              <div className="font-display text-sm font-bold tracking-wider text-neon-pink">
+                TRADELAB <span className="text-neon-cyan">LITE</span>
               </div>
-              <div>
-                <div className="font-display text-sm font-bold tracking-wider text-neon-pink">
-                  TRADELAB <span className="text-neon-cyan">LITE</span>
-                </div>
-                <div className="font-mono text-[9px] text-muted-foreground">
-                  쉽게 보는 신호 · 일반인용
-                </div>
+              <div className="font-mono text-[9px] text-muted-foreground">
+                쉽게 보는 신호 · 일반인용
               </div>
-            </a>
+            </div>
           </Link>
 
           <Button
@@ -75,18 +74,18 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
               : location === item.path;
             const Icon = item.icon;
             return (
-              <Link key={item.path} href={item.path}>
-                <a
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] transition-all whitespace-nowrap cursor-pointer",
-                    isActive
-                      ? "bg-neon-pink/15 text-neon-pink border border-neon-pink/40"
-                      : "text-muted-foreground border border-transparent hover:text-foreground hover:bg-muted/30"
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {item.label}
-                </a>
+              <Link
+                key={item.path}
+                href={item.path}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] transition-all whitespace-nowrap cursor-pointer",
+                  isActive
+                    ? "bg-neon-pink/15 text-neon-pink border border-neon-pink/40"
+                    : "text-muted-foreground border border-transparent hover:text-foreground hover:bg-muted/30"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {item.label}
               </Link>
             );
           })}
