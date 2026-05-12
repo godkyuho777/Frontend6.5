@@ -161,16 +161,12 @@ export interface EntryDecision {
   // optional — null/undefined = neutral (1.0 동치).
   /** VWAP modifier (5번 structure) */
   vwapMult?: number;
-  /** EMA Ribbon (3번 trend) — 0.30~1.15 */
-  emaRibbonMult?: number;
   /** Market Breadth (6번 macro/sentiment) — 0.60~1.30 */
   marketBreadthMult?: number;
   /** MACD Divergence (1번 momentum, RSI 와 다른 각도) — 0.80~1.20 */
   macdDivergenceMult?: number;
   /** Funding Extreme (6번 macro/perp) — 0.85~1.20 */
   fundingExtremeMult?: number;
-  /** CVD Divergence (4번 volume/liquidity, 베타) — 0.80~1.20 */
-  cvdDivergenceMult?: number;
   /** Order Block (5번 structure, 베타) — 0.95~1.05 */
   orderBlockMult?: number;
 }
@@ -184,11 +180,9 @@ export interface ShortEntryDecision {
 
   // ── Additional Strategies multipliers (LONG 과 동일 시리즈) ──
   vwapMult?: number;
-  emaRibbonMult?: number;
   marketBreadthMult?: number;
   macdDivergenceMult?: number;
   fundingExtremeMult?: number;
-  cvdDivergenceMult?: number;
   orderBlockMult?: number;
 }
 

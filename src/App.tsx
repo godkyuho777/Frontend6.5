@@ -23,10 +23,8 @@ import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
-import EmaRibbon from "./pages/strategies/EmaRibbon";
 import MacdDivergence from "./pages/strategies/MacdDivergence";
 import OrderBlock from "./pages/strategies/OrderBlock";
-import CvdDivergence from "./pages/strategies/CvdDivergence";
 // 참고: FundingExtreme / MarketBreadth 컴포넌트는 /macro/* 라우트에서 재export 로
 // 사용되며, /strategies/funding-extreme · /strategies/market-breadth 는 redirect 만
 // 처리하므로 App.tsx 에서 직접 import 하지 않는다.
@@ -90,8 +88,6 @@ function ProShell() {
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
         <Route path={"/strategies/macd-divergence"} component={MacdDivergence} />
-        <Route path={"/strategies/cvd"} component={CvdDivergence} />
-        <Route path={"/strategies/ema-ribbon"} component={EmaRibbon} />
         <Route path={"/strategies/order-block"} component={OrderBlock} />
         {/* /strategies/funding-extreme & market-breadth — Macro Hub 로 이동 (외부 링크 호환). */}
         <Route path={"/strategies/funding-extreme"}>

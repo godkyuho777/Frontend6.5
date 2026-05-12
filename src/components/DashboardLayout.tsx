@@ -26,7 +26,6 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Activity,
-  ArrowLeftRight,
   BarChart2,
   BarChart3,
   Bell,
@@ -37,7 +36,6 @@ import {
   FlaskConical,
   HeartPulse,
   History,
-  Layers,
   LogIn,
   LogOut,
   PanelLeft,
@@ -75,10 +73,8 @@ const menuItems: MenuItem[] = [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
-      { icon: Layers, label: "EMA Ribbon", path: "/strategies/ema-ribbon" },
       { icon: Sigma, label: "MACD Divergence", path: "/strategies/macd-divergence" },
       { icon: Box, label: "Order Block (Beta)", path: "/strategies/order-block" },
-      { icon: ArrowLeftRight, label: "CVD Divergence (Beta)", path: "/strategies/cvd" },
     ],
   },
   {
