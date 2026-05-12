@@ -9,6 +9,7 @@ import { HudPanel } from "@/components/HudPanel";
 import { cn } from "@/lib/utils";
 import type { CoinSignal } from "../hooks/useCoinSignal";
 import { VwapMultChip } from "@/pages/Vwap/VwapDetailPanels";
+import { WeightSourceBadge } from "@/components/strategies/WeightSourceBadge";
 
 interface SignalCardProps {
   signal: CoinSignal | null;
@@ -17,6 +18,12 @@ interface SignalCardProps {
   /** v6.5+ — Trend Analysis v2.0 BBDX multiplier (`trpc.trend.analyze.waveMult`).
    *  미정의 시 "n/a" chip. 헌장 규칙 3 — modifier-only. */
   waveMult?: number;
+  /** v6.6 — WeightSourceBadge 표시용. v6.6 활성 + signal.entry 있을 때만 표시 */
+  symbol?: string;
+  tf?: string;
+  showWeightBadge?: boolean;
+  /** LONG ↔ SHORT 충돌 시 카드 흐림 */
+  conflict?: boolean;
 }
 
 /**
@@ -71,7 +78,15 @@ const DIMENSION_LABELS = [
   "MACR",
 ];
 
-export function SignalCard({ signal, vwapMult, waveMult }: SignalCardProps) {
+export function SignalCard({
+  signal,
+  vwapMult,
+  waveMult,
+  symbol,
+  tf,
+  showWeightBadge = false,
+  conflict = false,
+}: SignalCardProps) {
   if (!signal) {
     return (
       <HudPanel
@@ -95,20 +110,36 @@ export function SignalCard({ signal, vwapMult, waveMult }: SignalCardProps) {
   const reasons = signal.entry?.reasons ?? [];
   const confidence = signal.finalConfidence;
   const hasDims = !!signal.dimensions;
+  const longPath = signal.entry?.path;
 
   return (
     <HudPanel
       title="Signal"
-      subtitle={signal.entry ? "BBDX ENTRY DETECTED" : "NO ENTRY"}
-      variant={signal.entry ? "highlight" : "default"}
+      subtitle={
+        conflict
+          ? "CONFLICT — 방향 불명"
+          : signal.entry
+            ? "BBDX ENTRY DETECTED"
+            : "NO ENTRY"
+      }
+      variant={conflict ? "default" : signal.entry ? "highlight" : "default"}
       headerRight={
         <div className="flex items-center gap-1">
           <VwapMultChip vwapMult={vwapMult} />
           <WaveMultChip waveMult={waveMult} />
+          {showWeightBadge && longPath && symbol && tf && (
+            <WeightSourceBadge
+              symbol={symbol}
+              tf={tf}
+              path={longPath}
+              side="long"
+              compact
+            />
+          )}
         </div>
       }
     >
-      <div className="space-y-3">
+      <div className={cn("space-y-3", conflict && "opacity-40")}>
         {/* Path label */}
         <div>
           <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -117,6 +148,11 @@ export function SignalCard({ signal, vwapMult, waveMult }: SignalCardProps) {
           <div className="font-display text-2xl font-bold tracking-wider text-neon-cyan">
             {signal.entry ? `LONG • ${path}` : "—"}
           </div>
+          {conflict && (
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">
+              SHORT 시그널 동시 발생 — 시장 방향 불명, 진입 차단
+            </div>
+          )}
           {signal.isFallingKnife && (
             <div className="font-mono text-[10px] text-neon-red mt-1">
               ✗ FALLING KNIFE — entry blocked
