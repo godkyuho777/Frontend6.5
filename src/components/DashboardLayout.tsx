@@ -30,9 +30,7 @@ import {
   BarChart3,
   Bell,
   Bot,
-  Box,
   Database,
-  Flame,
   FlaskConical,
   HeartPulse,
   History,
@@ -40,7 +38,6 @@ import {
   LogOut,
   PanelLeft,
   Ruler,
-  Sigma,
   Sparkles,
   Target,
   TrendingUp,
@@ -73,8 +70,6 @@ const menuItems: MenuItem[] = [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
-      { icon: Sigma, label: "MACD Divergence", path: "/strategies/macd-divergence" },
-      { icon: Box, label: "Order Block (Beta)", path: "/strategies/order-block" },
     ],
   },
   {
@@ -86,16 +81,13 @@ const menuItems: MenuItem[] = [
       { icon: TrendingUp, label: "Trend Analysis", path: "/wave/trend" },
     ],
   },
-  // Macro Liquidity Tracker — 6차원 매크로 modifier 단일 집결지 (NEW).
-  // Overview = MacroWave v2 흡수 / Funding & Breadth 이전 + 5개 FRED placeholder.
+  // Macro Liquidity Tracker — FRED 거시 시그널.
   {
     icon: BarChart2,
     label: "Macro Liquidity Tracker",
     path: "/macro",
     children: [
       { icon: Activity, label: "Overview (Composite)", path: "/macro" },
-      { icon: Flame, label: "Funding Extreme", path: "/macro/funding-extreme" },
-      { icon: BarChart2, label: "Market Breadth", path: "/macro/market-breadth" },
       { icon: TrendingUp, label: "SOFR-IORB Spread", path: "/macro/sofr" },
       { icon: TrendingUp, label: "Yield Curve", path: "/macro/yield-curve" },
       { icon: Database, label: "Fed Balance Sheet", path: "/macro/walcl" },

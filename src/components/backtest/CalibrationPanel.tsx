@@ -128,15 +128,6 @@ const STANDARD_PARAMS: CalibParam[] = [
     dimension: 5,
   },
   {
-    name: "macdDivergenceMult",
-    label: "MACD Divergence Mult (Phase 2)",
-    valueOf: (t) => t.macdDivergenceMult,
-    edges: [0.80, 0.95, 1.0, 1.05, 1.10, 1.20],
-    currentThreshold: 1.0,
-    direction: "min",
-    dimension: 1,
-  },
-  {
     name: "modifiersProduct",
     label: "Modifiers Product (Phase 2 합산)",
     valueOf: (t) => t.modifiersProduct,

@@ -23,14 +23,7 @@ import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
-import MacdDivergence from "./pages/strategies/MacdDivergence";
-import OrderBlock from "./pages/strategies/OrderBlock";
-// 참고: FundingExtreme / MarketBreadth 컴포넌트는 /macro/* 라우트에서 재export 로
-// 사용되며, /strategies/funding-extreme · /strategies/market-breadth 는 redirect 만
-// 처리하므로 App.tsx 에서 직접 import 하지 않는다.
 import MacroHub from "./pages/macro/MacroHub";
-import MacroFundingExtreme from "./pages/macro/MacroFundingExtreme";
-import MacroMarketBreadth from "./pages/macro/MacroMarketBreadth";
 import MacroSofr from "./pages/macro/MacroSofr";
 import MacroYieldCurve from "./pages/macro/MacroYieldCurve";
 import MacroWalcl from "./pages/macro/MacroWalcl";
@@ -87,19 +80,8 @@ function ProShell() {
         <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
-        <Route path={"/strategies/macd-divergence"} component={MacdDivergence} />
-        <Route path={"/strategies/order-block"} component={OrderBlock} />
-        {/* /strategies/funding-extreme & market-breadth — Macro Hub 로 이동 (외부 링크 호환). */}
-        <Route path={"/strategies/funding-extreme"}>
-          <Redirect to="/macro/funding-extreme" />
-        </Route>
-        <Route path={"/strategies/market-breadth"}>
-          <Redirect to="/macro/market-breadth" />
-        </Route>
-        {/* Macro Liquidity Tracker — 6차원 매크로 단일 hub (Overview + 7 sub-tabs).
+        {/* Macro Liquidity Tracker — 6차원 매크로 단일 hub.
             구체 라우트를 인덱스보다 위에 배치하여 wouter top-down 매칭 우선순위 보장. */}
-        <Route path={"/macro/funding-extreme"} component={MacroFundingExtreme} />
-        <Route path={"/macro/market-breadth"} component={MacroMarketBreadth} />
         <Route path={"/macro/sofr"} component={MacroSofr} />
         <Route path={"/macro/yield-curve"} component={MacroYieldCurve} />
         <Route path={"/macro/walcl"} component={MacroWalcl} />
