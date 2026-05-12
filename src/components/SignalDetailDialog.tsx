@@ -238,33 +238,19 @@ function Row({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-// ─── Additional Strategies modifier breakdown (헌장 규칙 3) ─────────
+// ─── Modifier breakdown (헌장 규칙 3) ─────────
 //
-// scanner.ts 가 entryDecision 에 EMA Ribbon / MACD Divergence /
-// Order Block multiplier 를 surface 함. v6.5 후속 PR 에서 final_confidence
-// 곱셈 체인에 통합 예정. 현재는 표시만.
+// VWAP modifier 만 UI 노출. 나머지 modifier (MACD / Market Breadth / Funding
+// Extreme / Order Block) 는 백엔드 trade-condition 입력으로만 사용 — UI 미표시.
 
 const MODIFIER_DEFS: Array<{
-  key:
-    | "vwapMult"
-    | "emaRibbonMult"
-    | "marketBreadthMult"
-    | "macdDivergenceMult"
-    | "fundingExtremeMult"
-    | "cvdDivergenceMult"
-    | "orderBlockMult";
+  key: "vwapMult";
   label: string;
   dimension: string;
   range: string;
   beta?: boolean;
 }> = [
   { key: "vwapMult", label: "VWAP", dimension: "5 structure", range: "0.85~1.15" },
-  { key: "emaRibbonMult", label: "EMA Ribbon", dimension: "3 trend", range: "0.30~1.15" },
-  { key: "macdDivergenceMult", label: "MACD Divergence", dimension: "1 momentum", range: "0.80~1.20" },
-  { key: "marketBreadthMult", label: "Market Breadth", dimension: "6 macro", range: "0.60~1.30" },
-  { key: "fundingExtremeMult", label: "Funding Extreme", dimension: "6 macro", range: "0.85~1.20" },
-  { key: "cvdDivergenceMult", label: "CVD Divergence", dimension: "4 volume", range: "0.80~1.20", beta: true },
-  { key: "orderBlockMult", label: "Order Block", dimension: "5 structure", range: "0.95~1.05", beta: true },
 ];
 
 function ModifierBreakdown({
