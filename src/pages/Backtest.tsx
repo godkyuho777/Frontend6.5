@@ -40,12 +40,18 @@ import { CalibrationPanel } from "@/components/backtest/CalibrationPanel";
 import { CompositeBacktest } from "@/components/backtest/CompositeBacktest";
 import EngineATab from "./backtest/EngineATab";
 import EngineBTab from "./backtest/EngineBTab";
-import CompareV65V66Tab from "./backtest/CompareV65V66Tab";
 
 // ─── Types ────────────────────────────────────────────────
 
 type TfOption = "1h" | "4h" | "6h" | "1d" | "1w";
-type StrategyOption = "bbdx" | "fibonacci" | "vwap" | "trend";
+// 백엔드 routers.ts 의 strategy enum 과 1:1 매핑. 새 전략 추가 시 양쪽 sync.
+type StrategyOption =
+  | "bbdx"
+  | "bbdx-short"
+  | "fibonacci"
+  | "vwap"
+  | "trend"
+  | "trend-follow";
 
 interface BacktestConfig {
   symbolsText: string;
@@ -78,6 +84,13 @@ const STRATEGY_META: Record<
     badgeClass: "text-neon-pink border-neon-pink/40 bg-neon-pink/10",
     textClass: "text-neon-pink",
   },
+  "bbdx-short": {
+    label: "BBDX SHORT",
+    description: "BBDX 의 SHORT 진입 (BB 상단 돌파 후 reversal)",
+    activeClass: "border-rose-400 text-rose-400 bg-rose-500/10",
+    badgeClass: "text-rose-400 border-rose-400/40 bg-rose-500/10",
+    textClass: "text-rose-400",
+  },
   fibonacci: {
     label: "Fibonacci",
     description: "Golden zone 0.382~0.618 진입 + Fib 1.0/1.272 타겟",
@@ -98,6 +111,13 @@ const STRATEGY_META: Record<
     activeClass: "border-neon-green text-neon-green bg-neon-green/10",
     badgeClass: "text-neon-green border-neon-green/40 bg-neon-green/10",
     textClass: "text-neon-green",
+  },
+  "trend-follow": {
+    label: "Trend-Follow ⭐",
+    description: "5-gate (EMA 정배열 + ADX≥25 + +DI>-DI + price>SMA50 + HH) — winRate 44.8% (365d, P1 검증)",
+    activeClass: "border-emerald-400 text-emerald-300 bg-emerald-500/10",
+    badgeClass: "text-emerald-300 border-emerald-400/40 bg-emerald-500/10",
+    textClass: "text-emerald-300",
   },
 };
 
@@ -446,10 +466,7 @@ export default function Backtest() {
             ENGINE A
           </TabsTrigger>
           <TabsTrigger value="engine_b" className="font-mono text-xs h-7 data-[state=active]:text-neon-pink">
-            ENGINE B
-          </TabsTrigger>
-          <TabsTrigger value="compare_v65_v66" className="font-mono text-xs h-7 data-[state=active]:text-neon-green">
-            v6.5 vs v6.6
+            ENGINE B (BETA)
           </TabsTrigger>
           <TabsTrigger value="composite" className="font-mono text-xs h-7 data-[state=active]:text-neon-cyan">
             COMPOSITE ⚡
@@ -1060,11 +1077,6 @@ export default function Backtest() {
         {/* ── Engine B Tab (Dual Backtest §3 — Phase 1 templates) ── */}
         <TabsContent value="engine_b" className="mt-3">
           <EngineBTab />
-        </TabsContent>
-
-        {/* ── v6.5 vs v6.6 Compare Tab (placeholder for CLI reports) ── */}
-        <TabsContent value="compare_v65_v66" className="mt-3">
-          <CompareV65V66Tab />
         </TabsContent>
 
         {/* ── COMPOSITE Tab — Phase B-2 (2026-05-11) ⭐
