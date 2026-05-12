@@ -35,9 +35,12 @@ import {
   MetricCards,
 } from "@/components/backtest/MetricCards";
 import { TradeTable } from "@/components/backtest/TradeTable";
+import { TradeDetailCardList } from "@/components/backtest/TradeDetailCard";
 import { CalibrationPanel } from "@/components/backtest/CalibrationPanel";
+import { CompositeBacktest } from "@/components/backtest/CompositeBacktest";
 import EngineATab from "./backtest/EngineATab";
 import EngineBTab from "./backtest/EngineBTab";
+import CompareV65V66Tab from "./backtest/CompareV65V66Tab";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -444,6 +447,12 @@ export default function Backtest() {
           </TabsTrigger>
           <TabsTrigger value="engine_b" className="font-mono text-xs h-7 data-[state=active]:text-neon-pink">
             ENGINE B
+          </TabsTrigger>
+          <TabsTrigger value="compare_v65_v66" className="font-mono text-xs h-7 data-[state=active]:text-neon-green">
+            v6.5 vs v6.6
+          </TabsTrigger>
+          <TabsTrigger value="composite" className="font-mono text-xs h-7 data-[state=active]:text-neon-cyan">
+            COMPOSITE ⚡
           </TabsTrigger>
         </TabsList>
 
@@ -1051,6 +1060,18 @@ export default function Backtest() {
         {/* ── Engine B Tab (Dual Backtest §3 — Phase 1 templates) ── */}
         <TabsContent value="engine_b" className="mt-3">
           <EngineBTab />
+        </TabsContent>
+
+        {/* ── v6.5 vs v6.6 Compare Tab (placeholder for CLI reports) ── */}
+        <TabsContent value="compare_v65_v66" className="mt-3">
+          <CompareV65V66Tab />
+        </TabsContent>
+
+        {/* ── COMPOSITE Tab — Phase B-2 (2026-05-11) ⭐
+             사용자 요구 #2: Signal + Macro + Wave 3-Layer 조합 백테스트.
+             기존 single-strategy 와 별도 트랙. */}
+        <TabsContent value="composite" className="mt-3">
+          <CompositeBacktest />
         </TabsContent>
       </Tabs>
     </div>
