@@ -23,8 +23,11 @@ import type { TimeframeValue } from "@shared/types";
 import { Header } from "./Header";
 import { ChartZone } from "./ChartZone";
 import { SignalCard } from "./panels/SignalCard";
+import { ShortSignalCard } from "./panels/ShortSignalCard";
 import { CoinInfoCard } from "./panels/CoinInfoCard";
 import { UpcomingEvents } from "./panels/UpcomingEvents";
+import { useBbdxV66Flags } from "@/hooks/useBbdxV66Flags";
+import { useBbdxV66Current } from "@/hooks/useBbdxV66Current";
 import { BacktestTab } from "./tabs/BacktestTab";
 import { WinRateTab } from "./tabs/WinRateTab";
 import { DimensionBreakdown } from "./tabs/DimensionBreakdown";
@@ -59,6 +62,24 @@ export default function CoinDetailWorkstation() {
   // 가져옴. SignalCard 헤더에 chip 으로 표시. 헌장 규칙 3 — modifier-only.
   const { data: trendData } = useTrendAnalysis(symbol);
 
+  // v6.6 — feature flag + LONG/SHORT 양방향 평가 (백엔드)
+  const { isV66, shortEnabled } = useBbdxV66Flags();
+  const v66Tf: "1h" | "4h" | "1d" =
+    interval === "1h" || interval === "4h" || interval === "1d"
+      ? interval
+      : "4h";
+  const { short: v66Short, meta: v66Meta } = useBbdxV66Current(
+    symbol,
+    v66Tf,
+    { enabled: isV66 }
+  );
+  // 충돌 — meta.bothTriggered 가 true 거나 conflictResolution === "both_blocked".
+  // 백엔드가 v6.5 fallback 응답을 보내면 conflictResolution 필드 없음 (note 만 존재).
+  const isConflict =
+    !!v66Meta &&
+    v66Meta.bothTriggered === true &&
+    !("note" in v66Meta);
+
   if (!symbol) {
     return (
       <div className="text-center py-20 font-mono text-muted-foreground">
@@ -84,7 +105,30 @@ export default function CoinDetailWorkstation() {
             signal={signal}
             vwapMult={vwapDetail?.vwapMult}
             waveMult={trendData?.waveMult}
+            symbol={symbol}
+            tf={v66Tf}
+            showWeightBadge={isV66}
+            conflict={isConflict}
           />
+          {isV66 && shortEnabled ? (
+            <ShortSignalCard
+              symbol={symbol}
+              tf={v66Tf}
+              short={v66Short}
+              conflict={isConflict}
+            />
+          ) : (
+            <ShortSignalCard
+              symbol={symbol}
+              tf={v66Tf}
+              short={null}
+              inactiveNote={
+                !isV66
+                  ? "BBDX v6.6 미활성 (BBDX_VERSION=v6.5). 백엔드 env BBDX_VERSION=v6.6 + ENABLE_SHORT_SIGNALS=1 설정 시 SHORT 시그널 표시."
+                  : "SHORT 시그널 비활성 (ENABLE_SHORT_SIGNALS=0). 백엔드 env 에서 활성 가능."
+              }
+            />
+          )}
           <CoinInfoCard meta={meta} />
           <UpcomingEvents events={events} isAvailable={eventsAvailable} />
         </div>
