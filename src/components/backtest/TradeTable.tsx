@@ -35,7 +35,6 @@ export interface BacktestTrade {
   stopLoss?: number;
 
   // ── v6.5 Phase 2: Modifier multipliers ──
-  emaRibbonMult?: number;
   macdDivergenceMult?: number;
   orderBlockMult?: number;
   modifiersProduct?: number;

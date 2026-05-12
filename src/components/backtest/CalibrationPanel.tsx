@@ -128,15 +128,6 @@ const STANDARD_PARAMS: CalibParam[] = [
     dimension: 5,
   },
   {
-    name: "emaRibbonMult",
-    label: "EMA Ribbon Mult (Phase 2)",
-    valueOf: (t) => t.emaRibbonMult,
-    edges: [0.30, 0.70, 0.90, 1.0, 1.05, 1.15],
-    currentThreshold: 1.0,
-    direction: "min",
-    dimension: 3,
-  },
-  {
     name: "macdDivergenceMult",
     label: "MACD Divergence Mult (Phase 2)",
     valueOf: (t) => t.macdDivergenceMult,
