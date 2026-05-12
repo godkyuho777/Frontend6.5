@@ -238,28 +238,19 @@ function Row({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-// ─── Additional Strategies modifier breakdown (헌장 규칙 3) ─────────
+// ─── Modifier breakdown (헌장 규칙 3) ─────────
 //
-// scanner.ts 가 entryDecision 에 MACD Divergence / Order Block multiplier 를
-// surface 함. final_confidence 곱셈 체인에 통합되며 여기서는 표시만.
+// VWAP modifier 만 UI 노출. 나머지 modifier (MACD / Market Breadth / Funding
+// Extreme / Order Block) 는 백엔드 trade-condition 입력으로만 사용 — UI 미표시.
 
 const MODIFIER_DEFS: Array<{
-  key:
-    | "vwapMult"
-    | "marketBreadthMult"
-    | "macdDivergenceMult"
-    | "fundingExtremeMult"
-    | "orderBlockMult";
+  key: "vwapMult";
   label: string;
   dimension: string;
   range: string;
   beta?: boolean;
 }> = [
   { key: "vwapMult", label: "VWAP", dimension: "5 structure", range: "0.85~1.15" },
-  { key: "macdDivergenceMult", label: "MACD Divergence", dimension: "1 momentum", range: "0.80~1.20" },
-  { key: "marketBreadthMult", label: "Market Breadth", dimension: "6 macro", range: "0.60~1.30" },
-  { key: "fundingExtremeMult", label: "Funding Extreme", dimension: "6 macro", range: "0.85~1.20" },
-  { key: "orderBlockMult", label: "Order Block", dimension: "5 structure", range: "0.95~1.05", beta: true },
 ];
 
 function ModifierBreakdown({
