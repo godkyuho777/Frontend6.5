@@ -179,21 +179,36 @@ function renderSignalBadges(
   }
 
   // SHORT 진입 시그널 (v6.5 dual-system) — backend 의 shortDecision 필드 사용.
-  // 클라이언트 사이드 scanner 가 아직 SHORT 미산출 → 보수적으로 backend 응답에서만.
+  // LONG PTN/NUM 배지와 시각적 일관성 유지 + 검증중 chip (alpha 미입증 표시).
+  // 색상: path 별 SHORT-specific (BB=red / PTN=orange-red / NUM=orange).
   if (coin.shortDecision) {
     const sStrength = coin.shortSignalStrength ?? 0;
     const path = coin.shortDecision.path;
     const isStrong = sStrength >= 70;
+    // path 별 색상 (LONG 미러: NUM=neon-cyan↔neon-orange, PTN=neon-pink↔neon-red,
+    // BB=neon-green↔neon-red strong). isStrong 일 때 더 진한 red.
     const colorClass = isStrong
       ? "bg-neon-red/20 text-neon-red border-neon-red/40"
-      : "bg-neon-orange/20 text-neon-orange border-neon-orange/40";
+      : path === "NUM"
+        ? "bg-neon-orange/20 text-neon-orange border-neon-orange/40"
+        : path === "PTN"
+          ? "bg-orange-500/20 text-orange-400 border-orange-500/40"
+          : "bg-neon-red/20 text-neon-red border-neon-red/40"; // BB
     badges.push({
       key: "short",
       node: (
-        <Badge className={cn("font-mono text-[10px]", colorClass)}>
-          <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
-          SHORT {path}
-        </Badge>
+        <span className="inline-flex items-center gap-1">
+          <Badge className={cn("font-mono text-[10px]", colorClass)}>
+            <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
+            SHORT {path}
+          </Badge>
+          <span
+            title="SHORT 알고리즘 alpha 검증중 — 참고용으로만 사용"
+            className="font-mono text-[9px] px-1 py-0.5 rounded-sm border border-neon-yellow/40 bg-neon-yellow/10 text-neon-yellow uppercase tracking-wider"
+          >
+            검증중
+          </span>
+        </span>
       ),
     });
   }
