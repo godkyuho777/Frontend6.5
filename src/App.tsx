@@ -23,6 +23,8 @@ import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
+// strategies/* 페이지들 모두 deprecated (2026-05-11): backend modifier 제거 +
+// 통합 / FundingExtreme · MarketBreadth 는 Macro Hub redirect 만 처리.
 import MacroHub from "./pages/macro/MacroHub";
 import MacroSofr from "./pages/macro/MacroSofr";
 import MacroYieldCurve from "./pages/macro/MacroYieldCurve";
@@ -80,7 +82,15 @@ function ProShell() {
         <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
-        {/* Macro Liquidity Tracker — 6차원 매크로 단일 hub.
+        {/* /strategies/* deprecated (2026-05-11): backend modifier 통합/제거.
+            FundingExtreme / MarketBreadth 는 Macro Hub 로 redirect (외부 링크 호환). */}
+        <Route path={"/strategies/funding-extreme"}>
+          <Redirect to="/macro/funding-extreme" />
+        </Route>
+        <Route path={"/strategies/market-breadth"}>
+          <Redirect to="/macro/market-breadth" />
+        </Route>
+        {/* Macro Liquidity Tracker — 6차원 매크로 단일 hub (Overview + 7 sub-tabs).
             구체 라우트를 인덱스보다 위에 배치하여 wouter top-down 매칭 우선순위 보장. */}
         <Route path={"/macro/sofr"} component={MacroSofr} />
         <Route path={"/macro/yield-curve"} component={MacroYieldCurve} />
