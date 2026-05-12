@@ -23,6 +23,7 @@ import Backtest from "./pages/Backtest";
 import Onchain from "./pages/Onchain";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
+import CalibrationAdmin from "./pages/admin/Calibration";
 // strategies/* 페이지들 모두 deprecated (2026-05-11): backend modifier 제거 +
 // 통합 / FundingExtreme · MarketBreadth 는 Macro Hub redirect 만 처리.
 import MacroHub from "./pages/macro/MacroHub";
@@ -118,6 +119,7 @@ function ProShell() {
         <Route path={"/onchain"} component={Onchain} />
         <Route path={"/charter"} component={Charter} />
         <Route path={"/admin/health"} component={HealthCheck} />
+        <Route path={"/admin/calibration"} component={CalibrationAdmin} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

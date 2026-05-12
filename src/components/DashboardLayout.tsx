@@ -38,6 +38,7 @@ import {
   LogOut,
   PanelLeft,
   Ruler,
+  Settings2,
   Sparkles,
   Target,
   TrendingUp,
@@ -106,6 +107,7 @@ const menuItems: MenuItem[] = [
   // Charter / Vision — 사이트의 *왜* 를 담는 비전 페이지 (footer 직전)
   { icon: Sparkles, label: "Charter / Vision", path: "/charter" },
   { icon: HeartPulse, label: "Admin / Health", path: "/admin/health" },
+  { icon: Settings2, label: "Admin / Calibration", path: "/admin/calibration" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
