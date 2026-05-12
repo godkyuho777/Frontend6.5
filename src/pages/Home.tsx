@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/input";
 import { TIMEFRAMES } from "@shared/types";
 import type { CoinScanResult, PressureLabel, TimeframeValue } from "@shared/types";
 import { useMarketScan } from "@/hooks/useMarketData";
+import { useBbdxV66Flags } from "@/hooks/useBbdxV66Flags";
+import { DualSignalBadge } from "@/components/strategies/DualSignalBadge";
 
 type SortKey = "symbol" | "price" | "change24h" | "rsi" | "bbPos" | "adx" | "strength" | "signal";
 type SortDir = "asc" | "desc";
@@ -138,7 +140,11 @@ function renderPatternCell(coin: CoinScanResult) {
   );
 }
 
-function renderSignalBadges(coin: CoinScanResult) {
+function renderSignalBadges(
+  coin: CoinScanResult,
+  v66Enabled: boolean,
+  tf: string
+) {
   const badges: { key: string; node: React.ReactNode }[] = [];
 
   if (coin.isStopLossHit ?? false) {
@@ -214,7 +220,19 @@ function renderSignalBadges(coin: CoinScanResult) {
     });
   }
 
-  if (badges.length === 0) {
+  // v6.6 — LONG/SHORT 듀얼 배지 (백엔드 trpc.bbdxV66.current)
+  // 자체 hook 으로 fetch 하므로 wrapper element 로 추가. CONFLICT 면
+  // 단독 badge 로 양쪽 차단 표시.
+  const v66Badge = v66Enabled ? (
+    <DualSignalBadge
+      key="v66"
+      symbol={coin.symbol}
+      tf={tf}
+      enabled={v66Enabled}
+    />
+  ) : null;
+
+  if (badges.length === 0 && !v66Enabled) {
     return <span className="font-mono text-[10px] text-muted-foreground">—</span>;
   }
 
@@ -222,11 +240,12 @@ function renderSignalBadges(coin: CoinScanResult) {
     <SignalDetailDialog coin={coin}>
       <button
         type="button"
-        className="inline-flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        className="inline-flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm flex-wrap justify-end"
       >
         {badges.map((b) => (
           <span key={b.key}>{b.node}</span>
         ))}
+        {v66Badge}
       </button>
     </SignalDetailDialog>
   );
@@ -236,6 +255,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterval, setSelectedInterval] = useState<TimeframeValue>("4h");
+  const { isV66 } = useBbdxV66Flags();
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -669,7 +689,7 @@ export default function Home() {
                           className="text-center py-2 px-2"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {renderSignalBadges(coin)}
+                          {renderSignalBadges(coin, isV66, selectedInterval)}
                         </td>
                       </tr>
                     );
