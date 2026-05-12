@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import Fibonacci from "./pages/Fibonacci";
 import FibonacciDetail from "./pages/FibonacciDetail";
 import Vwap from "./pages/Vwap";
+import VwapDetail from "./pages/VwapDetail";
 import CoinDetail from "./pages/CoinDetail";
 import Positions from "./pages/Positions";
 import SignalHistory from "./pages/SignalHistory";
@@ -83,6 +84,7 @@ function ProShell() {
         <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
+        <Route path={"/vwap/:symbol"} component={VwapDetail} />
         {/* /strategies/* deprecated (2026-05-11): backend modifier 통합/제거.
             FundingExtreme / MarketBreadth 는 Macro Hub 로 redirect (외부 링크 호환). */}
         <Route path={"/strategies/funding-extreme"}>

@@ -347,7 +347,11 @@ export default function Vwap() {
                           // 현 클릭은 하단 detail 만 갱신, 이동은 SHIFT 조합 등으로 이전.
                         }}
                         onDoubleClick={() =>
-                          setLocation(`/coin/${coin.symbol}?tf=${selectedInterval}`)
+                          // VWAP Strategy 의 전용 deep-dive 페이지로 이동.
+                          // 이전엔 /coin/:symbol (BBDX detail) 로 가서 사용자가
+                          // VWAP 차트를 못 봤음. /vwap/:symbol 로 변경 — 캔들 +
+                          // VWAP/EMA9 + Volume histogram 전용 페이지.
+                          setLocation(`/vwap/${coin.symbol}?tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
