@@ -8,10 +8,11 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
 import LiteLayout from "./components/lite/LiteLayout";
 import Home from "./pages/Home";
-import Fibonacci from "./pages/Fibonacci";
 import FibonacciDetail from "./pages/FibonacciDetail";
 import Vwap from "./pages/Vwap";
 import VwapDetail from "./pages/VwapDetail";
+// Signal Scanner — TRACKER_TAB_STANDARD §1 (5-탭) 적용 wrapper.
+import FibonacciTrackerPage from "./pages/signals/fibonacci";
 import CoinDetail from "./pages/CoinDetail";
 import Positions from "./pages/Positions";
 import SignalHistory from "./pages/SignalHistory";
@@ -81,8 +82,10 @@ function ProShell() {
     <DashboardLayout>
       <Switch>
         <Route path={"/"} component={Home} />
-        {/* Signal Scanner sub-pages — 원위치 (IA 정정, /strategies/* 직접 마운트). */}
-        <Route path={"/fibonacci"} component={Fibonacci} />
+        {/* Signal Scanner sub-pages — 원위치 (IA 정정, /strategies/* 직접 마운트).
+            /fibonacci 는 5-탭 wrapper (FibonacciTrackerPage) 로 라우팅. 기존
+            Fibonacci.tsx 는 SignalTab 안에 직접 import 되어 재사용됨. */}
+        <Route path={"/fibonacci"} component={FibonacciTrackerPage} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
         <Route path={"/vwap"} component={Vwap} />
         <Route path={"/vwap/:symbol"} component={VwapDetail} />
