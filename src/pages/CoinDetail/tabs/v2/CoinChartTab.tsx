@@ -141,9 +141,10 @@ function FibonacciChartContent({
   interval: TimeframeValue;
   setInterval: (tf: TimeframeValue) => void;
 }) {
-  const { analysis, candles, isLoading, error } = useFibonacciDetail(symbol, interval);
+  const { analysis, candles, isLoading, error, fibTf } = useFibonacciDetail(symbol, interval);
   const currentPrice = candles[candles.length - 1]?.close ?? 0;
   const validTrendlines = analysis?.trendlines.filter((t) => t.isValid) ?? [];
+  const fibLevelCount = analysis?.fibLevels.length ?? 0;
 
   return (
     <div className="space-y-3">
@@ -179,7 +180,7 @@ function FibonacciChartContent({
       {analysis && !isLoading && (
         <HudPanel
           title="Fibonacci Chart"
-          subtitle={`${symbol} · ${interval.toUpperCase()} · ${candles.length} candles · ${validTrendlines.length} active trendlines`}
+          subtitle={`${symbol} · ${interval.toUpperCase()} (TF: ${fibTf}) · ${candles.length} candles · ${fibLevelCount} fib levels · ${validTrendlines.length} trendlines`}
         >
           <CandleChartLW
             candles={candles}

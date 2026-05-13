@@ -68,10 +68,13 @@ function computeFibLevels(low: number, high: number): FibLevel[] {
  * Adapt the page's TrendlineComputed shape into the fib-engine Trendline
  * shape consumed by <CandleChartLW>. WaveTrend's resolveTrendline already
  * vetted the lines, so we always render them as valid.
+ *
+ * 2026-05-14: Trendline 타입에 intercept/rSquared/tf 추가됨에 따라 채워넣음.
  */
 function toFibTrendline(
   candles: Candle[],
-  tl: TrendlineComputed | null
+  tl: TrendlineComputed | null,
+  tf: "1h" | "4h" | "1d"
 ): FibTrendline | null {
   if (!tl) return null;
   const startCandle = candles[tl.startIdx];
@@ -82,15 +85,20 @@ function toFibTrendline(
     (lastTime - startCandle.openTime) / (1000 * 60 * 60 * 24);
   const candlesFromStart = candles.length - 1 - tl.startIdx;
   const currentPrice = tl.startPrice + tl.slope * candlesFromStart;
+  // intercept: 두 점으로부터 startPrice - slope * startIdx = intercept
+  const intercept = tl.startPrice - tl.slope * tl.startIdx;
   return {
     startPoint: { time: startCandle.openTime, price: tl.startPrice, index: tl.startIdx },
     endPoint: { time: endCandle.openTime, price: tl.endPrice, index: tl.endIdx },
     slope: tl.slope,
+    intercept,
     type: tl.type,
     touchCount: Math.max(2, Math.round((tl.strength / 100) * (tl.endIdx - tl.startIdx))),
     durationDays,
     isValid: true,
     currentPrice,
+    rSquared: tl.strength / 100,
+    tf,
   };
 }
 
@@ -208,10 +216,14 @@ export default function WaveTrend() {
     [fibLevels]
   );
   const chartTrendlines = useMemo(
-    () =>
-      [toFibTrendline(candles, upTrend), toFibTrendline(candles, downTrend)]
-        .filter((t): t is FibTrendline => t !== null),
-    [candles, upTrend, downTrend]
+    () => {
+      // WaveTimeframe (1h/4h/1d/1w) → FibTimeframe (1h/4h/1d). 1w → 1d 매핑.
+      const fibTf: "1h" | "4h" | "1d" =
+        interval === "1h" ? "1h" : interval === "4h" ? "4h" : "1d";
+      return [toFibTrendline(candles, upTrend, fibTf), toFibTrendline(candles, downTrend, fibTf)]
+        .filter((t): t is FibTrendline => t !== null);
+    },
+    [candles, upTrend, downTrend, interval]
   );
 
   // ─── Trade signals ─────────────────────────────────────────────────

@@ -243,8 +243,38 @@ export function CandleChartLW({
     });
 
     // Trendlines
+    //
+    // Extrapolation clipping (2026-05-14):
+    //   - 표시되는 차트 캔들의 high/low + fibLevels 의 price 를 기준으로
+    //     priceRange (min/max) 를 산출하고, line value 가 그 범위의 ±30%
+    //     를 벗어나면 그 시점부터 line 을 자른다.
+    //   - endPoint.index + EXTRA_FORWARD_CANDLES 이후로는 extrapolate 하지 않음.
     if (trendlines && trendlines.length > 0) {
       const validTrendlines = trendlines.filter((t) => t.isValid);
+
+      // 표시 가격 범위 계산 (캔들 high/low + fib levels)
+      let visibleHigh = -Infinity;
+      let visibleLow = Infinity;
+      for (const c of chartCandles) {
+        if (c.high > visibleHigh) visibleHigh = c.high;
+        if (c.low < visibleLow) visibleLow = c.low;
+      }
+      if (fibLevels) {
+        for (const f of fibLevels) {
+          if (f.price > visibleHigh) visibleHigh = f.price;
+          if (f.price < visibleLow) visibleLow = f.price;
+        }
+      }
+      if (!Number.isFinite(visibleHigh) || !Number.isFinite(visibleLow)) {
+        visibleHigh = currentPrice * 1.1;
+        visibleLow = currentPrice * 0.9;
+      }
+      const priceRange = Math.max(1e-9, visibleHigh - visibleLow);
+      const clipHigh = visibleHigh + priceRange * 0.3;
+      const clipLow = Math.max(0, visibleLow - priceRange * 0.3);
+
+      const EXTRA_FORWARD_CANDLES = 10;
+
       for (const tl of validTrendlines) {
         const tlColor = tl.type === "support" ? "#00e676" : "#ff1744";
         const chartStartIdx = Math.max(0, tl.startPoint.index - offsetIdx);
@@ -252,11 +282,19 @@ export function CandleChartLW({
         if (tl.endPoint.index < offsetIdx) continue;
         if (tl.startPoint.index >= candles.length) continue;
 
-        const drawEndIdx = chartCandles.length - 1;
+        // 우측 extrapolation 한도: endPoint.index + N 또는 차트 끝, 둘 중 작은 값
+        const maxGlobalIdx = Math.min(
+          tl.endPoint.index + EXTRA_FORWARD_CANDLES,
+          offsetIdx + chartCandles.length - 1
+        );
+        const drawEndChartIdx = Math.max(0, maxGlobalIdx - offsetIdx);
+
         const lineData: { time: number; value: number }[] = [];
-        for (let i = chartStartIdx; i <= drawEndIdx; i++) {
+        for (let i = chartStartIdx; i <= drawEndChartIdx; i++) {
           const globalIdx = i + offsetIdx;
           const price = tl.startPoint.price + tl.slope * (globalIdx - tl.startPoint.index);
+          // 가격 범위 ±30% 벗어나면 그 시점에서 line 종료
+          if (price < clipLow || price > clipHigh) break;
           lineData.push({
             time: Math.floor(chartCandles[i].openTime / 1000),
             value: price,

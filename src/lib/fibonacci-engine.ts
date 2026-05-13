@@ -2,6 +2,12 @@
  * Fibonacci Golden Ratio & Trendline Engine
  * 일봉 기준 피보나치 되돌림 레벨 계산 + 단기 추세 빗각 감지
  * 클라이언트 사이드 순수 함수 모듈
+ *
+ * 2026-05-14 업데이트:
+ *  - TF-aware (1h/4h/1d) lookback + slope sanity 분화
+ *  - Inflection-point anchored trendline (추세 변환 지점부터 시작)
+ *  - Linear regression best-fit (brute-force pair 검색 폐기)
+ *  - Slope sanity check — 비합리적 slope 거부
  */
 
 import type { Candle } from "@shared/types";
@@ -25,16 +31,22 @@ export interface SwingPoint {
   type: "high" | "low";
 }
 
+/** 지원 타임프레임 (Fibonacci 전용 subset) */
+export type FibTimeframe = "1h" | "4h" | "1d";
+
 /** 추세 빗각 (Trendline) */
 export interface Trendline {
   startPoint: { time: number; price: number; index: number };
   endPoint: { time: number; price: number; index: number };
   slope: number;          // 기울기 (price per candle)
+  intercept: number;      // y절편 (linear regression)
   type: "support" | "resistance";
   touchCount: number;     // 터치한 캔들 수
   durationDays: number;   // 유지 기간 (일)
   isValid: boolean;       // 유효성 (3개 터치 또는 7일 이상)
   currentPrice: number;   // 현재 시점에서의 빗각 가격
+  rSquared: number;       // 회귀 fit 품질 (0~1)
+  tf: FibTimeframe;       // 사용된 TF
 }
 
 /** 피보나치 매매 시그널 */
@@ -56,6 +68,7 @@ export interface FibonacciAnalysis {
   signal: FibSignal;
   trend: "UP" | "DOWN" | "SIDEWAYS";
   currentZone: string;    // 현재 가격이 위치한 피보나치 존
+  tf: FibTimeframe;       // 분석에 사용된 TF
 }
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -74,6 +87,22 @@ const ZONE_TOLERANCE = 0.005; // ±0.5%
 const MIN_TOUCH_COUNT = 3;
 const MIN_DURATION_DAYS = 7;
 const TRENDLINE_TOLERANCE = 0.005; // ±0.5% for trendline touch
+
+/**
+ * TF 별 trendline 검출 파라미터.
+ *  - swingWindow: local swing 좌우 비교 캔들 수 (값↑ = 더 굵은 swing)
+ *  - lookback: 추세선 검색 lookback 캔들 수
+ *  - slopeMaxPctPerCandle: 캔들당 허용되는 최대 % slope. 이를 초과하는
+ *    가파른 line 은 reject (수직선에 가까운 부적절 trendline 차단)
+ */
+export const FIB_TF_PARAMS: Record<
+  FibTimeframe,
+  { swingWindow: number; lookback: number; slopeMaxPctPerCandle: number }
+> = {
+  "1h": { swingWindow: 5, lookback: 120, slopeMaxPctPerCandle: 0.5 },
+  "4h": { swingWindow: 5, lookback: 90, slopeMaxPctPerCandle: 1.0 },
+  "1d": { swingWindow: 7, lookback: 60, slopeMaxPctPerCandle: 2.0 },
+};
 
 // ─── Swing Point Detection ──────────────────────────────────────────
 
@@ -217,33 +246,146 @@ export function getCurrentFibZone(
 // ─── Trendline Detection ────────────────────────────────────────────
 
 /**
+ * 변환점(Inflection Point) 검출.
+ *
+ * 기울기가 바뀌는 지점이 새 추세의 시작이라는 사용자 요구사항을 구현.
+ *  - type="resistance" (highs): 최신부터 거꾸로 스캔하며 연속된 descending highs
+ *    구간을 수집. descending 이 깨지는 지점(이전 high 가 더 낮음 = ascending 였음)
+ *    이 inflection. 그 직전의 가장 높은 high 가 새 downtrend 의 anchor.
+ *  - type="support" (lows): 대칭. 연속된 ascending lows 를 수집, 깨지는 지점이
+ *    inflection. 직전의 가장 낮은 low 가 새 uptrend 의 anchor.
+ *
+ * `swings` 는 chronological order 라고 가정 (index ascending).
+ */
+export function detectInflectionPoint(
+  swings: SwingPoint[],
+  type: "resistance" | "support"
+): {
+  anchorIdx: number;            // swings 배열 내 anchor 의 index
+  trendDirection: "down" | "up";
+  relevantSwings: SwingPoint[]; // anchor ~ 마지막 swing 까지 (chronological)
+} | null {
+  if (swings.length < 2) return null;
+
+  // 가장 최근 swing 부터 역방향으로 스캔
+  let anchorIdx = swings.length - 1;
+
+  if (type === "resistance") {
+    // descending highs 구간 추적: swings[i].price < swings[i-1].price 가 이어지는 동안 계속
+    for (let i = swings.length - 1; i >= 1; i--) {
+      if (swings[i].price < swings[i - 1].price) {
+        // 직전 high 가 더 높음 → descending 진행 중. anchor 는 직전 high.
+        anchorIdx = i - 1;
+      } else {
+        // 직전 high 가 더 낮음 → 그 이전은 ascending 였음. inflection 도달.
+        break;
+      }
+    }
+    const relevantSwings = swings.slice(anchorIdx);
+    if (relevantSwings.length < 2) return null;
+    return { anchorIdx, trendDirection: "down", relevantSwings };
+  }
+
+  // type === "support" — ascending lows
+  for (let i = swings.length - 1; i >= 1; i--) {
+    if (swings[i].price > swings[i - 1].price) {
+      // 직전 low 가 더 낮음 → ascending 진행 중. anchor 는 직전 low.
+      anchorIdx = i - 1;
+    } else {
+      // 직전 low 가 더 높음 → 그 이전은 descending 였음. inflection 도달.
+      break;
+    }
+  }
+  const relevantSwings = swings.slice(anchorIdx);
+  if (relevantSwings.length < 2) return null;
+  return { anchorIdx, trendDirection: "up", relevantSwings };
+}
+
+/**
+ * Linear regression — 주어진 (x, y) 포인트들에서 best-fit 직선의
+ * slope, intercept, R² 를 계산.
+ */
+function linearRegression(
+  points: SwingPoint[]
+): { slope: number; intercept: number; rSquared: number } {
+  const n = points.length;
+  if (n < 2) return { slope: 0, intercept: points[0]?.price ?? 0, rSquared: 0 };
+
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumXX = 0;
+
+  for (const p of points) {
+    sumX += p.index;
+    sumY += p.price;
+    sumXY += p.index * p.price;
+    sumXX += p.index * p.index;
+  }
+
+  const meanX = sumX / n;
+  const meanY = sumY / n;
+  const denom = sumXX - n * meanX * meanX;
+  if (Math.abs(denom) < 1e-9) {
+    return { slope: 0, intercept: meanY, rSquared: 0 };
+  }
+  const slope = (sumXY - n * meanX * meanY) / denom;
+  const intercept = meanY - slope * meanX;
+
+  // R² 계산
+  let ssRes = 0;
+  let ssTot = 0;
+  for (const p of points) {
+    const predicted = slope * p.index + intercept;
+    ssRes += (p.price - predicted) ** 2;
+    ssTot += (p.price - meanY) ** 2;
+  }
+  const rSquared = ssTot < 1e-9 ? 1 : Math.max(0, 1 - ssRes / ssTot);
+  return { slope, intercept, rSquared };
+}
+
+/**
  * 추세 빗각을 자동으로 감지합니다.
- * 지지선: 저점들을 연결
- * 저항선: 고점들을 연결
+ * TF 인식 + inflection point anchored + linear regression best-fit.
+ *
+ * Resistance 1개 (high-high) + Support 1개 (low-low), 총 최대 2개 반환.
  */
 export function detectTrendlines(
   candles: Candle[],
-  swingPoints: SwingPoint[]
+  swingPoints: SwingPoint[],
+  tf: FibTimeframe = "4h"
 ): Trendline[] {
   const trendlines: Trendline[] = [];
+  if (candles.length === 0) return trendlines;
   const lastCandle = candles[candles.length - 1];
+  const params = FIB_TF_PARAMS[tf];
 
-  // 지지선 (저점들 연결)
-  const lows = swingPoints.filter((p) => p.type === "low").sort((a, b) => a.index - b.index);
-  const supportLines = findBestTrendlines(candles, lows, "support");
-  trendlines.push(...supportLines);
+  // 지지선 (저점 연결)
+  const lows = swingPoints
+    .filter((p) => p.type === "low")
+    .sort((a, b) => a.index - b.index);
+  const supportTL = buildTrendlineFromInflection(candles, lows, "support", tf);
+  if (supportTL) trendlines.push(supportTL);
 
-  // 저항선 (고점들 연결)
-  const highs = swingPoints.filter((p) => p.type === "high").sort((a, b) => a.index - b.index);
-  const resistanceLines = findBestTrendlines(candles, highs, "resistance");
-  trendlines.push(...resistanceLines);
+  // 저항선 (고점 연결)
+  const highs = swingPoints
+    .filter((p) => p.type === "high")
+    .sort((a, b) => a.index - b.index);
+  const resistanceTL = buildTrendlineFromInflection(candles, highs, "resistance", tf);
+  if (resistanceTL) trendlines.push(resistanceTL);
 
-  // 현재 가격 계산 및 유효성 검증
+  // 현재 가격 / 유지 기간 / 유효성 계산
   return trendlines.map((tl) => {
     const candlesFromStart = candles.length - 1 - tl.startPoint.index;
     const currentPrice = tl.startPoint.price + tl.slope * candlesFromStart;
     const durationMs = lastCandle.openTime - candles[tl.startPoint.index].openTime;
+    // TF 별 candle interval ms → days 환산
+    const tfMs =
+      tf === "1h" ? 60 * 60 * 1000 : tf === "4h" ? 4 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     const durationDays = durationMs / (1000 * 60 * 60 * 24);
+    // tfMs 는 추후 시각화 확장에 활용 가능 — 현재 미사용
+    void tfMs;
+    void params;
 
     return {
       ...tl,
@@ -255,68 +397,79 @@ export function detectTrendlines(
 }
 
 /**
- * 주어진 스윙 포인트들에서 최적의 추세선을 찾습니다.
+ * 단일 trendline 구축:
+ *  1) detectInflectionPoint() 로 anchor + relevantSwings 추출
+ *  2) lookback 범위 내로 필터
+ *  3) linear regression best-fit
+ *  4) slope sanity check (TF_PARAMS.slopeMaxPctPerCandle 초과 시 reject)
+ *  5) endpoint 보정 + 터치 카운트 계산
  */
-function findBestTrendlines(
+function buildTrendlineFromInflection(
   candles: Candle[],
-  points: SwingPoint[],
-  type: "support" | "resistance"
-): Trendline[] {
-  if (points.length < 2) return [];
+  swings: SwingPoint[],
+  type: "support" | "resistance",
+  tf: FibTimeframe
+): Trendline | null {
+  if (swings.length < 2) return null;
 
-  const results: Trendline[] = [];
+  const params = FIB_TF_PARAMS[tf];
+  const lookbackStart = Math.max(0, candles.length - params.lookback);
 
-  // 최근 포인트들을 우선으로 조합 시도
-  const recentPoints = points.slice(-8); // 최근 8개 포인트
+  // 1) lookback 내 swing 만 사용
+  const recentSwings = swings.filter((s) => s.index >= lookbackStart);
+  if (recentSwings.length < 2) return null;
 
-  for (let i = 0; i < recentPoints.length - 1; i++) {
-    for (let j = i + 1; j < recentPoints.length; j++) {
-      const p1 = recentPoints[i];
-      const p2 = recentPoints[j];
+  // 2) inflection point 검출
+  const inflection = detectInflectionPoint(recentSwings, type);
+  if (!inflection) return null;
+  const { relevantSwings } = inflection;
 
-      if (p2.index - p1.index < 3) continue; // 최소 3캔들 간격
+  // 3) linear regression
+  const { slope, intercept, rSquared } = linearRegression(relevantSwings);
 
-      const slope = (p2.price - p1.price) / (p2.index - p1.index);
-
-      // 지지선은 상승 또는 수평, 저항선은 하락 또는 수평
-      if (type === "support" && slope < -0.01 * p1.price / 100) continue;
-      if (type === "resistance" && slope > 0.01 * p1.price / 100) continue;
-
-      // 터치 카운트 계산
-      let touchCount = 2; // p1, p2는 이미 터치
-      for (let k = p1.index; k <= Math.min(p2.index + 10, candles.length - 1); k++) {
-        if (k === p1.index || k === p2.index) continue;
-        const expectedPrice = p1.price + slope * (k - p1.index);
-        const candle = candles[k];
-        const tolerance = expectedPrice * TRENDLINE_TOLERANCE;
-
-        if (type === "support") {
-          if (Math.abs(candle.low - expectedPrice) <= tolerance) {
-            touchCount++;
-          }
-        } else {
-          if (Math.abs(candle.high - expectedPrice) <= tolerance) {
-            touchCount++;
-          }
-        }
-      }
-
-      results.push({
-        startPoint: { time: p1.time, price: p1.price, index: p1.index },
-        endPoint: { time: p2.time, price: p2.price, index: p2.index },
-        slope,
-        type,
-        touchCount,
-        durationDays: 0,
-        isValid: false,
-        currentPrice: 0,
-      });
-    }
+  // 4) Slope sanity check
+  //    average price 기준으로 캔들당 % slope 가 허용치 이내인지
+  const avgPrice =
+    relevantSwings.reduce((s, p) => s + p.price, 0) / relevantSwings.length;
+  if (avgPrice <= 0) return null;
+  const slopePctPerCandle = Math.abs((slope / avgPrice) * 100);
+  if (slopePctPerCandle > params.slopeMaxPctPerCandle) {
+    return null;
   }
 
-  // 터치 카운트가 가장 높은 것 우선, 최대 2개 반환
-  results.sort((a, b) => b.touchCount - a.touchCount);
-  return results.slice(0, 2);
+  // 5) start/end point: anchor(첫 relevantSwing) → 가장 최근 swing
+  const startSwing = relevantSwings[0];
+  const endSwing = relevantSwings[relevantSwings.length - 1];
+
+  // 5b) 터치 카운트 — start ~ end 사이 캔들 중 line 에 tolerance 이내로 닿는 캔들
+  let touchCount = 0;
+  for (let k = startSwing.index; k <= Math.min(endSwing.index, candles.length - 1); k++) {
+    const expected = slope * k + intercept;
+    if (expected <= 0) continue;
+    const tolerance = expected * TRENDLINE_TOLERANCE;
+    const candle = candles[k];
+    if (type === "support") {
+      if (Math.abs(candle.low - expected) <= tolerance) touchCount++;
+    } else {
+      if (Math.abs(candle.high - expected) <= tolerance) touchCount++;
+    }
+  }
+  // 최소한 endpoint 2개는 touch 로 카운트 (regression 이 swing 통과하지 못해도 의미상 포함)
+  touchCount = Math.max(touchCount, 2);
+
+  return {
+    startPoint: { time: startSwing.time, price: startSwing.price, index: startSwing.index },
+    endPoint: { time: endSwing.time, price: endSwing.price, index: endSwing.index },
+    slope,
+    intercept,
+    type,
+    touchCount,
+    durationDays: 0,
+    isValid: false,
+    currentPrice: 0,
+    rSquared,
+    tf,
+  };
 }
 
 // ─── Signal Generation ──────────────────────────────────────────────
@@ -463,19 +616,25 @@ export function detectTrend(candles: Candle[], period: number = 20): "UP" | "DOW
 
 /**
  * 전체 피보나치 + 빗각 분석을 수행합니다.
+ * tf 별로 swingWindow / lookback / slope sanity 가 분화됩니다.
  */
-export function analyzeFibonacci(candles: Candle[]): FibonacciAnalysis {
-  // 1. 스윙 포인트 찾기
-  const { high: swingHigh, low: swingLow } = findSwingPoints(candles);
+export function analyzeFibonacci(
+  candles: Candle[],
+  tf: FibTimeframe = "4h"
+): FibonacciAnalysis {
+  const params = FIB_TF_PARAMS[tf];
+
+  // 1. 스윙 포인트 찾기 (TF 별 lookback 반영)
+  const { high: swingHigh, low: swingLow } = findSwingPoints(candles, params.lookback);
 
   // 2. 피보나치 레벨 계산
   const fibLevels = calculateFibLevels(swingHigh, swingLow);
 
-  // 3. 로컬 스윙 포인트 (빗각용)
-  const localSwings = findLocalSwingPoints(candles, 3);
+  // 3. 로컬 스윙 포인트 (TF 별 swingWindow 반영)
+  const localSwings = findLocalSwingPoints(candles, params.swingWindow);
 
-  // 4. 빗각 감지
-  const trendlines = detectTrendlines(candles, localSwings);
+  // 4. 빗각 감지 (inflection-point anchored, TF-aware)
+  const trendlines = detectTrendlines(candles, localSwings, tf);
 
   // 5. 추세 판별
   const trend = detectTrend(candles);
@@ -497,5 +656,6 @@ export function analyzeFibonacci(candles: Candle[]): FibonacciAnalysis {
     signal,
     trend,
     currentZone,
+    tf,
   };
 }

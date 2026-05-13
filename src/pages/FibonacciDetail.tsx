@@ -27,7 +27,7 @@ export default function FibonacciDetail() {
   const initialTf = (urlParams.get("tf") as TimeframeValue) || "1d";
   const [timeframe, setTimeframe] = useState<TimeframeValue>(initialTf);
 
-  const { analysis, candles, isLoading, error, refetch } = useFibonacciDetail(
+  const { analysis, candles, isLoading, error, refetch, fibTf } = useFibonacciDetail(
     symbol,
     timeframe
   );
@@ -195,7 +195,7 @@ export default function FibonacciDetail() {
       {/* Candlestick Chart with Fibonacci + Trendlines */}
       <HudPanel
         title="Fibonacci Chart"
-        subtitle={`${symbol} · ${tfLabel} · ${candles.length} candles`}
+        subtitle={`${symbol} · ${tfLabel} (TF: ${fibTf}) · ${candles.length} candles · ${analysis.fibLevels.length} fib levels · ${analysis.trendlines.filter((t) => t.isValid).length} trendlines`}
       >
         <CandleChartLW
           candles={candles}
