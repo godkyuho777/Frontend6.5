@@ -347,11 +347,11 @@ export default function Vwap() {
                           // 현 클릭은 하단 detail 만 갱신, 이동은 SHIFT 조합 등으로 이전.
                         }}
                         onDoubleClick={() =>
-                          // VWAP Strategy 의 전용 deep-dive 페이지로 이동.
-                          // 이전엔 /coin/:symbol (BBDX detail) 로 가서 사용자가
-                          // VWAP 차트를 못 봤음. /vwap/:symbol 로 변경 — 캔들 +
-                          // VWAP/EMA9 + Volume histogram 전용 페이지.
-                          setLocation(`/vwap/${coin.symbol}?tf=${selectedInterval}`)
+                          // 통일된 6-탭 CoinDetail 로 이동 (사용자 요청, 2026-05-13).
+                          // VWAP 차트 + Volume Profile + std-dev 밴드는
+                          // /coin/:symbol?tab=chart 의 ChartZone 안에서 시각화 예정.
+                          // VWAP 전용 데이터는 useVwapDetail hook 이 CoinSignalTab 에서 fetch.
+                          setLocation(`/coin/${coin.symbol}?tab=signal&tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",

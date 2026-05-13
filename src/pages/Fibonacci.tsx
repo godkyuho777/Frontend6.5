@@ -352,7 +352,10 @@ export default function Fibonacci() {
                       <tr
                         key={coin.symbol}
                         onClick={() =>
-                          setLocation(`/fibonacci/${coin.symbol}?tf=${selectedInterval}`)
+                          // 통일된 6-탭 CoinDetail 로 이동.
+                          // Fib levels + 추세선은 /coin/:symbol?tab=chart 에서
+                          // 시각화 (ChartZone 안에 Fib overlay 포함).
+                          setLocation(`/coin/${coin.symbol}?tab=signal&tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
