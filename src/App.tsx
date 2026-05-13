@@ -9,10 +9,10 @@ import DashboardLayout from "./components/DashboardLayout";
 import LiteLayout from "./components/lite/LiteLayout";
 import Home from "./pages/Home";
 import FibonacciDetail from "./pages/FibonacciDetail";
-import Vwap from "./pages/Vwap";
 import VwapDetail from "./pages/VwapDetail";
 // Signal Scanner — TRACKER_TAB_STANDARD §1 (5-탭) 적용 wrapper.
 import FibonacciTrackerPage from "./pages/signals/fibonacci";
+import VwapTrackerPage from "./pages/signals/vwap";
 import CoinDetail from "./pages/CoinDetail";
 import Positions from "./pages/Positions";
 import SignalHistory from "./pages/SignalHistory";
@@ -87,7 +87,9 @@ function ProShell() {
             Fibonacci.tsx 는 SignalTab 안에 직접 import 되어 재사용됨. */}
         <Route path={"/fibonacci"} component={FibonacciTrackerPage} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
-        <Route path={"/vwap"} component={Vwap} />
+        {/* /vwap 는 5-탭 wrapper (VwapTrackerPage). 기존 Vwap.tsx 는 SignalTab
+            안에 직접 import 되어 재사용됨. */}
+        <Route path={"/vwap"} component={VwapTrackerPage} />
         <Route path={"/vwap/:symbol"} component={VwapDetail} />
         {/* /strategies/* deprecated (2026-05-11): backend modifier 통합/제거.
             FundingExtreme / MarketBreadth 는 Macro Hub 로 redirect (외부 링크 호환). */}
