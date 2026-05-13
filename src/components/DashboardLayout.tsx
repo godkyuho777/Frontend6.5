@@ -72,6 +72,8 @@ const menuItems: MenuItem[] = [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
+      // EMA + ADX 정배열 — Wave Tracker 의 Trend Analysis 와 구분되는 standalone 전략 (2026-05-11).
+      { icon: TrendingUp, label: "EMA + ADX 정배열", path: "/trackers/ema-adx-trend" },
       // 전인구 시그널 — 이전 "Trackers" 그룹 단독 children. 본 그룹으로 이동.
       {
         icon: Megaphone,
