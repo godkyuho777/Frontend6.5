@@ -1,84 +1,43 @@
 /**
- * CoinDetail Workstation — TradingView-style 3-zone layout.
+ * CoinDetail — 코인 상세 페이지 (6-탭 TrackerTabs 구조).
  *
- *   ┌─────────────────────────────────────────────────┐
- *   │ Header (sticky, h-14)                            │
- *   ├──────────────────────────┬──────────────────────┤
- *   │ ChartZone (col-span 8)   │ SignalCard           │
- *   │                          │ CoinInfoCard         │
- *   │                          │ UpcomingEvents       │
- *   ├──────────────────────────┴──────────────────────┤
- *   │ Tab Strip + 선택된 탭                             │
- *   └─────────────────────────────────────────────────┘
+ * 명세: TRACKER_TAB_STANDARD §1 (TrackerTabs 가로 탭 + URL ?tab=... 동기화).
+ * 본 페이지는 STANDARD_TABS 의 5 탭 + "코인 정보" 1 탭 = 총 6 탭.
  *
- * 모바일 (md:↓) — 단일 컬럼, Tab Strip sticky bottom.
+ * 탭 구조:
+ *   1. info     — 코인 정보 (CoinMarketCap 스타일, NEW)
+ *   2. criteria — 매매기준 (BBDX 정적 룰)
+ *   3. signal   — 실시간 신호 (LONG/SHORT SignalCard + 7차원 breakdown)
+ *   4. chart    — 차트 (BB + RSI + ADX/DI, full-size)
+ *   5. backtest — 백테스트 (Rolling 승률 + 1년 백테스트)
+ *   6. history  — 히스토리 (거래 기록 + 한국어 요약 + AI 분석)
  *
- * 클라이언트 사이드 BBDX (useCoinSignal) + 백엔드 라우트 미존재 시 friendly fallback.
+ * URL 호환 — 기존 `/coin/:symbol` 경로 그대로 유지. `?tab=info` 등으로 진입 가능.
  */
 
-import { useParams, useSearch } from "wouter";
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { TimeframeValue } from "@shared/types";
-import { Header } from "./Header";
-import { ChartZone } from "./ChartZone";
-import { SignalCard } from "./panels/SignalCard";
-import { ShortSignalCard } from "./panels/ShortSignalCard";
-import { CoinInfoCard } from "./panels/CoinInfoCard";
-import { UpcomingEvents } from "./panels/UpcomingEvents";
-import { useBbdxV66Flags } from "@/hooks/useBbdxV66Flags";
-import { useBbdxV66Current } from "@/hooks/useBbdxV66Current";
-import { BacktestTab } from "./tabs/BacktestTab";
-import { WinRateTab } from "./tabs/WinRateTab";
-import { DimensionBreakdown } from "./tabs/DimensionBreakdown";
-import { TradeHistoryTab } from "./tabs/TradeHistoryTab";
-import { LiteModeTab } from "./tabs/LiteModeTab";
-import { AIInsightTab } from "./tabs/AIInsightTab";
-import { useCoinSignal } from "./hooks/useCoinSignal";
-import { useCoinMeta } from "./hooks/useCoinMeta";
-import { useUpcomingEvents } from "./hooks/useUpcomingEvents";
-import { useVwapDetail } from "./hooks/useVwapDetail";
-import { useTrendAnalysis } from "./hooks/useTrendAnalysis";
+import { BarChart3, Bell, ClipboardList, FlaskConical, History, Info } from "lucide-react";
+import { useParams } from "wouter";
+import { TrackerTabs, type TrackerTab } from "@/components/trackers/TrackerTabs";
+import { CoinInfoTab } from "./tabs/v2/CoinInfoTab";
+import { CoinCriteriaTab } from "./tabs/v2/CoinCriteriaTab";
+import { CoinSignalTab } from "./tabs/v2/CoinSignalTab";
+import { CoinChartTab } from "./tabs/v2/CoinChartTab";
+import { CoinBacktestTab } from "./tabs/v2/CoinBacktestTab";
+import { CoinHistoryTab } from "./tabs/v2/CoinHistoryTab";
 
-export default function CoinDetailWorkstation() {
+// 6 탭 정의 (STANDARD_TABS 확장 — "info" 탭이 맨 앞에 추가됨).
+const COIN_DETAIL_TABS: ReadonlyArray<TrackerTab> = [
+  { id: "info", label: "코인 정보", icon: Info },
+  { id: "criteria", label: "매매기준", icon: ClipboardList },
+  { id: "signal", label: "실시간 신호", icon: Bell },
+  { id: "chart", label: "차트", icon: BarChart3 },
+  { id: "backtest", label: "백테스트", icon: FlaskConical },
+  { id: "history", label: "히스토리", icon: History },
+];
+
+export default function CoinDetailPage() {
   const params = useParams<{ symbol: string }>();
   const symbol = params.symbol ?? "";
-  const searchString = useSearch();
-  const urlParams = new URLSearchParams(searchString);
-  const initialTf = (urlParams.get("tf") as TimeframeValue) || "4h";
-  const [interval, setInterval] = useState<TimeframeValue>(initialTf);
-  const [activeTab, setActiveTab] = useState("backtest");
-
-  const { signal } = useCoinSignal(symbol, interval);
-  const { meta } = useCoinMeta(symbol);
-  const { events, isAvailable: eventsAvailable } = useUpcomingEvents(symbol);
-
-  // v6.5 — vwap.detail 라우트로 BBDX multiplier + Volume Profile + Multi-TF 가져옴
-  const vwapTf: "1h" | "4h" | "1d" =
-    interval === "1h" || interval === "4h" || interval === "1d" ? interval : "4h";
-  const { detail: vwapDetail } = useVwapDetail(symbol, vwapTf);
-
-  // v6.5+ — trend.analyze 라우트로 Wave Alignment + waveMult (BBDX multiplier)
-  // 가져옴. SignalCard 헤더에 chip 으로 표시. 헌장 규칙 3 — modifier-only.
-  const { data: trendData } = useTrendAnalysis(symbol);
-
-  // v6.6 — feature flag + LONG/SHORT 양방향 평가 (백엔드)
-  const { isV66, shortEnabled } = useBbdxV66Flags();
-  const v66Tf: "1h" | "4h" | "1d" =
-    interval === "1h" || interval === "4h" || interval === "1d"
-      ? interval
-      : "4h";
-  const { short: v66Short, meta: v66Meta } = useBbdxV66Current(
-    symbol,
-    v66Tf,
-    { enabled: isV66 }
-  );
-  // 충돌 — meta.bothTriggered 가 true 거나 conflictResolution === "both_blocked".
-  // 백엔드가 v6.5 fallback 응답을 보내면 conflictResolution 필드 없음 (note 만 존재).
-  const isConflict =
-    !!v66Meta &&
-    v66Meta.bothTriggered === true &&
-    !("note" in v66Meta);
 
   if (!symbol) {
     return (
@@ -88,112 +47,33 @@ export default function CoinDetailWorkstation() {
     );
   }
 
+  const baseSymbol = symbol.replace(/USDT$/, "");
+
   return (
-    <div className="space-y-4">
-      <Header symbol={symbol} interval={interval} onIntervalChange={setInterval} />
-
-      {/* Zone 1+2: Chart + Right Panels */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Chart — col-span 8 on md+ */}
-        <div className="md:col-span-8 order-2 md:order-1">
-          <ChartZone symbol={symbol} interval={interval} />
-        </div>
-
-        {/* Right side panels — col-span 4 on md+, stacked on mobile */}
-        <div className="md:col-span-4 order-1 md:order-2 space-y-3">
-          <SignalCard
-            signal={signal}
-            vwapMult={vwapDetail?.vwapMult}
-            waveMult={trendData?.waveMult}
-            symbol={symbol}
-            tf={v66Tf}
-            showWeightBadge={isV66}
-            conflict={isConflict}
-          />
-          {isV66 && shortEnabled ? (
-            <ShortSignalCard
-              symbol={symbol}
-              tf={v66Tf}
-              short={v66Short}
-              conflict={isConflict}
-            />
-          ) : (
-            <ShortSignalCard
-              symbol={symbol}
-              tf={v66Tf}
-              short={null}
-              inactiveNote={
-                !isV66
-                  ? "BBDX v6.6 미활성 (BBDX_VERSION=v6.5). 백엔드 env BBDX_VERSION=v6.6 + ENABLE_SHORT_SIGNALS=1 설정 시 SHORT 시그널 표시."
-                  : "SHORT 시그널 비활성 (ENABLE_SHORT_SIGNALS=0). 백엔드 env 에서 활성 가능."
-              }
-            />
-          )}
-          <CoinInfoCard meta={meta} />
-          <UpcomingEvents events={events} isAvailable={eventsAvailable} />
-        </div>
-      </div>
-
-      {/* Zone 3: Tab Strip */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-card/50 border border-border/20 h-9 flex-wrap md:flex-nowrap md:sticky md:bottom-0 md:z-30 md:bg-background/95 md:backdrop-blur">
-          <TabsTrigger
-            value="backtest"
-            className="font-mono text-[11px] h-7 data-[state=active]:text-neon-pink"
-          >
-            BACKTEST
-          </TabsTrigger>
-          <TabsTrigger
-            value="winrate"
-            className="font-mono text-[11px] h-7 data-[state=active]:text-neon-cyan"
-          >
-            WIN RATE
-          </TabsTrigger>
-          <TabsTrigger
-            value="dimensions"
-            className="font-mono text-[11px] h-7 data-[state=active]:text-neon-yellow"
-          >
-            7-DIM
-          </TabsTrigger>
-          <TabsTrigger
-            value="trades"
-            className="font-mono text-[11px] h-7 data-[state=active]:text-neon-green"
-          >
-            TRADES
-          </TabsTrigger>
-          <TabsTrigger
-            value="lite"
-            className="font-mono text-[11px] h-7 data-[state=active]:text-neon-pink"
-          >
-            LITE
-          </TabsTrigger>
-          <TabsTrigger
-            value="ai"
-            className="font-mono text-[11px] h-7 data-[state=active]:text-neon-cyan"
-          >
-            AI
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="backtest" className="mt-3 min-h-96">
-          <BacktestTab symbol={symbol} />
-        </TabsContent>
-        <TabsContent value="winrate" className="mt-3 min-h-96">
-          <WinRateTab symbol={symbol} tf={interval} />
-        </TabsContent>
-        <TabsContent value="dimensions" className="mt-3 min-h-96">
-          <DimensionBreakdown signal={signal} vwapDetail={vwapDetail} />
-        </TabsContent>
-        <TabsContent value="trades" className="mt-3 min-h-96">
-          <TradeHistoryTab symbol={symbol} />
-        </TabsContent>
-        <TabsContent value="lite" className="mt-3 min-h-96">
-          <LiteModeTab symbol={symbol} tf={interval} />
-        </TabsContent>
-        <TabsContent value="ai" className="mt-3 min-h-96">
-          <AIInsightTab symbol={symbol} signal={signal} />
-        </TabsContent>
-      </Tabs>
-    </div>
+    <TrackerTabs
+      trackerName={`${baseSymbol} / USDT`}
+      trackerSubtitle="코인 상세 정보 + Tradelab BBDX 시그널"
+      defaultTab="signal"
+      tabs={COIN_DETAIL_TABS}
+    >
+      {(activeTab) => {
+        switch (activeTab) {
+          case "info":
+            return <CoinInfoTab symbol={symbol} />;
+          case "criteria":
+            return <CoinCriteriaTab symbol={symbol} />;
+          case "signal":
+            return <CoinSignalTab symbol={symbol} />;
+          case "chart":
+            return <CoinChartTab symbol={symbol} />;
+          case "backtest":
+            return <CoinBacktestTab symbol={symbol} />;
+          case "history":
+            return <CoinHistoryTab symbol={symbol} />;
+          default:
+            return null;
+        }
+      }}
+    </TrackerTabs>
   );
 }
