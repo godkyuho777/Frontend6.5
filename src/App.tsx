@@ -10,9 +10,9 @@ import LiteLayout from "./components/lite/LiteLayout";
 import Home from "./pages/Home";
 import FibonacciDetail from "./pages/FibonacciDetail";
 import VwapDetail from "./pages/VwapDetail";
-// Signal Scanner — TRACKER_TAB_STANDARD §1 (5-탭) 적용 wrapper.
-import FibonacciTrackerPage from "./pages/signals/fibonacci";
-import VwapTrackerPage from "./pages/signals/vwap";
+// Signal Scanner — 코인 리스트 스캐너 (5-탭 X). 6-탭 구조는 CoinDetail 에서만.
+import Fibonacci from "./pages/Fibonacci";
+import Vwap from "./pages/Vwap";
 import CoinDetail from "./pages/CoinDetail";
 import Positions from "./pages/Positions";
 import SignalHistory from "./pages/SignalHistory";
@@ -36,6 +36,7 @@ import MacroDxyVix from "./pages/macro/MacroDxyVix";
 import MacroRealRate from "./pages/macro/MacroRealRate";
 import JeonInGuTrackerPage from "./pages/trackers/jeon-in-gu";
 import EmaAdxTrendTrackerPage from "./pages/trackers/ema-adx-trend";
+import EmaAdxTrendDetailPage from "./pages/trackers/ema-adx-trend/Detail";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -83,14 +84,12 @@ function ProShell() {
     <DashboardLayout>
       <Switch>
         <Route path={"/"} component={Home} />
-        {/* Signal Scanner sub-pages — 원위치 (IA 정정, /strategies/* 직접 마운트).
-            /fibonacci 는 5-탭 wrapper (FibonacciTrackerPage) 로 라우팅. 기존
-            Fibonacci.tsx 는 SignalTab 안에 직접 import 되어 재사용됨. */}
-        <Route path={"/fibonacci"} component={FibonacciTrackerPage} />
+        {/* Signal Scanner sub-pages — Fibonacci / VWAP 트래커 = 코인 리스트
+            스캐너 (5-탭 wrapper revert, 코인 행 클릭 시 CoinDetail 의 6-탭
+            구조로 이동). */}
+        <Route path={"/fibonacci"} component={Fibonacci} />
         <Route path={"/fibonacci/:symbol"} component={FibonacciDetail} />
-        {/* /vwap 는 5-탭 wrapper (VwapTrackerPage). 기존 Vwap.tsx 는 SignalTab
-            안에 직접 import 되어 재사용됨. */}
-        <Route path={"/vwap"} component={VwapTrackerPage} />
+        <Route path={"/vwap"} component={Vwap} />
         <Route path={"/vwap/:symbol"} component={VwapDetail} />
         {/* /strategies/* deprecated (2026-05-11): backend modifier 통합/제거.
             FundingExtreme / MarketBreadth 는 Macro Hub 로 redirect (외부 링크 호환). */}
@@ -122,6 +121,7 @@ function ProShell() {
         {/* Trackers — TRACKER_TAB_STANDARD 적용 페이지들 (5 탭 통일). */}
         <Route path={"/trackers/jeon-in-gu"} component={JeonInGuTrackerPage} />
         <Route path={"/trackers/ema-adx-trend"} component={EmaAdxTrendTrackerPage} />
+        <Route path={"/trackers/ema-adx-trend/:symbol"} component={EmaAdxTrendDetailPage} />
         <Route path={"/coin/:symbol"} component={CoinDetail} />
         <Route path={"/positions"} component={Positions} />
         <Route path={"/history"} component={SignalHistory} />
