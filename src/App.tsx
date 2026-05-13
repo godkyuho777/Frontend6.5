@@ -33,6 +33,7 @@ import MacroYieldCurve from "./pages/macro/MacroYieldCurve";
 import MacroWalcl from "./pages/macro/MacroWalcl";
 import MacroDxyVix from "./pages/macro/MacroDxyVix";
 import MacroRealRate from "./pages/macro/MacroRealRate";
+import JeonInGuTrackerPage from "./pages/trackers/jeon-in-gu";
 import LiteDashboard from "./pages/lite/Dashboard";
 import LiteCoinDetail from "./pages/lite/CoinDetail";
 import LitePortfolio from "./pages/lite/Portfolio";
@@ -112,6 +113,8 @@ function ProShell() {
           <Redirect to="/wave/sentiment" />
         </Route>
         <Route path={"/tech-tracker"} component={TechTracker} />
+        {/* Trackers — TRACKER_TAB_STANDARD 적용 페이지들 (5 탭 통일). */}
+        <Route path={"/trackers/jeon-in-gu"} component={JeonInGuTrackerPage} />
         <Route path={"/coin/:symbol"} component={CoinDetail} />
         <Route path={"/positions"} component={Positions} />
         <Route path={"/history"} component={SignalHistory} />
