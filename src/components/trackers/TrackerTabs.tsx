@@ -5,9 +5,14 @@
  * 가로 스크롤). 본 프로젝트는 wouter 라우터를 사용하므로 명세의
  * next/router 코드는 useLocation + useSearch 로 치환.
  *
- * 사용 예시:
+ * 사용 예시 (STANDARD_TABS, 5 탭):
  *   <TrackerTabs trackerName="전인구 시그널" defaultTab="signal">
  *     {(activeTab) => activeTab === "criteria" ? <CriteriaTab /> : ...}
+ *   </TrackerTabs>
+ *
+ * 사용 예시 (custom tabs, 6 탭 CoinDetail 등):
+ *   <TrackerTabs trackerName="BTC / USDT" tabs={COIN_DETAIL_TABS}>
+ *     {(activeTab) => activeTab === "info" ? <InfoTab /> : ...}
  *   </TrackerTabs>
  *
  * 5 탭 표준 (id 순서):
@@ -25,7 +30,7 @@ import { useLocation, useSearch } from "wouter";
 import { cn } from "@/lib/utils";
 
 export interface TrackerTab {
-  id: TrackerTabId;
+  id: string;
   label: string;
   icon: LucideIcon;
   badge?: string | number;
@@ -45,51 +50,61 @@ export const STANDARD_TABS = [
 
 export type TrackerTabId = (typeof STANDARD_TABS)[number]["id"];
 
-const VALID_TAB_IDS = STANDARD_TABS.map((t) => t.id) as readonly TrackerTabId[];
-
-function isValidTabId(value: string | null | undefined): value is TrackerTabId {
-  return value != null && (VALID_TAB_IDS as readonly string[]).includes(value);
-}
-
 interface TrackerTabsProps {
   trackerName: string;
   trackerSubtitle?: string;
+  /** 탭 정의 배열. 미지정 시 STANDARD_TABS (5 탭). CoinDetail 등은 6 탭 custom 사용. */
   tabs?: ReadonlyArray<TrackerTab>;
-  defaultTab?: TrackerTabId;
-  children: (activeTab: TrackerTabId) => React.ReactNode;
+  /** 기본 활성 탭 id. URL `?tab=...` 우선. */
+  defaultTab?: string;
+  children: (activeTab: string) => React.ReactNode;
   /** 헤더 우측 슬롯 (예: 실시간 상태 인디케이터). */
   headerRight?: React.ReactNode;
 }
 
 /**
- * TrackerTabs — 트래커 공통 5 탭 wrapper.
+ * TrackerTabs — 트래커 공통 탭 wrapper (default 5 탭, custom tabs 로 6+ 가능).
  * URL `?tab=criteria` 로 동기화하여 탭 별 공유/즐겨찾기 가능.
+ *
+ * 타입 안전성 — children 의 activeTab 은 string 으로 widening 되어 있음.
+ * 호출자가 STANDARD_TABS 사용 시 `case "criteria"` 등 리터럴 비교 가능 (TS 가
+ * narrowing 처리). custom tabs 사용 시 호출자가 TId union 으로 좁히면 됨.
  */
 export function TrackerTabs({
   trackerName,
   trackerSubtitle,
-  tabs = STANDARD_TABS,
-  defaultTab = "signal",
+  tabs,
+  defaultTab,
   children,
   headerRight,
 }: TrackerTabsProps) {
   const [location, setLocation] = useLocation();
   const searchString = useSearch();
 
-  // URL `?tab=...` 우선, 없으면 defaultTab.
-  const initialActive = useMemo<TrackerTabId>(() => {
+  // 기본값 처리 — tabs 미지정 시 STANDARD_TABS (5 탭).
+  const resolvedTabs: ReadonlyArray<TrackerTab> = tabs ?? STANDARD_TABS;
+  const validIds = useMemo(() => resolvedTabs.map((t) => t.id), [resolvedTabs]);
+  const resolvedDefault: string = defaultTab ?? resolvedTabs[0]?.id ?? "signal";
+
+  // URL `?tab=...` 우선, 없으면 defaultTab. 유효성 — resolvedTabs 안의 id 만 허용.
+  const isValid = (value: string | null | undefined): value is string => {
+    return value != null && validIds.includes(value);
+  };
+
+  const initialActive = useMemo<string>(() => {
     const params = new URLSearchParams(searchString);
     const fromUrl = params.get("tab");
-    return isValidTabId(fromUrl) ? fromUrl : defaultTab;
-  }, [searchString, defaultTab]);
+    return isValid(fromUrl) ? fromUrl : resolvedDefault;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchString, resolvedDefault, validIds]);
 
-  const [active, setActive] = useState<TrackerTabId>(initialActive);
+  const [active, setActive] = useState<string>(initialActive);
 
   // URL 변경 시 (뒤로가기 등) 내부 state 동기화.
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const fromUrl = params.get("tab");
-    if (isValidTabId(fromUrl) && fromUrl !== active) {
+    if (isValid(fromUrl) && fromUrl !== active) {
       setActive(fromUrl);
     }
     // active 가 변경되는 useEffect 에서 URL push 하므로 dep 에 active 포함 X.
@@ -97,7 +112,7 @@ export function TrackerTabs({
   }, [searchString]);
 
   // 탭 클릭 시 URL 갱신 (location 은 path 부분만, search 만 교체).
-  const handleSelect = (id: TrackerTabId) => {
+  const handleSelect = (id: string) => {
     setActive(id);
     const params = new URLSearchParams(searchString);
     params.set("tab", id);
@@ -124,7 +139,7 @@ export function TrackerTabs({
       {/* Tabs header — 모바일 가로 스크롤 */}
       <div className="border-b border-border/40 overflow-x-auto scrollbar-thin">
         <div className="flex items-center gap-1 min-w-fit px-1">
-          {tabs.map((tab) => {
+          {resolvedTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
             return (
