@@ -532,7 +532,7 @@ export default function Home() {
                     return (
                       <tr
                         key={coin.symbol}
-                        onClick={() => setLocation(`/coin/${coin.symbol}?tf=${selectedInterval}`)}
+                        onClick={() => setLocation(`/coin/${coin.symbol}?tab=signal&tracker=bbdx&tf=${selectedInterval}`)}
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
                           isHighlighted

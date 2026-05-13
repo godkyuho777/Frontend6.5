@@ -353,9 +353,9 @@ export default function Fibonacci() {
                         key={coin.symbol}
                         onClick={() =>
                           // 통일된 6-탭 CoinDetail 로 이동.
-                          // Fib levels + 추세선은 /coin/:symbol?tab=chart 에서
-                          // 시각화 (ChartZone 안에 Fib overlay 포함).
-                          setLocation(`/coin/${coin.symbol}?tab=signal&tf=${selectedInterval}`)
+                          // tracker=fibonacci 로 CoinDetail 의 매매기준/신호/차트/백테스트가
+                          // Fibonacci 룰 기반으로 렌더링됨.
+                          setLocation(`/coin/${coin.symbol}?tab=signal&tracker=fibonacci&tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",

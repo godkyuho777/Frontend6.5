@@ -348,10 +348,8 @@ export default function Vwap() {
                         }}
                         onDoubleClick={() =>
                           // 통일된 6-탭 CoinDetail 로 이동 (사용자 요청, 2026-05-13).
-                          // VWAP 차트 + Volume Profile + std-dev 밴드는
-                          // /coin/:symbol?tab=chart 의 ChartZone 안에서 시각화 예정.
-                          // VWAP 전용 데이터는 useVwapDetail hook 이 CoinSignalTab 에서 fetch.
-                          setLocation(`/coin/${coin.symbol}?tab=signal&tf=${selectedInterval}`)
+                          // tracker=vwap 로 매매기준/신호/차트/백테스트가 VWAP 기반 렌더링.
+                          setLocation(`/coin/${coin.symbol}?tab=signal&tracker=vwap&tf=${selectedInterval}`)
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
