@@ -36,7 +36,9 @@ import {
   History,
   LogIn,
   LogOut,
+  Megaphone,
   PanelLeft,
+  Radio,
   Ruler,
   Settings2,
   Sparkles,
@@ -97,6 +99,20 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },
+  // Trackers — TRACKER_TAB_STANDARD 적용 (5 탭 통일).
+  // 본 그룹의 모든 페이지가 같은 5 탭 구조 (criteria/signal/chart/backtest/history).
+  {
+    icon: Radio,
+    label: "Trackers",
+    path: "/trackers/jeon-in-gu",
+    children: [
+      {
+        icon: Megaphone,
+        label: "전인구 시그널 (Beta)",
+        path: "/trackers/jeon-in-gu",
+      },
+    ],
+  },
   { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
   { icon: Database, label: "Onchain Data", path: "/onchain" },
   { icon: Sparkles, label: "Lite Mode (일반인용)", path: "/lite" },
