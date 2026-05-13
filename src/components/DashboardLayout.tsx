@@ -38,7 +38,6 @@ import {
   LogOut,
   Megaphone,
   PanelLeft,
-  Radio,
   Ruler,
   Settings2,
   Sparkles,
@@ -61,9 +60,9 @@ type MenuItem = {
   children?: MenuChild[];
 };
 
-// IA 정정 (2026-05-12) — Tracker Hub 폐기, Signal Scanner / Wave Tracker
-// 원래 children 복원, Macro Liquidity Tracker 단일 신규 그룹 추가.
-// 자세한 사유: IA_CORRECTION.md §2.
+// IA 정정 (2026-05-13) — Signal Scanner 그룹에 전인구 시그널 (Beta) 통합.
+// "Trackers" 그룹 제거 (children=1 → Signal Scanner 그룹 끝으로 통합).
+// 모든 Signal Scanner 트래커는 TRACKER_TAB_STANDARD §1 (5 탭) 적용 대상.
 const menuItems: MenuItem[] = [
   {
     icon: Activity,
@@ -73,6 +72,12 @@ const menuItems: MenuItem[] = [
       { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
       { icon: Ruler, label: "Fibonacci & Trendline", path: "/fibonacci" },
       { icon: TrendingUp, label: "VWAP Strategy", path: "/vwap" },
+      // 전인구 시그널 — 이전 "Trackers" 그룹 단독 children. 본 그룹으로 이동.
+      {
+        icon: Megaphone,
+        label: "전인구 시그널 (Beta)",
+        path: "/trackers/jeon-in-gu",
+      },
     ],
   },
   {
@@ -99,20 +104,6 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: BarChart3, label: "Tech Tracker (Pro)", path: "/tech-tracker" },
-  // Trackers — TRACKER_TAB_STANDARD 적용 (5 탭 통일).
-  // 본 그룹의 모든 페이지가 같은 5 탭 구조 (criteria/signal/chart/backtest/history).
-  {
-    icon: Radio,
-    label: "Trackers",
-    path: "/trackers/jeon-in-gu",
-    children: [
-      {
-        icon: Megaphone,
-        label: "전인구 시그널 (Beta)",
-        path: "/trackers/jeon-in-gu",
-      },
-    ],
-  },
   { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
   { icon: Database, label: "Onchain Data", path: "/onchain" },
   { icon: Sparkles, label: "Lite Mode (일반인용)", path: "/lite" },
