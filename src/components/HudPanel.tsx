@@ -17,48 +17,22 @@ export function HudPanel({
   headerRight,
   variant = "default",
 }: HudPanelProps) {
-  const borderColor =
-    variant === "highlight"
-      ? "border-neon-cyan/40"
-      : variant === "danger"
-        ? "border-neon-red/40"
-        : "border-border/50";
-
-  const cornerColor =
-    variant === "highlight"
-      ? "bg-neon-cyan"
-      : variant === "danger"
-        ? "bg-neon-red"
-        : "bg-neon-pink";
-
   return (
     <div
       className={cn(
-        "relative bg-card/80 backdrop-blur-sm border rounded-sm overflow-hidden",
-        borderColor,
+        "relative overflow-hidden rounded-lg bg-card",
         className
       )}
     >
-      {/* Corner brackets */}
-      <div className={cn("absolute top-0 left-0 w-3 h-[2px]", cornerColor)} />
-      <div className={cn("absolute top-0 left-0 w-[2px] h-3", cornerColor)} />
-      <div className={cn("absolute top-0 right-0 w-3 h-[2px]", cornerColor)} />
-      <div className={cn("absolute top-0 right-0 w-[2px] h-3", cornerColor)} />
-      <div className={cn("absolute bottom-0 left-0 w-3 h-[2px]", cornerColor)} />
-      <div className={cn("absolute bottom-0 left-0 w-[2px] h-3", cornerColor)} />
-      <div className={cn("absolute bottom-0 right-0 w-3 h-[2px]", cornerColor)} />
-      <div className={cn("absolute bottom-0 right-0 w-[2px] h-3", cornerColor)} />
-
       {title && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+        <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className={cn("w-1.5 h-1.5 rounded-full", cornerColor)} />
             <div>
-              <h3 className="font-display text-xs font-bold tracking-wider uppercase text-foreground">
+              <h3 className="text-xl font-bold tracking-tight text-foreground">
                 {title}
               </h3>
               {subtitle && (
-                <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                <p className="mt-1 font-sans text-xs text-muted-foreground">
                   {subtitle}
                 </p>
               )}
@@ -68,7 +42,7 @@ export function HudPanel({
         </div>
       )}
 
-      <div className="p-4">{children}</div>
+      <div className="p-5">{children}</div>
     </div>
   );
 }
@@ -89,29 +63,29 @@ export function StatCard({
   variant = "default",
 }: StatCardProps) {
   return (
-    <div className="hud-frame p-3">
-      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+    <div className="rounded-lg bg-card p-4">
+      <div className="mb-2 text-[14px] font-medium tracking-[0.06em] text-muted-foreground">
         {label}
       </div>
       <div className="flex items-baseline gap-1">
         <span
           className={cn(
-            "font-display text-xl font-bold",
+            "tl-market-number text-2xl leading-none",
             variant === "positive" && "text-neon-green",
             variant === "negative" && "text-neon-red",
-            variant === "default" && "text-neon-cyan"
+            variant === "default" && "text-foreground"
           )}
         >
           {value}
         </span>
         {unit && (
-          <span className="font-mono text-xs text-muted-foreground">{unit}</span>
+          <span className="font-mono text-[14px] text-muted-foreground">{unit}</span>
         )}
       </div>
       {change !== undefined && (
         <div
           className={cn(
-            "font-mono text-xs mt-1",
+            "mt-2 font-sans text-[14px] font-bold",
             change >= 0 ? "text-neon-green" : "text-neon-red"
           )}
         >

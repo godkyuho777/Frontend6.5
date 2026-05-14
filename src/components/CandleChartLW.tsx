@@ -354,39 +354,39 @@ export function CandleChartLW({
             <>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 bg-[#FFD700]" />
-                <span className="font-mono text-[10px] text-muted-foreground">0.618 Golden</span>
+                <span className="font-sans text-[10px] text-muted-foreground">0.618 Golden</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 bg-[#ff6b6b]" />
-                <span className="font-mono text-[10px] text-muted-foreground">0.382</span>
+                <span className="font-sans text-[10px] text-muted-foreground">0.382</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5" style={{ borderTop: "1px dashed #ff0066" }} />
-                <span className="font-mono text-[10px] text-muted-foreground">High/Low</span>
+                <span className="font-sans text-[10px] text-muted-foreground">High/Low</span>
               </div>
             </>
           )}
           {bbSeries && (
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-0.5" style={{ borderTop: "1px dashed rgb(180,180,255)" }} />
-              <span className="font-mono text-[10px] text-muted-foreground">BB(20,2)</span>
+              <span className="font-sans text-[10px] text-muted-foreground">BB(20,2)</span>
             </div>
           )}
           {trendlines && trendlines.length > 0 && (
             <>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5" style={{ borderTop: "2px dashed #00e676" }} />
-                <span className="font-mono text-[10px] text-muted-foreground">Support TL</span>
+                <span className="font-sans text-[10px] text-muted-foreground">Support TL</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5" style={{ borderTop: "2px dashed #ff1744" }} />
-                <span className="font-mono text-[10px] text-muted-foreground">Resistance TL</span>
+                <span className="font-sans text-[10px] text-muted-foreground">Resistance TL</span>
               </div>
             </>
           )}
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-0.5" style={{ borderTop: "1px dotted #ff0066" }} />
-            <span className="font-mono text-[10px] text-muted-foreground">Current Price</span>
+            <span className="font-sans text-[10px] text-muted-foreground">Current Price</span>
           </div>
         </div>
       )}

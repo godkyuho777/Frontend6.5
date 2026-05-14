@@ -18,17 +18,17 @@ export default function SignalHistory() {
   };
 
   const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-    active: { icon: TrendingUp, color: "text-neon-green", label: "ACTIVE" },
-    target_hit: { icon: Target, color: "text-neon-cyan", label: "TARGET HIT" },
-    expired: { icon: Clock, color: "text-neon-yellow", label: "EXPIRED" },
-    closed: { icon: XCircle, color: "text-muted-foreground", label: "CLOSED" },
+    active: { icon: TrendingUp, color: "text-neon-green", label: "Active" },
+    target_hit: { icon: Target, color: "text-neon-cyan", label: "Target hit" },
+    expired: { icon: Clock, color: "text-neon-yellow", label: "Expired" },
+    closed: { icon: XCircle, color: "text-muted-foreground", label: "Closed" },
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
-          SIGNAL HISTORY
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+          Signal history
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
           PAST ENTRY SIGNALS // PERFORMANCE LOG
@@ -43,8 +43,8 @@ export default function SignalHistory() {
         ) : !history?.length ? (
           <div className="text-center py-12">
             <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-mono text-sm text-muted-foreground">No signals recorded yet</p>
-            <p className="font-mono text-xs text-muted-foreground/60 mt-1">
+            <p className="font-sans text-sm text-muted-foreground">No signals recorded yet</p>
+            <p className="font-sans text-xs text-muted-foreground/60 mt-1">
               Save signals from the scanner to build your history
             </p>
           </div>
@@ -70,37 +70,37 @@ export default function SignalHistory() {
                         <span className="font-display text-sm font-bold text-foreground">
                           {signal.symbol.replace("USDT", "")}
                         </span>
-                        <Badge className={cn("font-mono text-[10px] border", config.color, `bg-transparent border-current/30`)}>
+                        <Badge className={cn("font-sans text-[10px] border", config.color, `bg-transparent border-current/30`)}>
                           {config.label}
                         </Badge>
                       </div>
-                      <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                      <div className="font-sans text-[10px] text-muted-foreground mt-0.5">
                         {new Date(signal.detectedAt).toLocaleString("ko-KR")}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-right hidden sm:block">
-                      <div className="font-mono text-[10px] text-muted-foreground">Entry</div>
-                      <div className="font-mono text-xs text-foreground">{formatPrice(signal.entryPrice)}</div>
+                      <div className="font-sans text-[10px] text-muted-foreground">Entry</div>
+                      <div className="font-sans text-xs text-foreground">{formatPrice(signal.entryPrice)}</div>
                     </div>
                     <div className="text-right hidden sm:block">
-                      <div className="font-mono text-[10px] text-muted-foreground">Target (BB Mid)</div>
-                      <div className="font-mono text-xs text-neon-cyan">{formatPrice(signal.bbMiddle)}</div>
+                      <div className="font-sans text-[10px] text-muted-foreground">Target (BB Mid)</div>
+                      <div className="font-sans text-xs text-neon-cyan">{formatPrice(signal.bbMiddle)}</div>
                     </div>
                     <div className="text-right hidden md:block">
-                      <div className="font-mono text-[10px] text-muted-foreground">RSI</div>
-                      <div className="font-mono text-xs text-neon-yellow">{signal.rsiValue.toFixed(1)}</div>
+                      <div className="font-sans text-[10px] text-muted-foreground">RSI</div>
+                      <div className="font-sans text-xs text-neon-yellow">{signal.rsiValue.toFixed(1)}</div>
                     </div>
                     <div className="text-right hidden md:block">
-                      <div className="font-mono text-[10px] text-muted-foreground">ADX</div>
-                      <div className="font-mono text-xs text-foreground">{signal.adxValue.toFixed(1)}</div>
+                      <div className="font-sans text-[10px] text-muted-foreground">ADX</div>
+                      <div className="font-sans text-xs text-foreground">{signal.adxValue.toFixed(1)}</div>
                     </div>
                     {pnl !== null && (
                       <div className="text-right">
-                        <div className="font-mono text-[10px] text-muted-foreground">PnL</div>
+                        <div className="font-sans text-[10px] text-muted-foreground">PnL</div>
                         <div className={cn(
-                          "font-mono text-xs font-bold",
+                          "font-sans text-xs font-bold",
                           pnl >= 0 ? "text-neon-green" : "text-neon-red"
                         )}>
                           {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%

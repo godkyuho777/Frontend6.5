@@ -83,8 +83,7 @@ const TEMPLATES: Template[] = [
   {
     id: "num_path_only",
     label: "NUM Path Only",
-    description:
-      "RSI < 30 AND MACD histogram > 0 — 모멘텀 turnaround 시그널",
+    description: "RSI < 30 AND MACD histogram > 0 — 모멘텀 turnaround 시그널",
     enabled: true,
     expression: {
       type: "logic",
@@ -158,8 +157,7 @@ const TEMPLATES: Template[] = [
   {
     id: "custom",
     label: "Custom (Advanced)",
-    description:
-      "DSL editor — Phase 2 후속 작업. 현재는 disabled.",
+    description: "DSL editor — Phase 2 후속 작업. 현재는 disabled.",
     enabled: false,
     expression: {
       type: "condition",
@@ -182,17 +180,15 @@ export default function EngineBTab() {
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [tf, setTf] = useState<"4h" | "1d" | "1w">("4h");
   const [startDate, setStartDate] = useState(
-    new Date(Date.now() - 365 * 86400_000).toISOString().slice(0, 10),
+    new Date(Date.now() - 365 * 86400_000).toISOString().slice(0, 10)
   );
-  const [endDate, setEndDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
-  const selected = TEMPLATES.find((t) => t.id === selectedId) ?? TEMPLATES[0]!;
+  const selected = TEMPLATES.find(t => t.id === selectedId) ?? TEMPLATES[0]!;
 
   const validateQuery = trpc.dualEngine.validateStrategy.useQuery(
     { expression: selected.expression as unknown },
-    { enabled: !!selected, staleTime: 60_000 },
+    { enabled: !!selected, staleTime: 60_000 }
   );
 
   const runMutation = trpc.dualEngine.multiStrategy.useMutation();
@@ -235,7 +231,7 @@ export default function EngineBTab() {
         subtitle="Phase 1 stub · DSL editor deferred to Phase 2"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {TEMPLATES.map((t) => {
+          {TEMPLATES.map(t => {
             const active = t.id === selectedId;
             return (
               <button
@@ -243,16 +239,15 @@ export default function EngineBTab() {
                 disabled={!t.enabled}
                 onClick={() => setSelectedId(t.id)}
                 className={cn(
-                  "text-left p-3 rounded-sm border transition-all",
+                  "text-left p-3 rounded-lg transition-all bg-muted/50 hover:bg-muted",
                   !t.enabled && "opacity-40 cursor-not-allowed",
                   active && t.enabled
-                    ? "border-neon-pink text-neon-pink bg-neon-pink/10"
-                    : "border-border/30 text-muted-foreground hover:border-border/60",
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground"
                 )}
               >
-                <div className="font-display text-xs font-bold uppercase tracking-wider mb-1">
+                <div className="font-display text-xs font-bold tracking-wider mb-1">
                   {t.label}
-                  {active && " ●"}
                 </div>
                 <div className="font-mono text-[10px] text-muted-foreground/80 leading-tight">
                   {t.description}
@@ -278,7 +273,7 @@ export default function EngineBTab() {
             <div
               className={cn(
                 "flex items-center gap-2 font-mono text-xs",
-                validation.passed ? "text-neon-green" : "text-red-400",
+                validation.passed ? "text-neon-green" : "text-red-400"
               )}
             >
               {validation.passed ? (
@@ -319,7 +314,7 @@ export default function EngineBTab() {
             {validation.warnings.length > 0 && (
               <ul className="font-mono text-[10px] text-neon-yellow space-y-0.5">
                 {validation.warnings.map((w: string, i: number) => (
-                  <li key={i}>⚠ {w}</li>
+                  <li key={i}>{w}</li>
                 ))}
               </ul>
             )}
@@ -333,7 +328,7 @@ export default function EngineBTab() {
             <Label>Symbol</Label>
             <Input
               value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
+              onChange={e => setSymbol(e.target.value)}
               className="h-9 font-mono text-xs"
             />
           </div>
@@ -341,13 +336,13 @@ export default function EngineBTab() {
             <Label>Timeframe</Label>
             <Select
               value={tf}
-              onValueChange={(v) => setTf(v as "4h" | "1d" | "1w")}
+              onValueChange={v => setTf(v as "4h" | "1d" | "1w")}
             >
-              <SelectTrigger className="h-9 font-mono text-xs">
+              <SelectTrigger className="h-9 font-mono text-xs bg-muted">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TF_OPTIONS.map((t) => (
+                {TF_OPTIONS.map(t => (
                   <SelectItem
                     key={t.value}
                     value={t.value}
@@ -364,8 +359,8 @@ export default function EngineBTab() {
             <Input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="h-9 font-mono text-xs"
+              onChange={e => setStartDate(e.target.value)}
+              className="h-9 font-mono text-xs bg-muted"
             />
           </div>
           <div>
@@ -373,8 +368,8 @@ export default function EngineBTab() {
             <Input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="h-9 font-mono text-xs"
+              onChange={e => setEndDate(e.target.value)}
+              className="h-9 font-mono text-xs bg-muted"
             />
           </div>
         </div>
@@ -382,7 +377,7 @@ export default function EngineBTab() {
           <Button
             onClick={handleRun}
             disabled={runMutation.isPending}
-            className="font-mono text-xs h-9 bg-neon-pink/15 text-neon-pink border border-neon-pink/40 hover:bg-neon-pink/25"
+            className="h-9 font-mono text-xs"
           >
             {runMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -402,7 +397,7 @@ export default function EngineBTab() {
 
       {runMutation.isPending && (
         <div className="py-12 flex flex-col items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <div className="font-mono text-xs text-muted-foreground">
             Engine B 실행 중 — DSL 평가 + cross-layer bucketing...
           </div>
@@ -412,19 +407,15 @@ export default function EngineBTab() {
       {result && (
         <HudPanel title="Result Summary" variant="highlight">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Metric
-              label="Signals"
-              value={result.total_signals.toString()}
-            />
+            <Metric label="Signals" value={result.total_signals.toString()} />
             <Metric
               label="Win Rate"
               value={`${(result.win_rate * 100).toFixed(1)}%`}
-              color={result.win_rate >= 0.5 ? "text-neon-green" : "text-red-400"}
+              color={
+                result.win_rate >= 0.5 ? "text-neon-green" : "text-red-400"
+              }
             />
-            <Metric
-              label="Sharpe"
-              value={result.sharpe.toFixed(2)}
-            />
+            <Metric label="Sharpe" value={result.sharpe.toFixed(2)} />
             <Metric
               label="MDD"
               value={`${result.mdd_pct.toFixed(2)}%`}
@@ -432,14 +423,14 @@ export default function EngineBTab() {
             />
           </div>
           {result.charter_validation && !result.charter_validation.passed && (
-            <div className="mt-3 px-3 py-2 rounded-sm border bg-red-500/15 border-red-500/40 font-mono text-xs text-red-400">
-              ⚠ 헌장 매핑 실패 — Missing dimensions:{" "}
+            <div className="mt-3 px-3 py-2 rounded-lg bg-red-500/15 font-mono text-xs text-red-400">
+              헌장 매핑 실패 — Missing dimensions:{" "}
               {result.charter_validation.missing.join(", ")}
             </div>
           )}
           <div className="mt-3 font-mono text-[10px] text-muted-foreground">
-            상세 cross-layer / by_layer bucket 시각화는 Phase 2 에서 추가
-            (DSL editor 와 함께).
+            상세 cross-layer / by_layer bucket 시각화는 Phase 2 에서 추가 (DSL
+            editor 와 함께).
           </div>
         </HudPanel>
       )}
@@ -449,7 +440,7 @@ export default function EngineBTab() {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
+    <label className="font-mono text-[10px] text-muted-foreground tracking-wider block mb-1.5">
       {children}
     </label>
   );
@@ -458,7 +449,7 @@ function Label({ children }: { children: React.ReactNode }) {
 function Metric({
   label,
   value,
-  color = "text-neon-cyan",
+  color = "text-primary",
 }: {
   label: string;
   value: string;
@@ -466,12 +457,10 @@ function Metric({
 }) {
   return (
     <div className="hud-frame p-3">
-      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+      <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
         {label}
       </div>
-      <div className={cn("font-display text-xl font-bold", color)}>
-        {value}
-      </div>
+      <div className={cn("font-display text-xl font-bold", color)}>{value}</div>
     </div>
   );
 }

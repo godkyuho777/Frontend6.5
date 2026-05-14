@@ -65,7 +65,7 @@ export function PatternConfluenceCard({
       <div className={cn("p-3 rounded-sm border border-border/30 bg-card/40", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
           <Info className="h-3.5 w-3.5" />
-          <span className="text-[10px] font-mono uppercase tracking-wider">
+          <span className="text-[10px] font-sans uppercase tracking-wider">
             패턴 데이터 없음
           </span>
         </div>
@@ -79,7 +79,7 @@ export function PatternConfluenceCard({
   return (
     <div className={cn("space-y-2", className)}>
       {/* 헤더 — TF + 헌장 면책 */}
-      <div className="flex items-center justify-between text-[10px] font-mono">
+      <div className="flex items-center justify-between text-[10px] font-sans">
         <span className="text-muted-foreground uppercase tracking-wider">
           패턴 합산 (multi + 거래량 + 추세 + TF)
         </span>
@@ -113,7 +113,7 @@ export function PatternConfluenceCard({
       )}
 
       {/* 헌장 규칙 3 면책 */}
-      <div className="flex items-start gap-1.5 text-[9px] font-mono text-muted-foreground/70 leading-relaxed">
+      <div className="flex items-start gap-1.5 text-[9px] font-sans text-muted-foreground/70 leading-relaxed">
         <AlertCircle className="h-2.5 w-2.5 mt-0.5 shrink-0" />
         <span>
           단독 진입 신호 X — BBDX (RSI/BB/ADX) 시그널 강도의 multiplier 로만 사용.
@@ -151,7 +151,7 @@ function DirectionPanel({
   if (count === 0) {
     return (
       <div className={cn("p-2.5 rounded-sm border border-border/20 bg-card/30 opacity-60")}>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] font-sans text-muted-foreground">
           <Icon className="h-3 w-3" />
           <span>{isBull ? "강세 패턴 없음" : "약세 패턴 없음"}</span>
         </div>
@@ -172,7 +172,7 @@ function DirectionPanel({
         </div>
         <div className={cn("text-2xl font-display font-bold", accentText)}>
           {score100}
-          <span className="text-xs text-muted-foreground font-mono">/100</span>
+          <span className="text-xs text-muted-foreground font-sans">/100</span>
         </div>
       </div>
 
@@ -185,7 +185,7 @@ function DirectionPanel({
       </div>
 
       {/* 메타 라인: primary + count + bonus */}
-      <div className="flex items-center justify-between text-[10px] font-mono mb-2">
+      <div className="flex items-center justify-between text-[10px] font-sans mb-2">
         <span className="text-foreground">
           주 패턴:{" "}
           <span className={accentText}>
@@ -214,7 +214,7 @@ function ContextBreakdown({ context }: { context: PatternContextDetail }) {
   const vol = VOLUME_LABEL[context.volumeLabel];
   const trend = TREND_LABEL[context.trendLabel];
   return (
-    <div className="grid grid-cols-2 gap-1.5 text-[9px] font-mono pt-1.5 border-t border-border/20">
+    <div className="grid grid-cols-2 gap-1.5 text-[9px] font-sans pt-1.5 border-t border-border/20">
       <ContextCell
         label="TF base"
         value={(context.base * 100).toFixed(0)}
@@ -298,7 +298,7 @@ export function PatternConfluenceBadge({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[9px] font-mono",
+        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[9px] font-sans",
         isBull
           ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
           : "border-red-500/40 bg-red-500/5 text-red-400",

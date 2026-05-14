@@ -49,7 +49,7 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
     return (
       <div className="flex items-center justify-center py-12 gap-2">
         <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-sans text-xs text-muted-foreground">
           한국어 라벨로 번역 중...
         </span>
       </div>
@@ -58,7 +58,7 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
 
   if (query.error) {
     return (
-      <p className="font-mono text-xs text-neon-red py-4">
+      <p className="font-sans text-xs text-neon-red py-4">
         ✗ {query.error.message}
       </p>
     );
@@ -70,18 +70,18 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
     return (
       <div className="space-y-4">
         <div className="p-4 rounded-sm border border-border/20 bg-card/40">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
             추천
           </div>
           <div className="font-display text-xl font-bold text-muted-foreground">
             관망 (Hold)
           </div>
-          <p className="font-mono text-[11px] text-muted-foreground mt-2">
+          <p className="font-sans text-[11px] text-muted-foreground mt-2">
             현재 BBDX 시그널이 발생하지 않았습니다. 진입 조건이 충족되면 자동으로
             라벨이 갱신됩니다.
           </p>
         </div>
-        <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-mono text-[10px] text-yellow-300/80 flex items-center gap-2">
+        <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-sans text-[10px] text-yellow-300/80 flex items-center gap-2">
           <AlertTriangle className="h-3.5 w-3.5" />
           이건 추천이 아니라 트레이딩 시그널 요약입니다. 자기책임 원칙.
         </div>
@@ -97,18 +97,18 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
       {/* 추천 chip + 위험도 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="p-4 rounded-sm border border-border/20 bg-card/40">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
             추천
           </div>
           <div className={`font-display text-2xl font-bold ${recColor}`}>
             {card.recommendationLabel}
           </div>
-          <div className="font-mono text-[10px] text-muted-foreground mt-1">
+          <div className="font-sans text-[10px] text-muted-foreground mt-1">
             강도 {card.strength.toFixed(0)} / 100
           </div>
         </div>
         <div className="p-4 rounded-sm border border-border/20 bg-card/40">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
             위험도
           </div>
           <div className={`font-display text-2xl font-bold ${riskColor}`}>
@@ -120,14 +120,14 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
       {/* 추천 근거 */}
       {card.reasons.length > 0 && (
         <div className="p-4 rounded-sm border border-border/20 bg-card/40">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+          <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
             추천 근거
           </div>
           <ul className="space-y-1">
             {card.reasons.map((r, i) => (
               <li
                 key={i}
-                className="font-mono text-xs text-foreground/90 flex items-start gap-2"
+                className="font-sans text-xs text-foreground/90 flex items-start gap-2"
               >
                 <span className="text-neon-cyan shrink-0">•</span>
                 <span>{r}</span>
@@ -140,19 +140,19 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
       {/* 가격 + 24h 변동 */}
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 rounded-sm border border-border/20 bg-card/40">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
             현재 가격
           </div>
-          <div className="font-display text-lg font-bold text-neon-cyan">
+          <div className="tl-market-number text-lg leading-none text-primary">
             ${card.price.toFixed(card.price < 1 ? 6 : 2)}
           </div>
         </div>
         <div className="p-3 rounded-sm border border-border/20 bg-card/40">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
             24h 변동
           </div>
           <div
-            className={`font-display text-lg font-bold ${
+            className={`tl-market-number text-lg leading-none ${
               card.change24h >= 0 ? "text-neon-green" : "text-neon-red"
             }`}
           >
@@ -163,7 +163,7 @@ export function LiteModeTab({ symbol, tf = "4h" }: LiteModeTabProps) {
       </div>
 
       {/* 면책 footer */}
-      <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-mono text-[10px] text-yellow-300/80 flex items-center gap-2">
+      <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-sans text-[10px] text-yellow-300/80 flex items-center gap-2">
         <AlertTriangle className="h-3.5 w-3.5" />
         이건 추천이 아니라 트레이딩 시그널 요약입니다. 자기책임 원칙.
       </div>

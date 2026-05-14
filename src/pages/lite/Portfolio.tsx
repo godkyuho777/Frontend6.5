@@ -46,7 +46,7 @@ export default function LitePortfolio() {
         subtitle="포트폴리오는 본인만 볼 수 있어요"
         variant="muted"
       >
-        <p className="font-mono text-sm text-muted-foreground mb-3">
+        <p className="font-sans text-sm text-muted-foreground mb-3">
           포트폴리오 기능은 본인의 거래 내역과 연결되기 때문에 로그인이 필요해요.
           나머지 Lite 기능 (오늘의 추천, 코인 살펴보기, 학습)은 로그인 없이도 그대로
           사용할 수 있어요.
@@ -55,7 +55,7 @@ export default function LitePortfolio() {
           size="sm"
           variant="outline"
           onClick={() => setLocation("/lite")}
-          className="font-mono text-[11px] border-neon-cyan/30 text-neon-cyan"
+          className="font-sans text-[11px] border-neon-cyan/30 text-neon-cyan"
         >
           오늘의 추천으로 가기
         </Button>
@@ -67,7 +67,7 @@ export default function LitePortfolio() {
     return (
       <div className="flex items-center justify-center py-16 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
-        <span className="font-mono text-sm text-muted-foreground">
+        <span className="font-sans text-sm text-muted-foreground">
           포지션을 불러오고 있어요...
         </span>
       </div>
@@ -77,7 +77,7 @@ export default function LitePortfolio() {
   if (error || !data) {
     return (
       <LiteCard variant="bad" title="포트폴리오를 불러오지 못했어요">
-        <p className="font-mono text-xs text-neon-red">
+        <p className="font-sans text-xs text-neon-red">
           {String(error?.message ?? "데이터 없음")}
         </p>
       </LiteCard>
@@ -91,7 +91,7 @@ export default function LitePortfolio() {
         title="아직 오픈 포지션이 없어요"
         variant="muted"
       >
-        <p className="font-mono text-sm text-muted-foreground">
+        <p className="font-sans text-sm text-muted-foreground">
           첫 진입을 하면 여기에 PnL 과 추천 액션이 표시돼요.
         </p>
       </LiteCard>
@@ -142,7 +142,7 @@ export default function LitePortfolio() {
                 <div className="font-display text-base font-bold text-foreground">
                   {p.base}
                 </div>
-                <div className="font-mono text-[11px] text-muted-foreground">
+                <div className="font-sans text-[11px] text-muted-foreground">
                   진입 ${formatMoney(p.entryPrice)} → 현재 ${formatMoney(p.currentPrice)}
                 </div>
               </div>
@@ -155,7 +155,7 @@ export default function LitePortfolio() {
                 >
                   {formatPercent(p.pnlPercent)}
                 </div>
-                <div className="font-mono text-[10px] text-muted-foreground">
+                <div className="font-sans text-[10px] text-muted-foreground">
                   {p.suggestedAction}
                 </div>
               </div>
@@ -178,12 +178,12 @@ function Stat({
 }) {
   return (
     <div>
-      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+      <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
         {label}
       </div>
       <div
         className={cn(
-          "font-display text-lg font-bold mt-0.5",
+          "tl-market-number mt-0.5 text-lg leading-none",
           tone === "good"
             ? "text-neon-green"
             : tone === "bad"

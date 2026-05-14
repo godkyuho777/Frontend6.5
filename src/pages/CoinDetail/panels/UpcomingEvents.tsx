@@ -31,13 +31,13 @@ export function UpcomingEvents({ events, isAvailable }: UpcomingEventsProps) {
       {!isAvailable ? (
         <div className="text-center py-6">
           <Calendar className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <p className="font-sans text-[11px] text-muted-foreground">
             이벤트 API 미연결 — 백엔드 events.list 라우트 추가 후 표시됩니다.
           </p>
         </div>
       ) : events.length === 0 ? (
         <div className="text-center py-6">
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <p className="font-sans text-[11px] text-muted-foreground">
             이 코인에 예정된 이벤트가 없습니다. 어드민에서 추가하세요.
           </p>
         </div>
@@ -49,7 +49,7 @@ export function UpcomingEvents({ events, isAvailable }: UpcomingEventsProps) {
               className="flex items-start gap-2 p-2 rounded-sm border border-border/20 bg-card/40"
             >
               <div className="flex flex-col items-center justify-center w-10 shrink-0">
-                <span className="font-mono text-[9px] text-neon-cyan">
+                <span className="font-sans text-[9px] text-neon-cyan">
                   D-{e.daysUntil}
                 </span>
                 <span className="font-display text-sm font-bold text-foreground">
@@ -60,7 +60,7 @@ export function UpcomingEvents({ events, isAvailable }: UpcomingEventsProps) {
                 <h4 className="font-display text-xs font-bold text-foreground truncate">
                   {e.title}
                 </h4>
-                <p className="font-mono text-[10px] text-muted-foreground line-clamp-2">
+                <p className="font-sans text-[10px] text-muted-foreground line-clamp-2">
                   {e.description}
                 </p>
               </div>

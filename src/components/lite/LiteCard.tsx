@@ -17,11 +17,11 @@ interface LiteCardProps {
 }
 
 const VARIANT_CLASSES: Record<Required<LiteCardProps>["variant"], string> = {
-  default: "border-border/40 bg-card/80",
+  default: "border-border bg-card",
   good: "border-neon-green/40 bg-neon-green/5",
   caution: "border-neon-yellow/40 bg-neon-yellow/5",
   bad: "border-neon-red/40 bg-neon-red/5",
-  muted: "border-border/30 bg-muted/20",
+  muted: "border-border bg-muted/40",
 };
 
 export function LiteCard({
@@ -38,9 +38,9 @@ export function LiteCard({
     <div
       onClick={onClick}
       className={cn(
-        "relative rounded-xl border backdrop-blur-sm transition-all overflow-hidden",
+        "relative overflow-hidden rounded-lg border shadow-sm transition-all",
         VARIANT_CLASSES[variant],
-        interactive && "cursor-pointer hover:scale-[1.01] hover:border-neon-cyan/40",
+        interactive && "cursor-pointer hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.99]",
         className
       )}
     >
@@ -49,12 +49,12 @@ export function LiteCard({
           {icon && <div className="mt-0.5 shrink-0">{icon}</div>}
           <div className="min-w-0">
             {title && (
-              <h3 className="font-display text-base font-bold tracking-wide text-foreground">
+              <h3 className="font-display text-base font-bold tracking-tight text-foreground">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+              <p className="font-sans text-[11px] text-muted-foreground mt-0.5">
                 {subtitle}
               </p>
             )}

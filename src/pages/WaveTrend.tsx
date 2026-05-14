@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Loader2, RefreshCw, Waves } from "lucide-react";
 
 import { HudPanel, StatCard } from "@/components/HudPanel";
+import { TimeRangeSegmented } from "@/components/TimeRangeSegmented";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CandleChartLW, type ChartFibLevel } from "@/components/CandleChartLW";
@@ -314,9 +315,8 @@ export default function WaveTrend() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-3">
-            <Waves className="h-6 w-6" />
-            TREND ANALYSIS
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Trend analysis
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
             {symbol.replace("USDT", "")} · {tfLabel} · FIBONACCI + TRENDLINE
@@ -333,7 +333,7 @@ export default function WaveTrend() {
               value={symbolInput}
               onChange={(e) => setSymbolInput(e.target.value)}
               list="wave-tracker-symbols"
-              className="h-6 w-28 px-1 font-mono text-[10px] bg-background/50 border-border/30"
+              className="h-6 w-28 px-1 font-sans text-[10px] bg-background/50 border-border/30"
               placeholder="Symbol"
             />
             <datalist id="wave-tracker-symbols">
@@ -345,28 +345,17 @@ export default function WaveTrend() {
               type="submit"
               size="sm"
               variant="outline"
-              className="h-6 px-2 font-mono text-[10px] border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10"
+              className="h-6 px-2 font-sans text-[10px] border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10"
             >
-              GO
+              Go
             </Button>
           </form>
           {/* Timeframe selector */}
-          <div className="flex items-center gap-0.5 bg-card/50 border border-border/30 rounded-sm px-2 py-1">
-            {WAVE_TIMEFRAMES.map((tf) => (
-              <button
-                key={tf.value}
-                onClick={() => setSelectedInterval(tf.value)}
-                className={cn(
-                  "font-mono text-[10px] px-2 py-1 rounded-sm transition-all",
-                  interval === tf.value
-                    ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                )}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
+          <TimeRangeSegmented
+            options={WAVE_TIMEFRAMES}
+            value={interval}
+            onChange={setSelectedInterval}
+          />
         </div>
       </div>
 
@@ -389,7 +378,7 @@ export default function WaveTrend() {
         <HudPanel title="Loading">
           <div className="flex items-center justify-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
-            <span className="font-mono text-sm text-muted-foreground">
+            <span className="font-sans text-sm text-muted-foreground">
               Fetching {symbol} {tfLabel} candles...
             </span>
           </div>
@@ -399,7 +388,7 @@ export default function WaveTrend() {
       {error && !isLoading && (
         <HudPanel title="Error" variant="danger">
           <div className="flex flex-col items-center gap-2 py-8">
-            <p className="font-mono text-sm text-neon-red">
+            <p className="font-sans text-sm text-neon-red">
               Failed to load {symbol}
             </p>
             <Button
@@ -409,7 +398,7 @@ export default function WaveTrend() {
                 // Force refetch by toggling the symbol back and forth.
                 setSymbol((prev) => prev);
               }}
-              className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs"
+              className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-xs"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               RETRY
@@ -458,7 +447,7 @@ export default function WaveTrend() {
                     <div
                       key={f.ratio}
                       className={cn(
-                        "flex items-center justify-between font-mono text-[11px] px-2 py-1 rounded-sm",
+                        "flex items-center justify-between font-sans text-[11px] px-2 py-1 rounded-sm",
                         inZone
                           ? "bg-neon-cyan/10 border border-neon-cyan/30"
                           : "border border-transparent"
@@ -484,7 +473,7 @@ export default function WaveTrend() {
             </HudPanel>
 
             {/* Trendline panel */}
-            <HudPanel title="Trendlines" subtitle="STRENGTH + ANCHORING">
+            <HudPanel title="Trendlines" subtitle="Strength + anchoring">
               <div className="space-y-3">
                 <TrendlineSummary
                   trendline={upTrend}
@@ -500,16 +489,16 @@ export default function WaveTrend() {
             </HudPanel>
 
             {/* Trade signals panel */}
-            <HudPanel title="Trade Signals" subtitle="BUY / SELL CRITERIA">
+            <HudPanel title="Trade signals" subtitle="Buy / sell criteria">
               <div className="space-y-3">
                 <SignalChecklist
-                  title="BUY"
+                  title="Buy"
                   items={tradeSignals.buy}
                   strength={tradeSignals.buyStrength}
                   positive
                 />
                 <SignalChecklist
-                  title="SELL"
+                  title="Sell"
                   items={tradeSignals.sell}
                   strength={tradeSignals.sellStrength}
                 />
@@ -534,12 +523,12 @@ function TrendlineSummary({
   const colorClass = type === "support" ? "text-neon-green" : "text-neon-red";
   if (!trendline) {
     return (
-      <div className="font-mono text-[11px] text-muted-foreground">{noneLabel}</div>
+      <div className="font-sans text-[11px] text-muted-foreground">{noneLabel}</div>
     );
   }
   const s = strengthLabel(trendline.strength);
   return (
-    <div className="space-y-0.5 font-mono text-[11px]">
+    <div className="space-y-0.5 font-sans text-[11px]">
       <div className={cn("flex items-center gap-1 font-bold", colorClass)}>
         {type === "support" ? "↑" : "↓"}{" "}
         {type === "support" ? "Support" : "Resistance"}
@@ -578,7 +567,7 @@ function SignalChecklist({
     <div className="space-y-1">
       <div className="flex items-baseline justify-between">
         <span className={cn("font-display text-xs font-bold", titleColor)}>{title}</span>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-sans text-[10px] text-muted-foreground">
           {items.filter((i) => i.ok).length}/{items.length}
         </span>
       </div>
@@ -587,7 +576,7 @@ function SignalChecklist({
           <div
             key={i}
             className={cn(
-              "flex items-start gap-2 font-mono text-[11px]",
+              "flex items-start gap-2 font-sans text-[11px]",
               item.ok ? "text-foreground" : "text-muted-foreground/60"
             )}
           >
@@ -598,7 +587,7 @@ function SignalChecklist({
           </div>
         ))}
       </div>
-      <div className="font-mono text-[10px] text-muted-foreground pt-1">
+      <div className="font-sans text-[10px] text-muted-foreground pt-1">
         Confidence:{" "}
         <span
           className={cn(
@@ -618,7 +607,7 @@ function SignalChecklist({
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between font-mono text-[11px]">
+    <div className="flex items-center justify-between font-sans text-[11px]">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground">{value}</span>
     </div>

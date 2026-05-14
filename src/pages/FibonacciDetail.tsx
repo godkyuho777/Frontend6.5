@@ -6,8 +6,10 @@
 
 import { useState } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
-import { ChevronLeft, Clock, RefreshCw } from "lucide-react";
+import { ChevronLeft, RefreshCw } from "lucide-react";
 import { HudPanel } from "@/components/HudPanel";
+import { RefreshIconButton } from "@/components/RefreshIconButton";
+import { TimeRangeSegmented } from "@/components/TimeRangeSegmented";
 import { CandleChartLW } from "@/components/CandleChartLW";
 import { cn } from "@/lib/utils";
 import { useFibonacciDetail } from "@/hooks/useFibonacciDetail";
@@ -33,12 +35,16 @@ export default function FibonacciDetail() {
   );
 
   const tfLabel = FIB_TIMEFRAMES.find((t) => t.value === timeframe)?.label ?? timeframe;
+  const timeframeOptions = FIB_TIMEFRAMES.map((tf) => ({
+    label: tf.label,
+    value: tf.value,
+  }));
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <RefreshCw className="h-8 w-8 text-neon-cyan animate-spin" />
-        <p className="font-mono text-sm text-muted-foreground">
+        <p className="font-sans text-sm text-muted-foreground">
           Analyzing {symbol} Fibonacci levels ({tfLabel})...
         </p>
       </div>
@@ -48,10 +54,10 @@ export default function FibonacciDetail() {
   if (error || !analysis) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="font-mono text-sm text-neon-red">{error || "Analysis failed"}</p>
+        <p className="font-sans text-sm text-neon-red">{error || "Analysis failed"}</p>
         <button
           onClick={() => setLocation("/fibonacci")}
-          className="text-neon-cyan text-sm underline font-mono"
+          className="text-neon-cyan text-sm underline font-sans"
         >
           Back to Fibonacci scanner
         </button>
@@ -72,7 +78,7 @@ export default function FibonacciDetail() {
           <ChevronLeft className="h-4 w-4" />
         </button>
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
             {symbol.replace("USDT", "")} / USDT
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
@@ -80,30 +86,15 @@ export default function FibonacciDetail() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <div className="flex items-center gap-1 border border-border/30 rounded-sm p-0.5">
-            <Clock className="h-3 w-3 text-muted-foreground ml-1.5" />
-            {FIB_TIMEFRAMES.map((tf) => (
-              <button
-                key={tf.value}
-                onClick={() => setTimeframe(tf.value)}
-                className={cn(
-                  "px-2.5 py-1 text-xs font-mono rounded-sm transition-colors",
-                  timeframe === tf.value
-                    ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                )}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
-          <button
+          <TimeRangeSegmented
+            options={timeframeOptions}
+            value={timeframe}
+            onChange={setTimeframe}
+          />
+          <RefreshIconButton
             onClick={refetch}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 rounded-sm transition-colors"
-          >
-            <RefreshCw className="h-3 w-3" />
-            REFRESH
-          </button>
+            label={`Refresh ${symbol.replace("USDT", "")} Fibonacci analysis`}
+          />
         </div>
       </div>
 
@@ -133,7 +124,7 @@ export default function FibonacciDetail() {
               {analysis.signal.type}
             </div>
             <div className="flex-1">
-              <div className="font-mono text-xs text-muted-foreground mb-1">Strength</div>
+              <div className="font-sans text-xs text-muted-foreground mb-1">Strength</div>
               <div className="w-full h-2 bg-border/30 rounded-full overflow-hidden">
                 <div
                   className={cn(
@@ -155,8 +146,8 @@ export default function FibonacciDetail() {
         </HudPanel>
 
         <HudPanel title="Current Zone">
-          <div className="font-mono text-sm text-neon-cyan mb-2">{analysis.currentZone}</div>
-          <div className="font-mono text-xs text-muted-foreground">
+          <div className="font-sans text-sm text-neon-cyan mb-2">{analysis.currentZone}</div>
+          <div className="font-sans text-xs text-muted-foreground">
             Price: $
             {currentPrice < 1
               ? currentPrice.toPrecision(4)
@@ -183,7 +174,7 @@ export default function FibonacciDetail() {
             {analysis.signal.reasons.map((reason, i) => (
               <div key={i} className="flex items-start gap-2">
                 <span className="text-neon-cyan mt-0.5">◆</span>
-                <span className="font-mono text-xs text-muted-foreground leading-relaxed">
+                <span className="font-sans text-xs text-muted-foreground leading-relaxed">
                   {reason}
                 </span>
               </div>
@@ -216,7 +207,7 @@ export default function FibonacciDetail() {
                     <th
                       key={h}
                       className={cn(
-                        "py-2 px-3 font-mono text-[10px] text-muted-foreground uppercase",
+                        "py-2 px-3 font-sans text-[10px] text-muted-foreground uppercase",
                         i === 0 ? "text-left" : i === 4 ? "text-center" : "text-right"
                       )}
                     >
@@ -237,7 +228,7 @@ export default function FibonacciDetail() {
                     <td className="py-2 px-3">
                       <span
                         className={cn(
-                          "font-mono text-sm font-bold",
+                          "font-sans text-sm font-bold",
                           level.ratio === 0.618
                             ? "text-yellow-400"
                             : level.ratio === 0.382
@@ -248,16 +239,16 @@ export default function FibonacciDetail() {
                         {level.label}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono text-sm">
+                    <td className="py-2 px-3 text-right font-sans text-sm">
                       ${level.price < 1 ? level.price.toPrecision(4) : level.price.toFixed(2)}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono text-xs text-muted-foreground">
+                    <td className="py-2 px-3 text-right font-sans text-xs text-muted-foreground">
                       $
                       {level.zoneLow < 1
                         ? level.zoneLow.toPrecision(4)
                         : level.zoneLow.toFixed(2)}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono text-xs text-muted-foreground">
+                    <td className="py-2 px-3 text-right font-sans text-xs text-muted-foreground">
                       $
                       {level.zoneHigh < 1
                         ? level.zoneHigh.toPrecision(4)
@@ -265,11 +256,11 @@ export default function FibonacciDetail() {
                     </td>
                     <td className="py-2 px-3 text-center">
                       {inZone ? (
-                        <span className="text-xs font-mono text-neon-yellow font-bold">
+                        <span className="text-xs font-sans text-neon-yellow font-bold">
                           ● IN ZONE
                         </span>
                       ) : (
-                        <span className="text-xs font-mono text-muted-foreground">-</span>
+                        <span className="text-xs font-sans text-muted-foreground">-</span>
                       )}
                     </td>
                   </tr>
@@ -286,7 +277,7 @@ export default function FibonacciDetail() {
         subtitle={`${analysis.trendlines.filter((t) => t.isValid).length} valid trendlines found`}
       >
         {analysis.trendlines.length === 0 ? (
-          <p className="font-mono text-xs text-muted-foreground text-center py-4">
+          <p className="font-sans text-xs text-muted-foreground text-center py-4">
             No significant trendlines detected
           </p>
         ) : (
@@ -330,23 +321,23 @@ function TrendlineCard({
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              "text-xs font-mono font-bold uppercase",
+              "text-xs font-sans font-bold uppercase",
               trendline.type === "support" ? "text-neon-green" : "text-neon-red"
             )}
           >
             {trendline.type === "support" ? "▲ SUPPORT" : "▼ RESISTANCE"}
           </span>
           {trendline.isValid && (
-            <span className="text-[10px] font-mono text-neon-cyan bg-neon-cyan/10 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-sans text-neon-cyan bg-neon-cyan/10 px-1.5 py-0.5 rounded">
               VALID
             </span>
           )}
         </div>
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-sans text-xs text-muted-foreground">
           {trendline.touchCount} touches · {trendline.durationDays.toFixed(0)} days
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-4 text-xs font-mono">
+      <div className="grid grid-cols-3 gap-4 text-xs font-sans">
         <div>
           <span className="text-muted-foreground">Current Level:</span>
           <div className="text-foreground">

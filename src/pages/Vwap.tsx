@@ -1,23 +1,22 @@
 import { HudPanel, StatCard } from "@/components/HudPanel";
+import { RefreshIconButton } from "@/components/RefreshIconButton";
+import { SearchField } from "@/components/SearchField";
+import { TimeRangeSegmented } from "@/components/TimeRangeSegmented";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
   RefreshCw,
-  Search,
   ArrowUpDown,
-  Clock,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
   TrendingDown,
-  Activity,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
 import { TIMEFRAMES } from "@shared/types";
 import type {
   CoinScanResult,
@@ -50,19 +49,25 @@ type SortHeaderProps = {
   onSort: (key: SortKey) => void;
 };
 
-function SortHeader({ label, sortKeyVal, className, sortKey, onSort }: SortHeaderProps) {
+function SortHeader({
+  label,
+  sortKeyVal,
+  className,
+  sortKey,
+  onSort,
+}: SortHeaderProps) {
   return (
     <th
       className={cn(
-        "font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 cursor-pointer hover:text-neon-cyan transition-colors select-none",
+        "group cursor-pointer select-none whitespace-nowrap px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground transition-colors hover:text-primary",
         className
       )}
       onClick={() => onSort(sortKeyVal)}
     >
-      <div className="flex items-center gap-0.5 justify-end">
+      <div className="flex items-center justify-start gap-1.5">
         {label}
         {sortKey === sortKeyVal && (
-          <ArrowUpDown className="h-2.5 w-2.5 text-neon-cyan" />
+          <ArrowUpDown className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
         )}
       </div>
     </th>
@@ -72,22 +77,22 @@ function SortHeader({ label, sortKeyVal, className, sortKey, onSort }: SortHeade
 function renderPosition(p: VwapPosition | EmaPosition) {
   if (p === "ABOVE") {
     return (
-      <span className="font-mono text-[11px] text-neon-green inline-flex items-center gap-0.5">
+      <span className="inline-flex items-center gap-1 font-mono text-[11px] text-neon-green">
         <TrendingUp className="h-3 w-3" />
-        ABOVE
+        Above
       </span>
     );
   }
   if (p === "BELOW") {
     return (
-      <span className="font-mono text-[11px] text-neon-red inline-flex items-center gap-0.5">
+      <span className="inline-flex items-center gap-1 font-mono text-[11px] text-neon-red">
         <TrendingDown className="h-3 w-3" />
-        BELOW
+        Below
       </span>
     );
   }
   return (
-    <span className="font-mono text-[11px] text-muted-foreground">AT</span>
+    <span className="font-mono text-[11px] text-muted-foreground">At</span>
   );
 }
 
@@ -98,7 +103,8 @@ function positionRank(p: VwapPosition | EmaPosition): number {
 export default function Vwap() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedInterval, setSelectedInterval] = useState<TimeframeValue>("4h");
+  const [selectedInterval, setSelectedInterval] =
+    useState<TimeframeValue>("4h");
   const [sortKey, setSortKey] = useState<SortKey>("strength");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
@@ -108,7 +114,9 @@ export default function Vwap() {
   // VWAP detail (5-component, Volume Profile, multi-TF) — 하단 deep-dive 패널용.
   // tRPC `vwap.detail` 라우트 (백엔드 v6.5 머지 후 활성화).
   const detailTf: "1h" | "4h" | "1d" =
-    selectedInterval === "1h" || selectedInterval === "4h" || selectedInterval === "1d"
+    selectedInterval === "1h" ||
+    selectedInterval === "4h" ||
+    selectedInterval === "1d"
       ? selectedInterval
       : "4h";
   const detailQuery = trpc.vwap.detail.useQuery(
@@ -132,7 +140,7 @@ export default function Vwap() {
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      setSortDir(d => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
       setSortDir(key === "symbol" ? "asc" : "desc");
@@ -146,7 +154,7 @@ export default function Vwap() {
   const filteredAndSorted = useMemo(() => {
     let list = [...coins];
     if (searchQuery) {
-      list = list.filter((r) =>
+      list = list.filter(r =>
         r.symbol.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -180,69 +188,50 @@ export default function Vwap() {
     return list;
   }, [coins, searchQuery, sortKey, sortDir]);
 
-  const longCount = coins.filter((c) => c.vwapSignal?.side === "LONG").length;
-  const shortCount = coins.filter((c) => c.vwapSignal?.side === "SHORT").length;
-  const pullbackCount = coins.filter((c) => c.pullbackDetected).length;
+  const longCount = coins.filter(c => c.vwapSignal?.side === "LONG").length;
+  const shortCount = coins.filter(c => c.vwapSignal?.side === "SHORT").length;
+  const pullbackCount = coins.filter(c => c.pullbackDetected).length;
   const strengths = coins
-    .map((c) => c.vwapSignal?.strength ?? 0)
-    .filter((s) => s > 0);
+    .map(c => c.vwapSignal?.strength ?? 0)
+    .filter(s => s > 0);
   const avgStrength = strengths.length
     ? Math.round(strengths.reduce((a, b) => a + b, 0) / strengths.length)
     : 0;
 
   const tfLabel =
-    TIMEFRAMES.find((t) => t.value === selectedInterval)?.label ?? selectedInterval;
+    TIMEFRAMES.find(t => t.value === selectedInterval)?.label ??
+    selectedInterval;
+  const timeframeOptions = TIMEFRAMES.map(tf => ({
+    label: tf.label,
+    value: tf.value as TimeframeValue,
+  }));
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-3">
-            <Activity className="h-6 w-6" />
-            VWAP STRATEGY
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            VWAP strategy
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            {tfLabel} TIMEFRAME // VWAP + EMA(9) + VOLUME PROFILE // PARKER BROOKS STYLE
+            {tfLabel} timeframe / VWAP + EMA(9) + volume profile / Bybit data
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-card/50 border border-border/30 rounded-sm px-2 py-1">
-            <Clock className="h-3 w-3 text-neon-cyan" />
-            <div className="flex gap-0.5">
-              {TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf.value}
-                  onClick={() => {
-                    setSelectedInterval(tf.value as TimeframeValue);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    "font-mono text-[10px] px-2 py-1 rounded-sm transition-all",
-                    selectedInterval === tf.value
-                      ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  )}
-                >
-                  {tf.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
+          <TimeRangeSegmented
+            options={timeframeOptions}
+            value={selectedInterval}
+            onChange={value => {
+              setSelectedInterval(value);
+              setPage(1);
+            }}
+          />
+          <RefreshIconButton
             onClick={() => refetch()}
-            disabled={isFetching}
-            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs"
-          >
-            {isFetching ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <RefreshCw className="h-3 w-3 mr-1" />
-            )}
-            RESCAN
-          </Button>
+            label="Rescan VWAP scanner"
+            isLoading={isFetching}
+          />
         </div>
       </div>
 
@@ -271,36 +260,35 @@ export default function Vwap() {
             : "Loading market data..."
         }
         headerRight={
-          <div className="relative w-48">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-            <Input
-              placeholder="Search symbol..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-7 pl-7 text-xs font-mono bg-background/50 border-border/30"
-            />
-          </div>
+          <SearchField
+            wrapperClassName="w-48"
+            placeholder="Search symbol..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
         }
       >
         {error && !scanData && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <AlertCircle className="h-8 w-8 text-neon-red" />
-            <p className="font-mono text-sm text-neon-red">Failed to load market data</p>
+            <p className="font-mono text-sm text-neon-red">
+              Failed to load market data
+            </p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs mt-2"
+              className="mt-2 font-mono text-xs"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              RETRY
+              Retry
             </Button>
           </div>
         )}
 
         {isLoading && !error && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-neon-pink" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="font-mono text-sm text-foreground">
               Loading {pageSize} coins on {tfLabel}...
             </p>
@@ -321,22 +309,56 @@ export default function Vwap() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border/30">
-                    <SortHeader label="Symbol" sortKeyVal="symbol" className="text-left" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="Price" sortKeyVal="price" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="24h" sortKeyVal="change24h" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="VWAP Pos" sortKeyVal="vwap" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="EMA Pos" sortKeyVal="ema" className="hidden md:table-cell" sortKey={sortKey} onSort={handleSort} />
-                    <th className="text-right font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 hidden md:table-cell">
+                    <SortHeader
+                      label="Symbol"
+                      sortKeyVal="symbol"
+                      className="text-left"
+                      sortKey={sortKey}
+                      onSort={handleSort}
+                    />
+                    <SortHeader
+                      label="Price"
+                      sortKeyVal="price"
+                      sortKey={sortKey}
+                      onSort={handleSort}
+                    />
+                    <SortHeader
+                      label="24h"
+                      sortKeyVal="change24h"
+                      className="hidden sm:table-cell"
+                      sortKey={sortKey}
+                      onSort={handleSort}
+                    />
+                    <SortHeader
+                      label="VWAP Pos"
+                      sortKeyVal="vwap"
+                      sortKey={sortKey}
+                      onSort={handleSort}
+                    />
+                    <SortHeader
+                      label="EMA Pos"
+                      sortKeyVal="ema"
+                      className="hidden md:table-cell"
+                      sortKey={sortKey}
+                      onSort={handleSort}
+                    />
+                    <th className="px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground hidden md:table-cell">
                       Pullback
                     </th>
-                    <SortHeader label="Strength" sortKeyVal="strength" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
-                    <th className="text-center font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2">
+                    <SortHeader
+                      label="Strength"
+                      sortKeyVal="strength"
+                      className="hidden sm:table-cell"
+                      sortKey={sortKey}
+                      onSort={handleSort}
+                    />
+                    <th className="px-4 py-3 text-center font-sans text-[11px] tracking-wider text-muted-foreground">
                       Signal
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSorted.map((coin) => {
+                  {filteredAndSorted.map(coin => {
                     const sig = coin.vwapSignal;
                     return (
                       <tr
@@ -349,53 +371,63 @@ export default function Vwap() {
                         onDoubleClick={() =>
                           // 통일된 6-탭 CoinDetail 로 이동 (사용자 요청, 2026-05-13).
                           // tracker=vwap 로 매매기준/신호/차트/백테스트가 VWAP 기반 렌더링.
-                          setLocation(`/coin/${coin.symbol}?tab=signal&tracker=vwap&tf=${selectedInterval}`)
+                          setLocation(
+                            `/coin/${coin.symbol}?tab=signal&tracker=vwap&tf=${selectedInterval}`
+                          )
                         }
                         className={cn(
                           "border-b border-border/10 cursor-pointer transition-colors",
-                          coin.symbol === selectedSymbol &&
-                            "ring-1 ring-neon-pink/40",
+                          coin.symbol === selectedSymbol && "bg-primary/5",
                           sig?.side === "LONG"
-                            ? "bg-neon-green/5 hover:bg-neon-green/10 border-l-2 border-l-neon-green"
+                            ? "hover:bg-neon-green/10"
                             : sig?.side === "SHORT"
-                            ? "bg-neon-red/5 hover:bg-neon-red/10 border-l-2 border-l-neon-red"
-                            : "hover:bg-neon-cyan/5"
+                              ? "hover:bg-neon-red/10"
+                              : "hover:bg-muted/60"
                         )}
                       >
-                        <td className="py-2 px-2">
-                          <span className="font-display text-xs font-bold text-neon-cyan">
+                        <td className="px-4 py-3">
+                          <span className="font-display text-sm font-bold text-foreground">
                             {coin.symbol.replace("USDT", "")}
                           </span>
                         </td>
-                        <td className="text-right py-2 px-2 font-mono text-xs text-foreground">
-                          ${coin.price < 1 ? coin.price.toFixed(6) : coin.price < 100 ? coin.price.toFixed(4) : coin.price.toFixed(2)}
+                        <td className="px-4 py-3 text-right font-mono text-xs text-foreground">
+                          $
+                          {coin.price < 1
+                            ? coin.price.toFixed(6)
+                            : coin.price < 100
+                              ? coin.price.toFixed(4)
+                              : coin.price.toFixed(2)}
                         </td>
                         <td
                           className={cn(
-                            "text-right py-2 px-2 font-mono text-xs hidden sm:table-cell",
-                            coin.change24h >= 0 ? "text-neon-green" : "text-neon-red"
+                            "px-4 py-3 text-right font-mono text-xs hidden sm:table-cell",
+                            coin.change24h >= 0
+                              ? "text-neon-green"
+                              : "text-neon-red"
                           )}
                         >
                           {coin.change24h >= 0 ? "+" : ""}
                           {coin.change24h.toFixed(2)}%
                         </td>
-                        <td className="text-right py-2 px-2">
+                        <td className="px-4 py-3 text-right">
                           {renderPosition(coin.vwapPosition)}
                         </td>
-                        <td className="text-right py-2 px-2 hidden md:table-cell">
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
                           {renderPosition(coin.emaPosition)}
                         </td>
-                        <td className="text-right py-2 px-2 hidden md:table-cell">
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
                           {coin.pullbackDetected ? (
                             <span className="font-mono text-[11px] text-neon-yellow inline-flex items-center gap-0.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-neon-yellow signal-pulse" />
-                              YES
+                              Yes
                             </span>
                           ) : (
-                            <span className="font-mono text-[11px] text-muted-foreground">—</span>
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </td>
-                        <td className="text-right py-2 px-2 hidden sm:table-cell">
+                        <td className="px-4 py-3 text-right hidden sm:table-cell">
                           {sig && sig.strength > 0 ? (
                             <div className="flex items-center justify-end gap-1">
                               <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -405,8 +437,8 @@ export default function Vwap() {
                                     sig.strength >= 75
                                       ? "bg-neon-green"
                                       : sig.strength >= 50
-                                      ? "bg-neon-yellow"
-                                      : "bg-neon-cyan"
+                                        ? "bg-neon-yellow"
+                                        : "bg-neon-cyan"
                                   )}
                                   style={{ width: `${sig.strength}%` }}
                                 />
@@ -416,22 +448,26 @@ export default function Vwap() {
                               </span>
                             </div>
                           ) : (
-                            <span className="font-mono text-[10px] text-muted-foreground">—</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </td>
-                        <td className="text-center py-2 px-2">
+                        <td className="px-4 py-3 text-center">
                           {sig?.side === "LONG" ? (
                             <Badge className="bg-neon-green/20 text-neon-green border-neon-green/40 font-mono text-[10px]">
                               <TrendingUp className="h-2.5 w-2.5 mr-0.5" />
-                              LONG
+                              Long
                             </Badge>
                           ) : sig?.side === "SHORT" ? (
                             <Badge className="bg-neon-red/20 text-neon-red border-neon-red/40 font-mono text-[10px]">
                               <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
-                              SHORT
+                              Short
                             </Badge>
                           ) : (
-                            <span className="font-mono text-[10px] text-muted-foreground">—</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -458,37 +494,39 @@ export default function Vwap() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page <= 1 || isFetching}
                   className="h-7 px-2 border-border/30 font-mono text-[10px]"
                 >
                   <ChevronLeft className="h-3 w-3 mr-0.5" />
-                  PREV
+                  Prev
                 </Button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={cn(
-                        "font-mono text-[10px] w-6 h-6 rounded-sm transition-all",
-                        page === p
-                          ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ))}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    p => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={cn(
+                          "font-mono text-[10px] w-6 h-6 rounded-sm transition-all",
+                          page === p
+                            ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                        )}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages || isFetching}
                   className="h-7 px-2 border-border/30 font-mono text-[10px]"
                 >
-                  NEXT
+                  Next
                   <ChevronRight className="h-3 w-3 ml-0.5" />
                 </Button>
               </div>
@@ -529,9 +567,9 @@ export default function Vwap() {
               variant="outline"
               size="sm"
               onClick={() => detailQuery.refetch()}
-              className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs"
+              className="font-mono text-xs"
             >
-              <RefreshCw className="h-3 w-3 mr-1" /> RETRY
+              <RefreshCw className="h-3 w-3 mr-1" /> Retry
             </Button>
           </div>
         )}
@@ -541,8 +579,8 @@ export default function Vwap() {
             {/* 좌 70% (chart + signalV2) / 우 30% (volume profile) */}
             <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
               <div className="md:col-span-7 space-y-4">
-                <div className="rounded-sm border border-border/30 bg-card/40 p-3">
-                  <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-2">
                     Price · VWAP · EMA(9) · ±1/2/3σ Bands
                   </div>
                   <VwapChartPanel detail={detail} />
@@ -550,7 +588,10 @@ export default function Vwap() {
                 <SignalCardV2 detail={detail} />
               </div>
               <div className="md:col-span-3">
-                <HudPanel title="Volume Profile" subtitle="POC · HVN · LVN · VA">
+                <HudPanel
+                  title="Volume Profile"
+                  subtitle="POC · HVN · LVN · VA"
+                >
                   <VolumeProfilePanel profile={detail.volumeProfile} />
                 </HudPanel>
               </div>

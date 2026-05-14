@@ -20,7 +20,7 @@ export function WinRateTab({ symbol, tf = "4h" }: WinRateTabProps) {
     return (
       <div className="flex items-center justify-center py-12 gap-2">
         <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-sans text-xs text-muted-foreground">
           rolling 백테스트 캐시 조회 중...
         </span>
       </div>
@@ -30,10 +30,10 @@ export function WinRateTab({ symbol, tf = "4h" }: WinRateTabProps) {
   if (!isAvailable || windows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-2">
-        <p className="font-mono text-xs text-muted-foreground">
+        <p className="font-sans text-xs text-muted-foreground">
           rolling 승률 데이터 없음
         </p>
-        <p className="font-mono text-[10px] text-muted-foreground/70">
+        <p className="font-sans text-[10px] text-muted-foreground/70">
           {status === "stub"
             ? "백테스트 데이터가 없는 코인입니다."
             : "잠시 후 다시 시도하세요."}
@@ -53,17 +53,17 @@ export function WinRateTab({ symbol, tf = "4h" }: WinRateTabProps) {
             key={w.windowDays}
             className="p-4 rounded-sm border border-border/20 bg-card/40"
           >
-            <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+            <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
               Last {w.windowDays} days
             </div>
-            <div className="font-display text-3xl font-bold text-neon-cyan mt-1">
+            <div className="tl-market-number mt-1 text-3xl leading-none text-primary">
               {pct}%
             </div>
-            <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+            <div className="font-sans text-[10px] text-muted-foreground mt-0.5">
               {w.trades} trades
             </div>
             <div className="mt-3">
-              <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground mb-1">
+              <div className="flex items-center justify-between font-sans text-[9px] text-muted-foreground mb-1">
                 <span>{ciLowPct.toFixed(1)}%</span>
                 <span>95% CI</span>
                 <span>{ciHighPct.toFixed(1)}%</span>

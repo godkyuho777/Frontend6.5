@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, Activity, Loader2 } from "lucide-react";
 
 import { HudPanel } from "@/components/HudPanel";
+import { TimeRangeSegmented } from "@/components/TimeRangeSegmented";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useVwapDetail } from "@/pages/CoinDetail/hooks/useVwapDetail";
@@ -74,7 +75,7 @@ function Candle(props: CandleShapeProps) {
   if (!payload || x == null || width == null || !priceToY) return null;
   const { open, high, low, close } = payload;
   const isUp = close >= open;
-  const color = isUp ? "#10b981" /* green-500 */ : "#ef4444" /* red-500 */;
+  const color = isUp ? "#10b981" /* green-500 */ : "#ef4444"; /* red-500 */
   const cx = x + width / 2;
   const yOpen = priceToY(open);
   const yClose = priceToY(close);
@@ -87,9 +88,23 @@ function Candle(props: CandleShapeProps) {
   return (
     <g>
       {/* wick */}
-      <line x1={cx} y1={yHigh} x2={cx} y2={yLow} stroke={color} strokeWidth={1} />
+      <line
+        x1={cx}
+        y1={yHigh}
+        x2={cx}
+        y2={yLow}
+        stroke={color}
+        strokeWidth={1}
+      />
       {/* body */}
-      <rect x={bodyX} y={bodyTop} width={bodyW} height={bodyH} fill={color} stroke={color} />
+      <rect
+        x={bodyX}
+        y={bodyTop}
+        width={bodyW}
+        height={bodyH}
+        fill={color}
+        stroke={color}
+      />
     </g>
   );
 }
@@ -176,12 +191,12 @@ function VwapCandleChart({ detail }: { detail: VwapDetailLite }) {
           <CartesianGrid stroke="oklch(0.3 0 0 / 0.3)" strokeDasharray="2 4" />
           <XAxis
             dataKey="idx"
-            tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
+            tick={{ fontSize: 10, fontFamily: "Fragment Mono" }}
             stroke="oklch(0.6 0 0)"
           />
           <YAxis
             domain={yDomain}
-            tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
+            tick={{ fontSize: 10, fontFamily: "Fragment Mono" }}
             stroke="oklch(0.6 0 0)"
             width={64}
           />
@@ -189,15 +204,20 @@ function VwapCandleChart({ detail }: { detail: VwapDetailLite }) {
             contentStyle={{
               backgroundColor: "oklch(0.18 0 0 / 0.95)",
               border: "1px solid oklch(0.4 0.15 280)",
-              fontFamily: "Share Tech Mono",
+              fontFamily: "Fragment Mono",
               fontSize: "11px",
             }}
-            labelFormatter={(v) => `Candle #${v}`}
+            labelFormatter={v => `Candle #${v}`}
             formatter={(value: number | string, name: string, item) => {
               if (typeof value !== "number") return [value, name];
               // candle 시리즈는 OHLC 모두 표시
               if (name === "candle" && item?.payload) {
-                const p = item.payload as { open: number; high: number; low: number; close: number };
+                const p = item.payload as {
+                  open: number;
+                  high: number;
+                  low: number;
+                  close: number;
+                };
                 return [
                   `O ${p.open.toFixed(4)} / H ${p.high.toFixed(4)} / L ${p.low.toFixed(4)} / C ${p.close.toFixed(4)}`,
                   "OHLC",
@@ -207,20 +227,92 @@ function VwapCandleChart({ detail }: { detail: VwapDetailLite }) {
             }}
           />
           {/* ±3σ / ±2σ / ±1σ 밴드 — 얇은 점선 (Bands) */}
-          <Line type="monotone" dataKey="upper3" stroke="oklch(0.7 0.15 30 / 0.4)" strokeWidth={1} strokeDasharray="2 3" dot={false} isAnimationActive={false} name="+3σ" />
-          <Line type="monotone" dataKey="upper2" stroke="oklch(0.7 0.15 30 / 0.6)" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} name="+2σ" />
-          <Line type="monotone" dataKey="upper1" stroke="oklch(0.7 0.15 30 / 0.7)" strokeWidth={1} strokeDasharray="1 2" dot={false} isAnimationActive={false} name="+1σ" />
-          <Line type="monotone" dataKey="lower1" stroke="oklch(0.7 0.15 200 / 0.7)" strokeWidth={1} strokeDasharray="1 2" dot={false} isAnimationActive={false} name="-1σ" />
-          <Line type="monotone" dataKey="lower2" stroke="oklch(0.7 0.15 200 / 0.6)" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} name="-2σ" />
-          <Line type="monotone" dataKey="lower3" stroke="oklch(0.7 0.15 200 / 0.4)" strokeWidth={1} strokeDasharray="2 3" dot={false} isAnimationActive={false} name="-3σ" />
+          <Line
+            type="monotone"
+            dataKey="upper3"
+            stroke="oklch(0.7 0.15 30 / 0.4)"
+            strokeWidth={1}
+            strokeDasharray="2 3"
+            dot={false}
+            isAnimationActive={false}
+            name="+3σ"
+          />
+          <Line
+            type="monotone"
+            dataKey="upper2"
+            stroke="oklch(0.7 0.15 30 / 0.6)"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            dot={false}
+            isAnimationActive={false}
+            name="+2σ"
+          />
+          <Line
+            type="monotone"
+            dataKey="upper1"
+            stroke="oklch(0.7 0.15 30 / 0.7)"
+            strokeWidth={1}
+            strokeDasharray="1 2"
+            dot={false}
+            isAnimationActive={false}
+            name="+1σ"
+          />
+          <Line
+            type="monotone"
+            dataKey="lower1"
+            stroke="oklch(0.7 0.15 200 / 0.7)"
+            strokeWidth={1}
+            strokeDasharray="1 2"
+            dot={false}
+            isAnimationActive={false}
+            name="-1σ"
+          />
+          <Line
+            type="monotone"
+            dataKey="lower2"
+            stroke="oklch(0.7 0.15 200 / 0.6)"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            dot={false}
+            isAnimationActive={false}
+            name="-2σ"
+          />
+          <Line
+            type="monotone"
+            dataKey="lower3"
+            stroke="oklch(0.7 0.15 200 / 0.4)"
+            strokeWidth={1}
+            strokeDasharray="2 3"
+            dot={false}
+            isAnimationActive={false}
+            name="-3σ"
+          />
           {/* VWAP — 노란색 실선 (사용자 명시 "VWAP과 EMA를 선으로") */}
-          <Line type="monotone" dataKey="vwap" stroke="oklch(0.85 0.18 95)" strokeWidth={1.8} dot={false} isAnimationActive={false} name="VWAP" />
+          <Line
+            type="monotone"
+            dataKey="vwap"
+            stroke="oklch(0.85 0.18 95)"
+            strokeWidth={1.8}
+            dot={false}
+            isAnimationActive={false}
+            name="VWAP"
+          />
           {/* EMA(9) — 청록색 실선 */}
-          <Line type="monotone" dataKey="ema9" stroke="oklch(0.75 0.15 200)" strokeWidth={1.8} dot={false} isAnimationActive={false} name="EMA(9)" />
+          <Line
+            type="monotone"
+            dataKey="ema9"
+            stroke="oklch(0.75 0.15 200)"
+            strokeWidth={1.8}
+            dot={false}
+            isAnimationActive={false}
+            name="EMA(9)"
+          />
           {/* Candles — 사용자 명시 "각 암호화폐별 가격들을 캔들로 표기" */}
           <Bar
             dataKey="candle"
-            shape={(p: object) => <Candle {...(p as CandleShapeProps)} priceToY={priceToY} />}
+            shape={(p: object) => (
+              <Candle {...(p as CandleShapeProps)} priceToY={priceToY} />
+            )}
             isAnimationActive={false}
             legendType="none"
             name="OHLC"
@@ -258,28 +350,38 @@ function VolumeHistogram({ detail }: { detail: VwapDetailLite }) {
           <CartesianGrid stroke="oklch(0.3 0 0 / 0.2)" strokeDasharray="2 4" />
           <XAxis
             dataKey="idx"
-            tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
+            tick={{ fontSize: 10, fontFamily: "Fragment Mono" }}
             stroke="oklch(0.6 0 0)"
           />
           <YAxis
-            tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
+            tick={{ fontSize: 10, fontFamily: "Fragment Mono" }}
             stroke="oklch(0.6 0 0)"
             width={64}
-            tickFormatter={(v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : v.toFixed(0))}
+            tickFormatter={v =>
+              v >= 1e6
+                ? `${(v / 1e6).toFixed(1)}M`
+                : v >= 1e3
+                  ? `${(v / 1e3).toFixed(0)}K`
+                  : v.toFixed(0)
+            }
           />
           <Tooltip
             contentStyle={{
               backgroundColor: "oklch(0.18 0 0 / 0.95)",
               border: "1px solid oklch(0.4 0.15 280)",
-              fontFamily: "Share Tech Mono",
+              fontFamily: "Fragment Mono",
               fontSize: "11px",
             }}
-            labelFormatter={(v) => `Candle #${v}`}
+            labelFormatter={v => `Candle #${v}`}
             formatter={(value: number) => [value.toLocaleString(), "Volume"]}
           />
           <Bar dataKey="volume" isAnimationActive={false}>
             {data.map((d, i) => (
-              <Cell key={i} fill={d.up ? "#10b981" : "#ef4444"} fillOpacity={0.6} />
+              <Cell
+                key={i}
+                fill={d.up ? "#10b981" : "#ef4444"}
+                fillOpacity={0.6}
+              />
             ))}
           </Bar>
         </BarChart>
@@ -343,33 +445,27 @@ export default function VwapDetail() {
             <ArrowLeft className="h-4 w-4 mr-1" />
             BACK
           </Button>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-cyan glow-cyan flex items-center gap-3">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
             <Activity className="h-6 w-6" />
             {symbol.replace("USDT", "")}
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1 hidden sm:block">
-            VWAP STRATEGY DETAIL // CANDLES + VWAP + EMA9 + VOLUME HISTOGRAM
+            VWAP strategy detail / candles + VWAP + EMA9 + volume histogram
           </p>
-          {detail?.vwapMult != null && <VwapMultChip vwapMult={detail.vwapMult} />}
+          {detail?.vwapMult != null && (
+            <VwapMultChip vwapMult={detail.vwapMult} />
+          )}
         </div>
 
         {/* TF Selector */}
-        <div className="flex items-center gap-1.5 bg-card/50 border border-border/30 rounded-sm px-2 py-1">
-          {TF_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setTf(opt)}
-              className={cn(
-                "font-mono text-[10px] px-2 py-1 rounded-sm transition-all uppercase",
-                tf === opt
-                  ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
-              )}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
+        <TimeRangeSegmented
+          options={TF_OPTIONS.map(value => ({
+            value,
+            label: value.toUpperCase(),
+          }))}
+          value={tf}
+          onChange={setTf}
+        />
       </div>
 
       {/* Loading / Error */}
@@ -384,7 +480,9 @@ export default function VwapDetail() {
 
       {isError && !detail && (
         <div className="text-center py-12">
-          <p className="font-mono text-sm text-neon-red mb-3">데이터 로드 실패</p>
+          <p className="font-mono text-sm text-neon-red mb-3">
+            데이터 로드 실패
+          </p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             RETRY
           </Button>
@@ -444,10 +542,18 @@ export default function VwapDetail() {
           {(detail.signalV2 || detail.signal) && (
             <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-2">
               <span>Current Side:</span>
-              <span className={cn("font-bold uppercase", sideColor)}>
+              <span className={cn("font-bold", sideColor)}>
                 {detail.signalV2?.side ?? detail.signal?.side}
               </span>
-              <span>· Strength {(detail.signalV2?.strength ?? detail.signal?.strength ?? 0).toFixed(0)}/100</span>
+              <span>
+                · Strength{" "}
+                {(
+                  detail.signalV2?.strength ??
+                  detail.signal?.strength ??
+                  0
+                ).toFixed(0)}
+                /100
+              </span>
             </div>
           )}
         </>

@@ -90,35 +90,35 @@ const REGIME_META: Record<
   { label: string; color: string; bg: string; border: string; icon: typeof TrendingUp }
 > = {
   strong_accumulation: {
-    label: "STRONG ACCUMULATION",
+    label: "Strong accumulation",
     color: "text-neon-green glow-green",
     bg: "bg-neon-green/10",
     border: "border-neon-green/40",
     icon: TrendingUp,
   },
   accumulation: {
-    label: "ACCUMULATION",
+    label: "Accumulation",
     color: "text-neon-green",
     bg: "bg-neon-green/5",
     border: "border-neon-green/30",
     icon: TrendingUp,
   },
   neutral: {
-    label: "NEUTRAL",
+    label: "Neutral",
     color: "text-muted-foreground",
     bg: "bg-muted/10",
     border: "border-border/40",
     icon: Database,
   },
   distribution: {
-    label: "DISTRIBUTION",
+    label: "Distribution",
     color: "text-neon-red",
     bg: "bg-neon-red/5",
     border: "border-neon-red/30",
     icon: TrendingDown,
   },
   strong_distribution: {
-    label: "STRONG DISTRIBUTION",
+    label: "Strong distribution",
     color: "text-neon-red glow-red",
     bg: "bg-neon-red/10",
     border: "border-neon-red/40",
@@ -182,9 +182,8 @@ export default function Onchain() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-3">
-            <Database className="h-6 w-6" />
-            ONCHAIN DATA
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Onchain data
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
             7-DIMENSION MODIFIERS · BBDX WEIGHTING ONLY · 단독 시그널 X
@@ -198,7 +197,7 @@ export default function Onchain() {
             value={symbolInput}
             onChange={(e) => setSymbolInput(e.target.value)}
             list="onchain-symbols"
-            className="h-6 w-32 px-1 font-mono text-[10px] bg-background/50 border-border/30"
+            className="h-6 w-32 px-1 font-sans text-[10px] bg-background/50 border-border/30"
             placeholder="Symbol"
           />
           <datalist id="onchain-symbols">
@@ -210,9 +209,9 @@ export default function Onchain() {
             type="submit"
             size="sm"
             variant="outline"
-            className="h-6 px-2 font-mono text-[10px] border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10"
+            className="h-6 px-2 font-sans text-[10px] border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10"
           >
-            FETCH
+            Fetch
           </Button>
         </form>
       </div>
@@ -222,7 +221,7 @@ export default function Onchain() {
         <HudPanel title="Loading">
           <div className="flex items-center justify-center py-8 gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="font-sans text-xs text-muted-foreground">
               7개 modifier 호출 중...
             </span>
           </div>
@@ -233,14 +232,14 @@ export default function Onchain() {
         <HudPanel title="Error" variant="danger">
           <div className="flex items-center gap-2 py-4">
             <AlertTriangle className="h-4 w-4 text-neon-red" />
-            <span className="font-mono text-xs text-neon-red">
+            <span className="font-sans text-xs text-neon-red">
               {String(scoreQuery.error.message ?? scoreQuery.error)}
             </span>
             <Button
               size="sm"
               variant="outline"
               onClick={() => scoreQuery.refetch()}
-              className="ml-auto h-6 border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-[10px]"
+              className="ml-auto h-6 border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-[10px]"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               RETRY
@@ -265,16 +264,16 @@ export default function Onchain() {
                     <div className={cn("font-display text-lg font-bold tracking-wider", regime.color)}>
                       {regime.label}
                     </div>
-                    <div className="font-mono text-[10px] text-muted-foreground">
+                    <div className="font-sans text-[10px] text-muted-foreground">
                       score = sum(modifiers) / 1.4 · clamp(-1, +1)
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">
+                  <div className="font-sans text-[9px] text-muted-foreground uppercase tracking-wider">
                     Score
                   </div>
-                  <div className={cn("font-display text-3xl font-bold", valueColor(data.score))}>
+                  <div className={cn("tl-market-number text-3xl leading-none", valueColor(data.score))}>
                     {fmtValue(data.score)}
                   </div>
                 </div>
@@ -295,7 +294,7 @@ export default function Onchain() {
                   }}
                 />
               </div>
-              <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground">
+              <div className="flex items-center justify-between font-sans text-[9px] text-muted-foreground">
                 <span>-1.0 strong distribution</span>
                 <span>0 neutral</span>
                 <span>+1.0 strong accumulation</span>
@@ -344,7 +343,7 @@ export default function Onchain() {
                         <TooltipTrigger asChild>
                           <span
                             className={cn(
-                              "absolute top-1.5 right-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border cursor-help z-10",
+                              "absolute top-1.5 right-1.5 px-2 py-0.5 rounded text-[10px] font-sans tracking-wider border cursor-help z-10",
                               isStub &&
                                 "bg-amber-500/20 text-amber-300 border-amber-500/40",
                               isMock &&
@@ -354,10 +353,10 @@ export default function Onchain() {
                             )}
                           >
                             {isStub
-                              ? "DATA SOURCE PENDING"
+                              ? "Data source pending"
                               : isMock
-                                ? "MOCK"
-                                : "ERROR"}
+                                ? "Mock"
+                                : "Error"}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent
@@ -382,7 +381,7 @@ export default function Onchain() {
                         </span>
                         <span
                           className={cn(
-                            "font-mono text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider border",
+                            "font-sans text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider border",
                             status === "ok"
                               ? "border-neon-green/30 text-neon-green"
                               : status === "stub"
@@ -395,10 +394,10 @@ export default function Onchain() {
                           {m.status}
                         </span>
                       </div>
-                      <div className="font-mono text-[10px] text-muted-foreground/80">
+                      <div className="font-sans text-[10px] text-muted-foreground/80">
                         {meta.description}
                       </div>
-                      <div className="font-mono text-[10px] text-foreground">
+                      <div className="font-sans text-[10px] text-foreground">
                         {m.detail}
                       </div>
                     </div>
@@ -413,11 +412,11 @@ export default function Onchain() {
                       >
                         {fmtValue(m.value)}
                       </div>
-                      <div className="font-mono text-[9px] text-muted-foreground">
+                      <div className="font-sans text-[9px] text-muted-foreground">
                         / -0.25~+0.20
                       </div>
                     </div>
-                    <div className="font-mono text-[9px] text-muted-foreground/70 text-right max-w-[150px]">
+                    <div className="font-sans text-[9px] text-muted-foreground/70 text-right max-w-[150px]">
                       <div>↑ {meta.bullishDesc}</div>
                       <div>↓ {meta.bearishDesc}</div>
                     </div>
@@ -437,7 +436,7 @@ export default function Onchain() {
                 {/* Inputs */}
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <label className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
                       Base Strength (BBDX 0~100)
                     </label>
                     <input
@@ -448,12 +447,12 @@ export default function Onchain() {
                       onChange={(e) => setBaseStrength(Number(e.target.value))}
                       className="w-full accent-neon-cyan"
                     />
-                    <div className="font-display text-lg font-bold text-neon-cyan">
+                    <div className="tl-market-number text-lg leading-none text-primary">
                       {baseStrength}
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <label className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
                       Path
                     </label>
                     <div className="flex items-center gap-1">
@@ -462,7 +461,7 @@ export default function Onchain() {
                           key={p}
                           onClick={() => setPath(p)}
                           className={cn(
-                            "font-mono text-[10px] px-2 py-1 rounded-sm transition-all border",
+                            "font-sans text-[10px] px-2 py-1 rounded-sm transition-all border",
                             path === p
                               ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40"
                               : "text-muted-foreground border-border/30 hover:border-neon-cyan/30"
@@ -472,7 +471,7 @@ export default function Onchain() {
                         </button>
                       ))}
                     </div>
-                    <div className="font-mono text-[9px] text-muted-foreground">
+                    <div className="font-sans text-[9px] text-muted-foreground">
                       {path === "BB:Riding"
                         ? "추세 추종 — strong_distribution 환경에서도 차단 X"
                         : "평균회귀 — strong_distribution 환경에서 자본 보호 차단"}
@@ -490,7 +489,7 @@ export default function Onchain() {
                           ENTRY BLOCKED
                         </span>
                       </div>
-                      <p className="font-mono text-[11px] text-neon-red/90">
+                      <p className="font-sans text-[11px] text-neon-red/90">
                         {adjusted.blockReason}
                       </p>
                     </>
@@ -502,7 +501,7 @@ export default function Onchain() {
                           ENTRY ALLOWED
                         </span>
                       </div>
-                      <div className="font-mono text-[11px] text-foreground space-y-0.5">
+                      <div className="font-sans text-[11px] text-foreground space-y-0.5">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Base Strength</span>
                           <span>{adjusted.baseStrength.toFixed(1)}</span>
@@ -529,7 +528,7 @@ export default function Onchain() {
           )}
 
           {/* Disclaimer */}
-          <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-mono text-[10px] text-yellow-300/80 flex items-center gap-2">
+          <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-sans text-[10px] text-yellow-300/80 flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5" />
             ⚠️ 백테스트 통계. 미래 보장 X. 자기책임. 온체인 점수는 BBDX 시그널의
             가중치로만 사용되며 단독 매매 신호로 사용하지 마세요.

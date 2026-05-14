@@ -61,13 +61,13 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
               icon={<TrendingUp className="h-4 w-4 text-neon-green" />}
               variant="positive"
             >
-              <div className="font-mono text-xs text-muted-foreground mb-1">
+              <div className="font-sans text-xs text-muted-foreground mb-1">
                 Path: <span className="text-neon-green">{coin.entryDecision.path}</span> ·
                 Strength: <span className="text-foreground">{coin.signalStrength}</span>
               </div>
               <div className="space-y-1">
                 {coin.entryDecision.reasons.map((reason, i) => (
-                  <div key={i} className="font-mono text-[11px] text-foreground/85 flex gap-2">
+                  <div key={i} className="font-sans text-[11px] text-foreground/85 flex gap-2">
                     <span className="text-neon-green">✓</span>
                     {reason}
                   </div>
@@ -119,12 +119,12 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
           {/* No active signal */}
           {!coin.entryDecision && !coin.exitDecision && !(coin.isStopLossHit ?? false) && (
             <Section title="No Active Signal" icon={<Activity className="h-4 w-4 text-muted-foreground" />}>
-              <p className="font-mono text-[11px] text-muted-foreground">
+              <p className="font-sans text-[11px] text-muted-foreground">
                 None of the NUM / PTN / BB entry conditions are satisfied, and no
                 exit threshold has been crossed.
               </p>
               {(coin.isFallingKnife ?? false) && (
-                <p className="font-mono text-[11px] text-neon-red mt-2">
+                <p className="font-sans text-[11px] text-neon-red mt-2">
                   ⚠ Falling Knife filter active (-DI &gt; +DI AND ADX &gt; 25). Entry blocked.
                 </p>
               )}
@@ -165,14 +165,14 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
                   <div
                     key={i}
                     className={cn(
-                      "flex items-center gap-2 font-mono text-[11px]",
+                      "flex items-center gap-2 font-sans text-[11px]",
                       p.bias === "bullish" ? "text-neon-green" : "text-neon-red"
                     )}
                   >
                     <Badge
                       variant="outline"
                       className={cn(
-                        "font-mono text-[10px] border-none",
+                        "font-sans text-[10px] border-none",
                         p.bias === "bullish"
                           ? "bg-neon-green/10 text-neon-green"
                           : "bg-neon-red/10 text-neon-red"
@@ -220,7 +220,7 @@ function Section({
     <div className={cn("rounded-sm border bg-card/30 p-3", borderColor)}>
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <span className="font-display text-xs font-bold tracking-wider uppercase text-foreground">
+        <span className="font-display text-xs font-bold tracking-wider text-foreground">
           {title}
         </span>
       </div>
@@ -231,7 +231,7 @@ function Section({
 
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex items-center justify-between font-mono text-[11px]">
+    <div className="flex items-center justify-between font-sans text-[11px]">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground">{value}</span>
     </div>
@@ -368,7 +368,7 @@ function Trigger({ label, met }: { label: string; met: boolean }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1 font-mono text-[10px]",
+        "flex items-center gap-1 font-sans text-[10px]",
         met ? "text-neon-green" : "text-muted-foreground"
       )}
     >
@@ -398,13 +398,13 @@ function formatBBStructure(s: string): string {
 function formatPressure(p: string): string {
   switch (p) {
     case "BULL_PRESSURE":
-      return "BULL ↑ (strong)";
+      return "Bull ↑ (strong)";
     case "WEAK_BULL":
-      return "BULL ↑ (weak)";
+      return "Bull ↑ (weak)";
     case "BEAR_PRESSURE":
-      return "BEAR ↓ (strong)";
+      return "Bear ↓ (strong)";
     case "WEAK_BEAR":
-      return "BEAR ↓ (weak)";
+      return "Bear ↓ (weak)";
     default:
       return "Neutral";
   }

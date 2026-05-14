@@ -46,7 +46,7 @@ export default function LiteAlerts() {
           size="sm"
           variant="outline"
           onClick={() => setLocation("/lite")}
-          className="font-mono text-[11px] border-neon-cyan/30 text-neon-cyan"
+          className="font-sans text-[11px] border-neon-cyan/30 text-neon-cyan"
         >
           돌아가기
         </Button>
@@ -61,7 +61,7 @@ export default function LiteAlerts() {
         title="알림 설정"
         subtitle="복잡한 임계값 대신, 평소에 쓰는 말로 골라요"
       >
-        <p className="font-mono text-sm text-muted-foreground">
+        <p className="font-sans text-sm text-muted-foreground">
           RSI 나 ADX 같은 숫자를 직접 정하지 않아도 돼요. 필요한 경우만 켜면, 우리가
           시그널 시스템을 모니터링해서 알려드려요.
         </p>
@@ -89,7 +89,7 @@ export default function LiteAlerts() {
                 key={p}
                 onClick={() => setState({ ...state, pnlThreshold: p })}
                 className={cn(
-                  "px-3 py-1 rounded-lg font-mono text-[11px] border transition-colors",
+                  "px-3 py-1 rounded-lg font-sans text-[11px] border transition-colors",
                   state.pnlThreshold === p
                     ? "border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan"
                     : "border-border/30 text-muted-foreground hover:text-foreground"
@@ -115,13 +115,13 @@ export default function LiteAlerts() {
           // TODO: trpc.alerts.upsert 호출로 실제 저장. v1 stub.
           alert("알림 설정이 저장됐어요 (v1: 데모 — 실제 알림 발송은 다음 릴리스).");
         }}
-        className="w-full bg-neon-pink/20 hover:bg-neon-pink/30 text-neon-pink border border-neon-pink/40 font-mono text-sm"
+        className="w-full bg-neon-pink/20 hover:bg-neon-pink/30 text-neon-pink border border-neon-pink/40 font-sans text-sm"
       >
         설정 저장
       </Button>
 
       <LiteCard variant="muted">
-        <p className="font-mono text-[10px] text-muted-foreground leading-relaxed">
+        <p className="font-sans text-[10px] text-muted-foreground leading-relaxed">
           전문가 모드의 RSI / ADX / Bollinger 임계값 조정은 [Pro 모드로 → /alerts]
           에서 가능해요.
         </p>
@@ -153,7 +153,7 @@ function PresetToggle({
           <div className="font-display text-sm font-bold text-foreground">
             {title}
           </div>
-          <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+          <p className="font-sans text-[11px] text-muted-foreground mt-0.5">
             {desc}
           </p>
           {children}

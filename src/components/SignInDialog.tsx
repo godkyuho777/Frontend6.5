@@ -64,19 +64,19 @@ export function SignInDialog({ children }: SignInDialogProps) {
         </DialogHeader>
         {sent ? (
           <div className="space-y-2 py-4">
-            <p className="font-mono text-sm">
+            <p className="font-sans text-sm">
               Check{" "}
               <span className="text-neon-cyan break-all">{email}</span>{" "}
               for a sign-in link.
             </p>
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="font-sans text-xs text-muted-foreground">
               Click the link to complete sign-in. You can close this dialog.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="signin-email" className="font-mono text-xs">
+              <Label htmlFor="signin-email" className="font-sans text-xs">
                 Email
               </Label>
               <Input

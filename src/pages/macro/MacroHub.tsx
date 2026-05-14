@@ -15,15 +15,7 @@
  */
 
 import { useMemo, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  Clock,
-  Loader2,
-  RefreshCw,
-  TrendingUp,
-  Waves,
-} from "lucide-react";
+import { Activity, AlertTriangle, Clock, Loader2 } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -36,7 +28,7 @@ import {
 
 import { trpc } from "@/lib/trpc";
 import { HudPanel, StatCard } from "@/components/HudPanel";
-import { Button } from "@/components/ui/button";
+import { RefreshIconButton } from "@/components/RefreshIconButton";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -46,11 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type {
-  CyclePhase,
-  MacroLayer,
-  MacroRegime,
-} from "@shared/macro-types";
+import type { CyclePhase, MacroLayer, MacroRegime } from "@shared/macro-types";
 
 // ── Regime 색상 매핑 ────────────────────────────────────────
 const REGIME_META: Record<
@@ -157,9 +145,9 @@ function scoreToColor(score: number): string {
   // -100~+100 → red → orange → slate → green → purple
   if (score <= -60) return "text-red-400";
   if (score <= -20) return "text-orange-400";
-  if (score < 20) return "text-slate-300";
+  if (score < 20) return "text-muted-foreground";
   if (score < 60) return "text-neon-green";
-  return "text-fuchsia-400";
+  return "text-primary";
 }
 
 // ── Sub-components ─────────────────────────────────────────
@@ -175,13 +163,13 @@ function SummaryCard({ layer }: { layer: MacroLayer }) {
     >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="hud-frame p-3">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
             Score (-100 ~ +100)
           </div>
           <div
             className={cn(
               "font-display text-3xl font-bold",
-              scoreToColor(layer.score),
+              scoreToColor(layer.score)
             )}
           >
             {layer.score >= 0 ? "+" : ""}
@@ -189,14 +177,14 @@ function SummaryCard({ layer }: { layer: MacroLayer }) {
           </div>
         </div>
         <div className="hud-frame p-3">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
             Regime
           </div>
           <div
             className={cn(
-              "inline-flex items-center gap-1.5 px-2 py-1 rounded-sm font-display text-sm font-bold tracking-wider",
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-display text-sm font-bold",
               regime.bg,
-              regime.text,
+              regime.text
             )}
           >
             <span
@@ -207,10 +195,10 @@ function SummaryCard({ layer }: { layer: MacroLayer }) {
           </div>
         </div>
         <div className="hud-frame p-3">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
             Effective Multiplier
           </div>
-          <div className="font-display text-3xl font-bold text-neon-cyan">
+          <div className="font-display text-3xl font-bold text-primary">
             ×{effectiveMult.toFixed(2)}
           </div>
           <div className="font-mono text-[10px] text-muted-foreground mt-1">
@@ -281,18 +269,18 @@ function IndicatorGrid({ layer }: { layer: MacroLayer }) {
       subtitle="MACRO_v2 §2 · raw + scored contribution"
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {items.map((it) => (
+        {items.map(it => (
           <div key={it.label} className="hud-frame p-3">
-            <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+            <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
               {it.label}
             </div>
-            <div className="font-display text-lg font-bold text-neon-cyan">
+            <div className="font-display text-lg font-bold text-foreground">
               {it.value}
             </div>
             <div
               className={cn(
                 "font-mono text-[10px] mt-1",
-                it.contribution >= 0 ? "text-neon-green" : "text-red-400",
+                it.contribution >= 0 ? "text-neon-green" : "text-red-400"
               )}
             >
               score: {it.contribution >= 0 ? "+" : ""}
@@ -325,12 +313,11 @@ function CompositeGauge({
 }) {
   const pct = Math.max(0, Math.min(1, value)) * 100;
   const triggered = value > highThreshold;
-  const barColor =
-    highColor === "red" ? "bg-red-500" : "bg-emerald-500";
+  const barColor = highColor === "red" ? "bg-red-500" : "bg-emerald-500";
   return (
     <div className="hud-frame p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+        <div className="font-mono text-[10px] text-muted-foreground tracking-wider">
           {label}
         </div>
         <div
@@ -340,7 +327,7 @@ function CompositeGauge({
               ? highColor === "red"
                 ? "text-red-400"
                 : "text-neon-green"
-              : "text-neon-cyan",
+              : "text-primary"
           )}
         >
           {value.toFixed(2)}
@@ -356,7 +343,7 @@ function CompositeGauge({
         <div
           className={cn(
             "font-mono text-[10px] mt-2",
-            highColor === "red" ? "text-red-400" : "text-neon-green",
+            highColor === "red" ? "text-red-400" : "text-neon-green"
           )}
         >
           {highLabel}
@@ -379,17 +366,17 @@ function CompositeSignalsCard({ layer }: { layer: MacroLayer }) {
           value={layer.c1_crisis}
           highThreshold={0.6}
           highColor="red"
-          highLabel="⚠ 위기 강화 (≥ 0.6)"
+          highLabel="위기 강화 (≥ 0.6)"
         />
         <CompositeGauge
           label="C2 — Risk-On"
           value={layer.c2_riskOn}
           highThreshold={0.8}
           highColor="green"
-          highLabel="✓ Risk-on 강화 (≥ 0.8)"
+          highLabel="Risk-on 강화 (≥ 0.8)"
         />
         <div className="hud-frame p-3">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
             C3 — Net Liquidity 30d
           </div>
           <div
@@ -397,7 +384,7 @@ function CompositeSignalsCard({ layer }: { layer: MacroLayer }) {
               "font-display text-2xl font-bold",
               layer.c3_net_liquidity_30d_pct >= 0
                 ? "text-neon-green"
-                : "text-red-400",
+                : "text-red-400"
             )}
           >
             {fmtPct(layer.c3_net_liquidity_30d_pct, 2)}
@@ -407,14 +394,14 @@ function CompositeSignalsCard({ layer }: { layer: MacroLayer }) {
           </div>
         </div>
         <div className="hud-frame p-3">
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
             C4 — Cycle Phase
           </div>
           <div
             className={cn(
-              "inline-flex items-center gap-1.5 px-2 py-1 rounded-sm font-display text-xs font-bold tracking-wider mt-1",
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-display text-xs font-bold mt-1",
               c4.bg,
-              c4.text,
+              c4.text
             )}
           >
             {c4.label}
@@ -431,10 +418,7 @@ function KoreaMacroCard({ layer }: { layer: MacroLayer }) {
 
   if (!hasBok && !hasKrw) {
     return (
-      <HudPanel
-        title="Korea Macro"
-        subtitle="BOK ECOS · KRW/USD"
-      >
+      <HudPanel title="Korea Macro" subtitle="BOK ECOS · KRW/USD">
         <div className="text-xs font-mono text-muted-foreground py-4 text-center">
           BOK ECOS API key 미설정 — 환율은 Yahoo Finance fallback. 데이터 없음.
         </div>
@@ -473,12 +457,12 @@ function BBDXImpactCard({ layer }: { layer: MacroLayer }) {
     >
       <div className="space-y-3">
         <div className="hud-frame p-3 flex items-center gap-3">
-          <Activity className="h-5 w-5 text-neon-cyan shrink-0" />
+          <Activity className="h-5 w-5 text-primary shrink-0" />
           <div className="flex-1">
-            <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+            <div className="font-mono text-[10px] text-muted-foreground tracking-wider">
               현재 macro_mult
             </div>
-            <div className="font-display text-2xl font-bold text-neon-cyan">
+            <div className="font-display text-2xl font-bold text-primary">
               ×{effectiveMult.toFixed(2)}
             </div>
           </div>
@@ -512,26 +496,24 @@ function FreshnessHeader({ layer }: { layer: MacroLayer }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-sm border",
-        stale
-          ? "border-yellow-500/40 bg-yellow-500/5"
-          : "border-border/40 bg-card/40",
+        "flex items-center gap-3 px-3 py-2 rounded-lg",
+        stale ? "bg-yellow-500/5" : "bg-card"
       )}
     >
-      <Clock className={cn("h-4 w-4", stale ? "text-neon-yellow" : "text-neon-cyan")} />
+      <Clock
+        className={cn("h-4 w-4", stale ? "text-neon-yellow" : "text-primary")}
+      />
       <div className="flex-1 font-mono text-xs">
         <span className="text-muted-foreground">데이터 경과: </span>
         <span className={stale ? "text-neon-yellow" : "text-foreground"}>
           {layer.age_hours.toFixed(1)}시간 전
         </span>
         <span className="text-muted-foreground"> · freshness ×</span>
-        <span className={stale ? "text-neon-yellow" : "text-neon-cyan"}>
+        <span className={stale ? "text-neon-yellow" : "text-primary"}>
           {layer.freshness_mult.toFixed(2)}
         </span>
       </div>
-      {stale && (
-        <AlertTriangle className="h-4 w-4 text-neon-yellow shrink-0" />
-      )}
+      {stale && <AlertTriangle className="h-4 w-4 text-neon-yellow shrink-0" />}
     </div>
   );
 }
@@ -542,19 +524,19 @@ function TimeSeriesChart() {
 
   const query = trpc.macroV2.history.useQuery(
     { seriesId, period },
-    { staleTime: 5 * 60 * 1000 },
+    { staleTime: 5 * 60 * 1000 }
   );
 
   const data = useMemo(() => {
     if (!query.data || query.data.status === "error") return [];
-    return (query.data.observations ?? []).map((o) => ({
+    return (query.data.observations ?? []).map(o => ({
       date: o.date,
       value: o.value,
     }));
   }, [query.data]);
 
   const seriesLabel =
-    SERIES_OPTIONS.find((s) => s.id === seriesId)?.label ?? seriesId;
+    SERIES_OPTIONS.find(s => s.id === seriesId)?.label ?? seriesId;
 
   return (
     <HudPanel
@@ -567,8 +549,12 @@ function TimeSeriesChart() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SERIES_OPTIONS.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="font-mono text-xs">
+              {SERIES_OPTIONS.map(s => (
+                <SelectItem
+                  key={s.id}
+                  value={s.id}
+                  className="font-mono text-xs"
+                >
                   {s.label}
                 </SelectItem>
               ))}
@@ -576,16 +562,18 @@ function TimeSeriesChart() {
           </Select>
           <Select
             value={period}
-            onValueChange={(v) =>
-              setPeriod(v as "30d" | "90d" | "1y" | "5y")
-            }
+            onValueChange={v => setPeriod(v as "30d" | "90d" | "1y" | "5y")}
           >
             <SelectTrigger className="h-7 w-[80px] font-mono text-[10px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PERIOD_OPTIONS.map((p) => (
-                <SelectItem key={p.value} value={p.value} className="font-mono text-xs">
+              {PERIOD_OPTIONS.map(p => (
+                <SelectItem
+                  key={p.value}
+                  value={p.value}
+                  className="font-mono text-xs"
+                >
                   {p.label}
                 </SelectItem>
               ))}
@@ -611,26 +599,42 @@ function TimeSeriesChart() {
           <AreaChart data={data}>
             <defs>
               <linearGradient id="macroSeries" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.78 0.15 165)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="oklch(0.78 0.15 165)" stopOpacity={0} />
+                <stop
+                  offset="0%"
+                  stopColor="oklch(0.78 0.15 165)"
+                  stopOpacity={0.4}
+                />
+                <stop
+                  offset="100%"
+                  stopColor="oklch(0.78 0.15 165)"
+                  stopOpacity={0}
+                />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="rgba(255,255,255,0.05)" />
+            <CartesianGrid stroke="rgba(0,0,0,0.06)" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fontFamily: "monospace", fill: "#94a3b8" }}
+              tick={{
+                fontSize: 10,
+                fontFamily: "Fragment Mono",
+                fill: "#7a7a7a",
+              }}
               minTickGap={40}
             />
             <YAxis
-              tick={{ fontSize: 10, fontFamily: "monospace", fill: "#94a3b8" }}
+              tick={{
+                fontSize: 10,
+                fontFamily: "Fragment Mono",
+                fill: "#7a7a7a",
+              }}
               domain={["auto", "auto"]}
             />
             <Tooltip
               contentStyle={{
-                background: "#0d0d14",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "4px",
-                fontFamily: "monospace",
+                background: "#ffffff",
+                border: "1px solid #ececec",
+                borderRadius: "8px",
+                fontFamily: "Fragment Mono",
                 fontSize: "11px",
               }}
             />
@@ -671,28 +675,19 @@ export default function MacroHub() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-2">
-            <Waves className="h-6 w-6" />
-            MACRO LIQUIDITY TRACKER · OVERVIEW (COMPOSITE C1~C4)
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Macro liquidity tracker
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            6차원 매크로 — FRED / ALFRED · C1~C4 COMPOSITES · BBDX MULTIPLIER (CHARTER R3)
+            Overview (Composite C1~C4) / 6차원 매크로 / FRED + ALFRED / BBDX
+            multiplier
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
+        <RefreshIconButton
           onClick={() => snapshotQuery.refetch()}
-          disabled={snapshotQuery.isFetching}
-          className="font-mono text-xs h-8"
-        >
-          {snapshotQuery.isFetching ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-          )}
-          REFRESH
-        </Button>
+          label="Refresh macro snapshot"
+          isLoading={snapshotQuery.isFetching}
+        />
       </div>
 
       {snapshotQuery.isLoading ? (
@@ -702,8 +697,8 @@ export default function MacroHub() {
       ) : !layer ? (
         <HudPanel title="Macro Snapshot 사용 불가" variant="danger">
           <div className="text-sm font-mono text-muted-foreground">
-            FRED API 응답 실패 또는 데이터 미수신. FRED_API_KEY 환경변수
-            설정 여부를 확인하세요.
+            FRED API 응답 실패 또는 데이터 미수신. FRED_API_KEY 환경변수 설정
+            여부를 확인하세요.
           </div>
         </HudPanel>
       ) : (

@@ -38,7 +38,7 @@ export default function AlertSettings() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Bell className="h-10 w-10 text-muted-foreground/30" />
-        <p className="font-mono text-muted-foreground">Sign in to configure alerts</p>
+        <p className="font-sans text-muted-foreground">Sign in to configure alerts</p>
         <SignInDialog>
           <Button className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30">
             CONNECT
@@ -52,8 +52,8 @@ export default function AlertSettings() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
-            ALERT CONFIG
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Alert config
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
             CUSTOM THRESHOLDS // NOTIFICATION RULES
@@ -76,7 +76,7 @@ export default function AlertSettings() {
             });
           }}
           disabled={upsertMutation.isPending}
-          className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-mono text-xs"
+          className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-sans text-xs"
         >
           <Plus className="h-3 w-3 mr-1" />
           NEW RULE
@@ -90,7 +90,7 @@ export default function AlertSettings() {
             <h4 className="font-display text-xs font-bold tracking-wider text-neon-green mb-3 uppercase">
               Entry Conditions (Long)
             </h4>
-            <div className="space-y-2 font-mono text-xs">
+            <div className="space-y-2 font-sans text-xs">
               <div className="flex justify-between p-2 bg-neon-green/5 rounded-sm border border-neon-green/10">
                 <span className="text-muted-foreground">RSI Range</span>
                 <span className="text-neon-green">30 ~ 35</span>
@@ -109,7 +109,7 @@ export default function AlertSettings() {
             <h4 className="font-display text-xs font-bold tracking-wider text-neon-cyan mb-3 uppercase">
               Exit Conditions (Target)
             </h4>
-            <div className="space-y-2 font-mono text-xs">
+            <div className="space-y-2 font-sans text-xs">
               <div className="flex justify-between p-2 bg-neon-cyan/5 rounded-sm border border-neon-cyan/10">
                 <span className="text-muted-foreground">BB Middle Line</span>
                 <span className="text-neon-cyan">Price &ge; BB Mid</span>
@@ -136,8 +136,8 @@ export default function AlertSettings() {
         ) : !alerts?.length ? (
           <div className="text-center py-8">
             <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-mono text-sm text-muted-foreground">No custom rules yet</p>
-            <p className="font-mono text-xs text-muted-foreground/60 mt-1">
+            <p className="font-sans text-sm text-muted-foreground">No custom rules yet</p>
+            <p className="font-sans text-xs text-muted-foreground/60 mt-1">
               Create a rule to customize signal detection thresholds
             </p>
           </div>
@@ -191,7 +191,7 @@ function AlertRuleCard({
             placeholder="All coins (leave empty)"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            className="w-40 h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="w-40 h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
         <div className="flex gap-2">
@@ -211,7 +211,7 @@ function AlertRuleCard({
               })
             }
             disabled={isSaving}
-            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-[10px]"
+            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-[10px]"
           >
             <Save className="h-3 w-3 mr-1" />
             SAVE
@@ -221,7 +221,7 @@ function AlertRuleCard({
             size="sm"
             onClick={onDelete}
             disabled={isDeleting}
-            className="border-neon-red/30 text-neon-red hover:bg-neon-red/10 font-mono text-[10px]"
+            className="border-neon-red/30 text-neon-red hover:bg-neon-red/10 font-sans text-[10px]"
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -230,57 +230,57 @@ function AlertRuleCard({
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div>
-          <Label className="font-mono text-[10px] text-muted-foreground">RSI Low</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">RSI Low</Label>
           <Input
             type="number"
             value={rsiLow}
             onChange={(e) => setRsiLow(e.target.value)}
-            className="h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-[10px] text-muted-foreground">RSI High</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">RSI High</Label>
           <Input
             type="number"
             value={rsiHigh}
             onChange={(e) => setRsiHigh(e.target.value)}
-            className="h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-[10px] text-muted-foreground">ADX Threshold</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">ADX Threshold</Label>
           <Input
             type="number"
             value={adxThreshold}
             onChange={(e) => setAdxThreshold(e.target.value)}
-            className="h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-[10px] text-muted-foreground">Target RSI</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">Target RSI</Label>
           <Input
             type="number"
             value={targetRsi}
             onChange={(e) => setTargetRsi(e.target.value)}
-            className="h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-[10px] text-muted-foreground">Target ADX</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">Target ADX</Label>
           <Input
             type="number"
             value={targetAdx}
             onChange={(e) => setTargetAdx(e.target.value)}
-            className="h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-[10px] text-muted-foreground">Target +DI</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">Target +DI</Label>
           <Input
             type="number"
             value={targetPlusDi}
             onChange={(e) => setTargetPlusDi(e.target.value)}
-            className="h-7 font-mono text-xs bg-background/50 border-border/30"
+            className="h-7 font-sans text-xs bg-background/50 border-border/30"
           />
         </div>
       </div>

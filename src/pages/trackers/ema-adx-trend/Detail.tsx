@@ -39,7 +39,13 @@ import { BacktestTab } from "./tabs/BacktestTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { CoinInfoTab } from "./tabs/CoinInfoTab";
 
-type TabId = "criteria" | "signal" | "chart" | "backtest" | "history" | "coin-info";
+type TabId =
+  | "criteria"
+  | "signal"
+  | "chart"
+  | "backtest"
+  | "history"
+  | "coin-info";
 
 interface TabSpec {
   id: TabId;
@@ -57,7 +63,7 @@ const TABS: TabSpec[] = [
   { id: "coin-info", label: "코인 정보", icon: Info },
 ];
 
-const VALID_IDS = TABS.map((t) => t.id) as readonly TabId[];
+const VALID_IDS = TABS.map(t => t.id) as readonly TabId[];
 function isValidTab(v: string | null | undefined): v is TabId {
   return v != null && (VALID_IDS as readonly string[]).includes(v);
 }
@@ -126,10 +132,10 @@ export default function EmaAdxTrendDetailPage() {
             BACK
           </Button>
           <div>
-            <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
               {symbol.replace("USDT", "")}
             </h1>
-            <p className="font-mono text-xs text-muted-foreground mt-1 uppercase tracking-wider">
+            <p className="font-mono text-xs text-muted-foreground mt-1">
               EMA + ADX 정배열 · {tf.toUpperCase()} · 6 탭 상세
             </p>
           </div>
@@ -139,7 +145,7 @@ export default function EmaAdxTrendDetailPage() {
       {/* Tabs strip */}
       <div className="border-b border-border/40 overflow-x-auto scrollbar-thin">
         <div className="flex items-center gap-1 min-w-fit px-1">
-          {TABS.map((tab) => {
+          {TABS.map(tab => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
             return (
@@ -150,12 +156,12 @@ export default function EmaAdxTrendDetailPage() {
                 aria-pressed={isActive}
                 className={cn(
                   "relative inline-flex items-center gap-2 px-4 py-2.5",
-                  "font-mono text-xs uppercase tracking-wider whitespace-nowrap",
+                  "font-sans text-sm font-medium whitespace-nowrap",
                   "border-b-2 transition-all duration-200",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-neon-pink/40",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   isActive
-                    ? "text-neon-pink border-neon-pink"
-                    : "text-muted-foreground border-transparent hover:text-neon-cyan hover:border-neon-cyan/30",
+                    ? "text-foreground border-foreground"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"
                 )}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
