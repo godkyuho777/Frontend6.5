@@ -52,8 +52,8 @@ Provide specific, actionable insights with numbers and clear reasoning.`,
   return (
     <div className="space-y-4 h-[calc(100vh-6rem)]">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
-          AI ANALYST
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+          AI analyst
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
           LLM-POWERED MARKET INTELLIGENCE

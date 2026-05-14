@@ -93,7 +93,7 @@ export default function CoinDetail() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
-        <span className="ml-3 font-mono text-sm text-muted-foreground">
+        <span className="ml-3 font-sans text-sm text-muted-foreground">
           Loading {symbol} data...
         </span>
       </div>
@@ -103,7 +103,7 @@ export default function CoinDetail() {
   if (!detail) {
     return (
       <div className="text-center py-20">
-        <p className="font-mono text-muted-foreground">No data available for {symbol}</p>
+        <p className="font-sans text-muted-foreground">No data available for {symbol}</p>
         <Button variant="outline" className="mt-4" onClick={() => setLocation("/")}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Scanner
         </Button>
@@ -186,13 +186,10 @@ export default function CoinDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
-                {symbol.replace("USDT", "")}
-              </h1>
-              <span className="font-mono text-sm text-muted-foreground">/USDT</span>
-            </div>
-            <p className="font-mono text-xs text-muted-foreground mt-0.5">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+              {symbol.replace("USDT", "")} / USDT
+            </h1>
+            <p className="font-sans text-xs text-muted-foreground mt-0.5">
               {tfLabel} CANDLE ANALYSIS
             </p>
           </div>
@@ -207,7 +204,7 @@ export default function CoinDetail() {
                   key={tf.value}
                   onClick={() => setInterval(tf.value as TimeframeValue)}
                   className={cn(
-                    "font-mono text-[10px] px-2 py-1 rounded-sm transition-all",
+                    "font-sans text-[10px] px-2 py-1 rounded-sm transition-all",
                     interval === tf.value
                       ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -223,7 +220,7 @@ export default function CoinDetail() {
             size="sm"
             onClick={handleGetInsight}
             disabled={insightMutation.isPending}
-            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs"
+            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-xs"
           >
             <Brain className="h-3 w-3 mr-1" />
             AI INSIGHT
@@ -234,7 +231,7 @@ export default function CoinDetail() {
               size="sm"
               onClick={handleSaveSignal}
               disabled={saveSignalMutation.isPending}
-              className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-mono text-xs"
+              className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-sans text-xs"
             >
               <Zap className="h-3 w-3 mr-1" />
               SAVE SIGNAL
@@ -306,7 +303,7 @@ export default function CoinDetail() {
         <div className="space-y-3">
           <div className="flex items-start gap-4 p-3 bg-card/30 border border-border/10 rounded-sm">
             <div className="flex flex-col items-center justify-center w-12 h-12 bg-neon-cyan/10 border border-neon-cyan/20 rounded-sm">
-              <span className="font-mono text-[10px] text-neon-cyan">D-3</span>
+              <span className="font-sans text-[10px] text-neon-cyan">D-3</span>
               <span className="font-display text-lg font-bold text-neon-cyan">15</span>
             </div>
             <div className="flex-1">
@@ -320,7 +317,7 @@ export default function CoinDetail() {
 
           <div className="flex items-start gap-4 p-3 bg-card/30 border border-border/10 rounded-sm">
             <div className="flex flex-col items-center justify-center w-12 h-12 bg-neon-pink/10 border border-neon-pink/20 rounded-sm">
-              <span className="font-mono text-[10px] text-neon-pink">D-12</span>
+              <span className="font-sans text-[10px] text-neon-pink">D-12</span>
               <span className="font-display text-lg font-bold text-neon-pink">24</span>
             </div>
             <div className="flex-1">
@@ -332,7 +329,7 @@ export default function CoinDetail() {
             <Badge variant="outline" className="text-[10px] border-neon-cyan/30 text-neon-cyan">NETWORK</Badge>
           </div>
           
-          <p className="font-mono text-[10px] text-muted-foreground text-center italic">
+          <p className="font-sans text-[10px] text-muted-foreground text-center italic">
             * Event data is aggregated from multiple sources and may change.
           </p>
         </div>
@@ -484,15 +481,15 @@ export default function CoinDetail() {
         <div className="flex items-center gap-4 mt-2 justify-center">
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-0.5 bg-[oklch(0.82_0.18_195)]" />
-            <span className="font-mono text-[10px] text-muted-foreground">ADX</span>
+            <span className="font-sans text-[10px] text-muted-foreground">ADX</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-0.5 bg-[oklch(0.82_0.19_145)]" style={{ borderTop: "1px dashed" }} />
-            <span className="font-mono text-[10px] text-muted-foreground">+DI</span>
+            <span className="font-sans text-[10px] text-muted-foreground">+DI</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-0.5 bg-[oklch(0.72_0.25_350)]" style={{ borderTop: "1px dashed" }} />
-            <span className="font-mono text-[10px] text-muted-foreground">-DI</span>
+            <span className="font-sans text-[10px] text-muted-foreground">-DI</span>
           </div>
         </div>
       </HudPanel>
@@ -503,7 +500,7 @@ export default function CoinDetail() {
           {insightMutation.isPending ? (
             <div className="flex items-center gap-2 py-4">
               <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
-              <span className="font-mono text-sm text-muted-foreground">
+              <span className="font-sans text-sm text-muted-foreground">
                 Analyzing market conditions...
               </span>
             </div>
@@ -512,7 +509,7 @@ export default function CoinDetail() {
               {insightMutation.data.insight}
             </div>
           ) : insightMutation.error ? (
-            <p className="text-neon-red font-mono text-sm">Analysis failed. Please try again.</p>
+            <p className="text-neon-red font-sans text-sm">Analysis failed. Please try again.</p>
           ) : null}
         </HudPanel>
       )}
@@ -543,7 +540,7 @@ function ConditionCheck({
             met ? "bg-neon-green signal-pulse" : "bg-muted-foreground/30"
           )}
         />
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+        <span className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
           {label}
         </span>
       </div>
@@ -557,7 +554,7 @@ function ConditionCheck({
       </div>
       <Badge
         className={cn(
-          "mt-1 font-mono text-[10px]",
+          "mt-1 font-sans text-[10px]",
           met
             ? "bg-neon-green/20 text-neon-green border-neon-green/30"
             : "bg-muted text-muted-foreground border-border/30"

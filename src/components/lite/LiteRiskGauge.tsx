@@ -61,7 +61,7 @@ export function LiteRiskGauge({
   return (
     <div className={cn("space-y-1", className)}>
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
           위험도
         </span>
         {showLabel && (

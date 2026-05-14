@@ -72,7 +72,11 @@ const INDICATORS: Array<{
   { id: "multiplier", label: "Macro Multiplier", layer: "macro" },
   { id: "c1_crisis", label: "C1 Crisis (0~1)", layer: "macro" },
   { id: "c2_riskOn", label: "C2 Risk-On (0~1)", layer: "macro" },
-  { id: "c3_net_liquidity_30d_pct", label: "C3 Net Liquidity %", layer: "macro" },
+  {
+    id: "c3_net_liquidity_30d_pct",
+    label: "C3 Net Liquidity %",
+    layer: "macro",
+  },
   { id: "vix", label: "VIX", layer: "macro" },
 ];
 
@@ -142,7 +146,7 @@ const EXAMPLE_FORM: FormState = {
 
 // ── Helpers ───────────────────────────────────────────────
 function formToConfig(form: FormState): SingleIndicatorConfig {
-  const indicator = INDICATORS.find((i) => i.id === form.indicator);
+  const indicator = INDICATORS.find(i => i.id === form.indicator);
   const layer = (indicator?.layer ?? "signal") as IndicatorLayer;
 
   let entryThreshold: number | [number, number] | string;
@@ -263,9 +267,9 @@ function ResultMetrics({ r }: { r: SingleIndicatorResult }) {
         </div>
         <div
           className={cn(
-            "px-3 py-2 rounded-sm border font-mono text-xs flex items-center gap-2",
+            "px-3 py-2 rounded-lg font-mono text-xs flex items-center gap-2",
             suf.bg,
-            suf.text,
+            suf.text
           )}
         >
           {r.sample_sufficiency === "insufficient" ? (
@@ -295,7 +299,7 @@ function Metric({
   label,
   value,
   sub,
-  color = "text-neon-cyan",
+  color = "text-primary",
 }: {
   label: string;
   value: string;
@@ -304,12 +308,10 @@ function Metric({
 }) {
   return (
     <div className="hud-frame p-3">
-      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+      <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
         {label}
       </div>
-      <div className={cn("font-display text-xl font-bold", color)}>
-        {value}
-      </div>
+      <div className={cn("font-display text-xl font-bold", color)}>{value}</div>
       {sub && (
         <div className="font-mono text-[9px] text-muted-foreground mt-1">
           {sub}
@@ -320,16 +322,16 @@ function Metric({
 }
 
 function DistributionChart({ result }: { result: SingleIndicatorResult }) {
-  const data = result.by_value_bucket.map((b) => ({
+  const data = result.by_value_bucket.map(b => ({
     label: `${b.bucket[0].toFixed(1)}~${b.bucket[1].toFixed(1)}`,
     winRate: b.win_rate * 100,
     n: b.n,
     ciLo: b.ci[0] * 100,
     ciHi: b.ci[1] * 100,
-    err: [
-      (b.win_rate - b.ci[0]) * 100,
-      (b.ci[1] - b.win_rate) * 100,
-    ] as [number, number],
+    err: [(b.win_rate - b.ci[0]) * 100, (b.ci[1] - b.win_rate) * 100] as [
+      number,
+      number,
+    ],
     sparse: b.n < 10,
   }));
 
@@ -350,30 +352,42 @@ function DistributionChart({ result }: { result: SingleIndicatorResult }) {
     >
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data}>
-          <CartesianGrid stroke="rgba(255,255,255,0.05)" />
+          <CartesianGrid stroke="rgba(0,0,0,0.06)" />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fontFamily: "monospace", fill: "#94a3b8" }}
+            tick={{
+              fontSize: 10,
+              fontFamily: "Fragment Mono",
+              fill: "#7a7a7a",
+            }}
             angle={-30}
             textAnchor="end"
             height={50}
           />
           <YAxis
-            tick={{ fontSize: 10, fontFamily: "monospace", fill: "#94a3b8" }}
+            tick={{
+              fontSize: 10,
+              fontFamily: "Fragment Mono",
+              fill: "#7a7a7a",
+            }}
             label={{
               value: "Win Rate %",
               angle: -90,
               position: "insideLeft",
-              style: { fill: "#94a3b8", fontSize: 10, fontFamily: "monospace" },
+              style: {
+                fill: "#7a7a7a",
+                fontSize: 10,
+                fontFamily: "Fragment Mono",
+              },
             }}
             domain={[0, 100]}
           />
           <Tooltip
             contentStyle={{
-              background: "#0d0d14",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "4px",
-              fontFamily: "monospace",
+              background: "#ffffff",
+              border: "1px solid #ececec",
+              borderRadius: "8px",
+              fontFamily: "Fragment Mono",
               fontSize: "11px",
             }}
             formatter={(v: number, name: string, item: any) => {
@@ -400,12 +414,12 @@ function DistributionChart({ result }: { result: SingleIndicatorResult }) {
                 }
               />
             ))}
-            <ErrorBar dataKey="err" width={4} stroke="rgba(255,255,255,0.5)" />
+            <ErrorBar dataKey="err" width={4} stroke="rgba(0,0,0,0.35)" />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
       <div className="font-mono text-[10px] text-muted-foreground mt-2">
-        ▪ 회색 bucket: n &lt; 10 (충분한 표본 X) ▪ 초록: winRate ≥ 50% ▪ 빨강:
+        회색 bucket: n &lt; 10 (충분한 표본 X) · 초록: winRate ≥ 50% · 빨강:
         &lt; 50%
       </div>
     </HudPanel>
@@ -428,7 +442,11 @@ function AlphaCard({ r }: { r: SingleIndicatorResult }) {
           <Metric
             label="Result Win Rate"
             value={`${(r.win_rate * 100).toFixed(1)}%`}
-            color={r.win_rate >= r.baseline_winrate ? "text-neon-green" : "text-red-400"}
+            color={
+              r.win_rate >= r.baseline_winrate
+                ? "text-neon-green"
+                : "text-red-400"
+            }
           />
           <Metric
             label="p-value"
@@ -438,10 +456,10 @@ function AlphaCard({ r }: { r: SingleIndicatorResult }) {
         </div>
         <div
           className={cn(
-            "px-3 py-2 rounded-sm border font-mono text-xs flex items-center gap-2",
+            "px-3 py-2 rounded-lg font-mono text-xs flex items-center gap-2",
             significant
-              ? "bg-emerald-500/15 border-emerald-500/40 text-neon-green"
-              : "bg-slate-500/15 border-slate-500/40 text-muted-foreground",
+              ? "bg-emerald-500/15 text-neon-green"
+              : "bg-muted text-muted-foreground"
           )}
         >
           {significant ? (
@@ -469,12 +487,15 @@ export default function EngineATab() {
 
   const result = useMemo<SingleIndicatorResult | null>(() => {
     if (!mutation.data) return null;
-    if ("status" in mutation.data && mutation.data.status === "error") return null;
+    if ("status" in mutation.data && mutation.data.status === "error")
+      return null;
     return mutation.data as unknown as SingleIndicatorResult;
   }, [mutation.data]);
 
   const errorDetail =
-    mutation.data && "status" in mutation.data && mutation.data.status === "error"
+    mutation.data &&
+    "status" in mutation.data &&
+    mutation.data.status === "error"
       ? mutation.data.detail
       : (mutation.error?.message ?? null);
 
@@ -484,17 +505,14 @@ export default function EngineATab() {
   };
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
+    setForm(f => ({ ...f, [k]: v }));
 
-  const selectedIndicator = INDICATORS.find((i) => i.id === form.indicator);
+  const selectedIndicator = INDICATORS.find(i => i.id === form.indicator);
 
   return (
     <div className="space-y-4">
       {/* Example scenario */}
-      <HudPanel
-        title="예시 시나리오"
-        subtitle="hypothesis-driven backtest"
-      >
+      <HudPanel title="예시 시나리오" subtitle="hypothesis-driven backtest">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="font-mono text-xs text-muted-foreground leading-relaxed flex-1 min-w-[260px]">
             BTC 4H 에서 RSI &lt; 30 매수, 3% 익절 / 30 캔들 시간 손절. 1년치
@@ -523,28 +541,30 @@ export default function EngineATab() {
               <Label>Indicator</Label>
               <Select
                 value={form.indicator}
-                onValueChange={(v) => setField("indicator", v)}
+                onValueChange={v => setField("indicator", v)}
               >
-                <SelectTrigger className="h-9 font-mono text-xs">
+                <SelectTrigger className="h-9 font-mono text-xs bg-muted">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {(["signal", "wave", "macro"] as IndicatorLayer[]).map((layer) => (
-                    <div key={layer}>
-                      <div className="px-2 py-1 font-mono text-[10px] text-muted-foreground uppercase">
-                        {layer} layer
+                  {(["signal", "wave", "macro"] as IndicatorLayer[]).map(
+                    layer => (
+                      <div key={layer}>
+                        <div className="px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                          {layer} layer
+                        </div>
+                        {INDICATORS.filter(i => i.layer === layer).map(i => (
+                          <SelectItem
+                            key={i.id}
+                            value={i.id}
+                            className="font-mono text-xs"
+                          >
+                            {i.label}
+                          </SelectItem>
+                        ))}
                       </div>
-                      {INDICATORS.filter((i) => i.layer === layer).map((i) => (
-                        <SelectItem
-                          key={i.id}
-                          value={i.id}
-                          className="font-mono text-xs"
-                        >
-                          {i.label}
-                        </SelectItem>
-                      ))}
-                    </div>
-                  ))}
+                    )
+                  )}
                 </SelectContent>
               </Select>
               {selectedIndicator && (
@@ -558,15 +578,15 @@ export default function EngineATab() {
               <div className="flex gap-2">
                 <Select
                   value={form.entryType}
-                  onValueChange={(v) =>
+                  onValueChange={v =>
                     setField("entryType", v as EntryConditionType)
                   }
                 >
-                  <SelectTrigger className="h-9 w-[120px] font-mono text-xs">
+                  <SelectTrigger className="h-9 w-[120px] font-mono text-xs bg-muted">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ENTRY_TYPES.map((t) => (
+                    {ENTRY_TYPES.map(t => (
                       <SelectItem
                         key={t.value}
                         value={t.value}
@@ -580,20 +600,16 @@ export default function EngineATab() {
                 <Input
                   type="number"
                   value={form.entryThreshold}
-                  onChange={(e) =>
-                    setField("entryThreshold", e.target.value)
-                  }
-                  className="h-9 font-mono text-xs"
+                  onChange={e => setField("entryThreshold", e.target.value)}
+                  className="h-9 font-mono text-xs bg-muted"
                   placeholder="threshold"
                 />
                 {form.entryType === "between" && (
                   <Input
                     type="number"
                     value={form.entryThresholdHi}
-                    onChange={(e) =>
-                      setField("entryThresholdHi", e.target.value)
-                    }
-                    className="h-9 font-mono text-xs"
+                    onChange={e => setField("entryThresholdHi", e.target.value)}
+                    className="h-9 font-mono text-xs bg-muted"
                     placeholder="hi"
                   />
                 )}
@@ -604,21 +620,19 @@ export default function EngineATab() {
               <div className="flex gap-2">
                 <Input
                   value={form.symbol}
-                  onChange={(e) => setField("symbol", e.target.value)}
-                  className="h-9 font-mono text-xs"
+                  onChange={e => setField("symbol", e.target.value)}
+                  className="h-9 font-mono text-xs bg-muted"
                   placeholder="BTCUSDT"
                 />
                 <Select
                   value={form.tf}
-                  onValueChange={(v) =>
-                    setField("tf", v as "4h" | "1d" | "1w")
-                  }
+                  onValueChange={v => setField("tf", v as "4h" | "1d" | "1w")}
                 >
-                  <SelectTrigger className="h-9 w-[80px] font-mono text-xs">
+                  <SelectTrigger className="h-9 w-[80px] font-mono text-xs bg-muted">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TF_OPTIONS.map((tf) => (
+                    {TF_OPTIONS.map(tf => (
                       <SelectItem
                         key={tf.value}
                         value={tf.value}
@@ -639,13 +653,13 @@ export default function EngineATab() {
               <Label>Exit Type</Label>
               <Select
                 value={form.exitType}
-                onValueChange={(v) => setField("exitType", v as ExitType)}
+                onValueChange={v => setField("exitType", v as ExitType)}
               >
-                <SelectTrigger className="h-9 font-mono text-xs">
+                <SelectTrigger className="h-9 font-mono text-xs bg-muted">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EXIT_TYPES.map((t) => (
+                  {EXIT_TYPES.map(t => (
                     <SelectItem
                       key={t.value}
                       value={t.value}
@@ -665,10 +679,8 @@ export default function EngineATab() {
                     <Input
                       type="number"
                       value={form.exitTargetPct}
-                      onChange={(e) =>
-                        setField("exitTargetPct", e.target.value)
-                      }
-                      className="h-9 font-mono text-xs"
+                      onChange={e => setField("exitTargetPct", e.target.value)}
+                      className="h-9 font-mono text-xs bg-muted"
                       placeholder="target %"
                     />
                     <span className="font-mono text-[10px] text-muted-foreground">
@@ -681,10 +693,8 @@ export default function EngineATab() {
                     <Input
                       type="number"
                       value={form.exitStopPct}
-                      onChange={(e) =>
-                        setField("exitStopPct", e.target.value)
-                      }
-                      className="h-9 font-mono text-xs"
+                      onChange={e => setField("exitStopPct", e.target.value)}
+                      className="h-9 font-mono text-xs bg-muted"
                       placeholder="stop %"
                     />
                     <span className="font-mono text-[10px] text-muted-foreground">
@@ -695,8 +705,8 @@ export default function EngineATab() {
                 <Input
                   type="number"
                   value={form.exitMaxBars}
-                  onChange={(e) => setField("exitMaxBars", e.target.value)}
-                  className="h-9 font-mono text-xs"
+                  onChange={e => setField("exitMaxBars", e.target.value)}
+                  className="h-9 font-mono text-xs bg-muted"
                   placeholder="max bars"
                 />
                 <span className="font-mono text-[10px] text-muted-foreground">
@@ -710,14 +720,14 @@ export default function EngineATab() {
                 <Input
                   type="date"
                   value={form.startDate}
-                  onChange={(e) => setField("startDate", e.target.value)}
-                  className="h-9 font-mono text-xs"
+                  onChange={e => setField("startDate", e.target.value)}
+                  className="h-9 font-mono text-xs bg-muted"
                 />
                 <Input
                   type="date"
                   value={form.endDate}
-                  onChange={(e) => setField("endDate", e.target.value)}
-                  className="h-9 font-mono text-xs"
+                  onChange={e => setField("endDate", e.target.value)}
+                  className="h-9 font-mono text-xs bg-muted"
                 />
               </div>
             </div>
@@ -728,7 +738,7 @@ export default function EngineATab() {
             <Button
               onClick={handleRun}
               disabled={mutation.isPending}
-              className="font-mono text-xs h-9 bg-neon-pink/15 text-neon-pink border border-neon-pink/40 hover:bg-neon-pink/25"
+              className="h-9 font-mono text-xs"
             >
               {mutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -749,7 +759,7 @@ export default function EngineATab() {
 
       {mutation.isPending && (
         <div className="py-12 flex flex-col items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <div className="font-mono text-xs text-muted-foreground">
             Engine A 실행 중 — Timeline 빌드 + signal 재생 + bucketing...
           </div>
@@ -770,7 +780,7 @@ export default function EngineATab() {
 // ── tiny atoms ────────────────────────────────────────────
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
+    <label className="font-mono text-[10px] text-muted-foreground tracking-wider block mb-1.5">
       {children}
     </label>
   );

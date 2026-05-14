@@ -1,74 +1,84 @@
-/**
- * LiteLayout — Lite 모드 전용 단순 레이아웃
- *
- * Pro 의 DashboardLayout 과 분리. cyberpunk 톤은 유지하되 채도/대비 ↓ 30%,
- * 큰 폰트(16-18px), 라운딩 12px, 사이드바 X (상단 nav 만).
- */
-
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { ModeSwitchControl } from "@/components/ModeSwitchControl";
+import { SignInDialog } from "@/components/SignInDialog";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import {
-  Sparkles,
+  AlertTriangle,
+  Bell,
+  BookOpen,
+  LogIn,
   TrendingUp,
   Wallet,
-  BookOpen,
-  Bell,
-  Zap,
 } from "lucide-react";
 
 const navItems = [
-  { path: "/lite", label: "오늘의 추천", icon: Sparkles },
-  { path: "/lite/coin/BTCUSDT", label: "코인 살펴보기", icon: TrendingUp, partialMatch: "/lite/coin" },
+  { path: "/lite", label: "오늘의 추천", icon: TrendingUp },
+  {
+    path: "/lite/coin/BTCUSDT",
+    label: "코인 살펴보기",
+    icon: TrendingUp,
+    partialMatch: "/lite/coin",
+  },
   { path: "/lite/portfolio", label: "내 자산", icon: Wallet },
   { path: "/lite/learn", label: "용어 배우기", icon: BookOpen },
   { path: "/lite/alerts", label: "알림", icon: Bell },
 ];
 
-export default function LiteLayout({ children }: { children: React.ReactNode }) {
+export default function LiteLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [location, setLocation] = useLocation();
-
-  const handleSwitchToPro = () => {
-    try {
-      localStorage.setItem("tradelabMode", "pro");
-    } catch {}
-    setLocation("/");
-  };
+  const { user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top nav */}
-      <header className="sticky top-0 z-30 border-b border-border/40 bg-card/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-3">
-          {/* wouter v3 — Link 가 이미 <a> 를 렌더. 안에 <a> 박지 말 것 (hydration error). */}
-          <Link href="/lite" className="flex items-center gap-2 cursor-pointer">
-            <div className="h-8 w-8 rounded-lg bg-neon-pink/20 border border-neon-pink/40 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-neon-pink" />
-            </div>
-            <div>
-              <div className="font-display text-sm font-bold tracking-wider text-neon-pink">
-                TRADELAB <span className="text-neon-cyan">LITE</span>
-              </div>
-              <div className="font-mono text-[9px] text-muted-foreground">
-                쉽게 보는 신호 · 일반인용
-              </div>
-            </div>
-          </Link>
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-5 border-b border-border bg-card px-4 lg:px-5">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(open => !open)}
+          className="relative -ml-1 md:hidden"
+        >
+          <span
+            className={cn(
+              "absolute h-0.5 w-4 rounded-full bg-current transition-transform duration-200 ease-out",
+              mobileMenuOpen
+                ? "translate-y-0 rotate-45"
+                : "-translate-y-[3px] rotate-0"
+            )}
+          />
+          <span
+            className={cn(
+              "absolute h-0.5 w-4 rounded-full bg-current transition-transform duration-200 ease-out",
+              mobileMenuOpen
+                ? "translate-y-0 -rotate-45"
+                : "translate-y-[3px] rotate-0"
+            )}
+          />
+        </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSwitchToPro}
-            className="h-8 px-3 font-mono text-[11px] border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/10"
-          >
-            <Zap className="h-3 w-3 mr-1" />
-            Pro 모드로
-          </Button>
-        </div>
+        <Link
+          href="/lite"
+          className="flex shrink-0 items-center gap-2.5 hover:no-underline"
+        >
+          <img
+            src="/design-system/assets/tradelab-wordmark.svg"
+            alt="tradelab"
+            className="h-[18px] w-auto"
+          />
+        </Link>
 
-        {/* Sub-nav */}
-        <nav className="max-w-5xl mx-auto px-4 pb-2 flex items-center gap-1 overflow-x-auto">
-          {navItems.map((item) => {
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto md:flex">
+          {navItems.map(item => {
             const isActive = item.partialMatch
               ? location.startsWith(item.partialMatch)
               : location === item.path;
@@ -78,32 +88,157 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
                 key={item.path}
                 href={item.path}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] transition-all whitespace-nowrap cursor-pointer",
+                  "flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 font-sans text-[11px] font-bold transition-all",
                   isActive
-                    ? "bg-neon-pink/15 text-neon-pink border border-neon-pink/40"
-                    : "text-muted-foreground border border-transparent hover:text-foreground hover:bg-muted/30"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="size-3.5" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
+
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Notifications"
+            className="relative"
+          >
+            <Bell className="size-5" />
+            <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
+          </Button>
+          <ModeSwitchControl mode="lite" className="hidden md:flex" />
+          {user ? (
+            <Avatar className="size-8 bg-blue-950 text-white">
+              <AvatarFallback className="bg-blue-950 text-xs font-bold text-white">
+                {user.name?.slice(0, 2).toUpperCase() || "YN"}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <SignInDialog>
+              <Button size="sm" variant="ghost" className="h-8">
+                <LogIn className="size-3.5" />
+                Sign in
+              </Button>
+            </SignInDialog>
+          )}
+        </div>
       </header>
 
-      {/* Content */}
-      <main className="max-w-5xl mx-auto px-4 py-5 space-y-5">{children}</main>
+      <LiteMobileMenuOverlay
+        open={mobileMenuOpen}
+        location={location}
+        onClose={() => setMobileMenuOpen(false)}
+        onNavigate={path => {
+          setLocation(path);
+          setMobileMenuOpen(false);
+        }}
+      />
 
-      {/* Disclaimer */}
-      <footer className="max-w-5xl mx-auto px-4 pb-8 pt-4 border-t border-border/30 mt-8">
-        <p className="font-mono text-[10px] text-muted-foreground/80 leading-relaxed">
-          ⚠️ 표시되는 모든 추천은 과거 데이터 기반의 *참고 신호*입니다. 미래 수익을
-          보장하지 않으며, 투자 결정은 본인 책임입니다. 진입 시그널은 RSI / Bollinger
-          Bands / ADX / 온체인 7-modifier 를 종합한 BBDX 시그널의 결과를 일반인이
-          이해하기 쉬운 라벨로 번역한 것입니다.
+      <main className="max-w-5xl mx-auto px-4 pb-5 pt-[76px]">{children}</main>
+
+      <footer className="max-w-5xl mx-auto mt-8 border-t border-border px-4 pb-8 pt-4">
+        <p className="flex gap-2 font-sans text-[10px] leading-relaxed text-muted-foreground/80">
+          <AlertTriangle className="mt-0.5 size-3 shrink-0 text-primary" />
+          <span>
+            표시되는 모든 추천은 과거 데이터 기반의 참고 신호입니다. 미래 수익을
+            보장하지 않으며, 투자 결정은 본인 책임입니다. 진입 시그널은 RSI /
+            Bollinger Bands / ADX / 온체인 7-modifier 를 종합한 BBDX 시그널의
+            결과를 일반인이 이해하기 쉬운 라벨로 번역한 것입니다.
+          </span>
         </p>
       </footer>
+    </div>
+  );
+}
+
+function isLiteItemActive(location: string, item: (typeof navItems)[number]) {
+  return item.partialMatch
+    ? location.startsWith(item.partialMatch)
+    : location === item.path;
+}
+
+function LiteMobileMenuOverlay({
+  open,
+  location,
+  onClose,
+  onNavigate,
+}: {
+  open: boolean;
+  location: string;
+  onClose: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "fixed inset-x-0 bottom-0 top-14 z-[38] transition-[visibility] duration-300 md:hidden",
+        open ? "visible" : "invisible"
+      )}
+      aria-hidden={!open}
+    >
+      <button
+        type="button"
+        aria-label="Close menu"
+        onClick={onClose}
+        className={cn(
+          "absolute inset-0 bg-black/15 transition-opacity duration-300",
+          open ? "opacity-100" : "opacity-0"
+        )}
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lite-mobile-menu-title"
+        className={cn(
+          "absolute bottom-0 left-0 top-0 flex w-[min(86vw,340px)] flex-col border-r border-border bg-card transition-transform duration-300 ease-out",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-5 py-4">
+          <h2
+            id="lite-mobile-menu-title"
+            className="px-3 pb-2 pt-1 font-sans text-base font-bold text-foreground"
+          >
+            Menu
+          </h2>
+          <div className="flex flex-col gap-1">
+            <div className="px-3 pb-1 pt-2 text-[10px] font-bold tracking-[0.06em] text-muted-foreground">
+              Lite
+            </div>
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = isLiteItemActive(location, item);
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={() => onNavigate(item.path)}
+                  className={cn(
+                    "flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-foreground text-background"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Icon className="size-[18px]" />
+                  <span className="truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="shrink-0 border-t border-border bg-card px-5 py-4">
+          <ModeSwitchControl
+            mode="lite"
+            className="h-10 w-full justify-between bg-muted px-3"
+          />
+        </div>
+      </aside>
     </div>
   );
 }

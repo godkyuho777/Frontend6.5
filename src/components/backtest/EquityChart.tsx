@@ -48,7 +48,7 @@ export function EquityChart({ trades, height = 180 }: EquityChartProps) {
         className="flex items-center justify-center"
         style={{ height: `${height}px` }}
       >
-        <p className="font-mono text-xs text-muted-foreground">시그널 없음</p>
+        <p className="font-sans text-xs text-muted-foreground">시그널 없음</p>
       </div>
     );
   }

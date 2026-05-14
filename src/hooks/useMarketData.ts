@@ -251,12 +251,26 @@ async function scanCoinsPage(
   pageSize: number,
   interval: TimeframeValue
 ): Promise<ScanPageResult> {
-  const total = TOP_COINS.length;
-  const totalPages = Math.ceil(total / pageSize);
   const startIdx = (page - 1) * pageSize;
   const pageSymbols = TOP_COINS.slice(startIdx, startIdx + pageSize);
 
-  if (pageSymbols.length === 0) {
+  return scanSymbols(pageSymbols, page, pageSize, interval, TOP_COINS.length);
+}
+
+async function scanAllCoins(interval: TimeframeValue): Promise<ScanPageResult> {
+  return scanSymbols(TOP_COINS, 1, TOP_COINS.length, interval, TOP_COINS.length);
+}
+
+async function scanSymbols(
+  symbols: string[],
+  page: number,
+  pageSize: number,
+  interval: TimeframeValue,
+  total: number
+): Promise<ScanPageResult> {
+  const totalPages = Math.ceil(total / pageSize);
+
+  if (symbols.length === 0) {
     return { coins: [], total, page, pageSize, totalPages };
   }
 
@@ -267,8 +281,8 @@ async function scanCoinsPage(
   const coins: CoinScanResult[] = [];
   const batchSize = 5;
 
-  for (let i = 0; i < pageSymbols.length; i += batchSize) {
-    const batch = pageSymbols.slice(i, i + batchSize);
+  for (let i = 0; i < symbols.length; i += batchSize) {
+    const batch = symbols.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map((symbol) => {
         const ticker = tickers.get(symbol);
@@ -322,7 +336,7 @@ async function scanCoinsPage(
     }
 
     // 배치 간 짧은 딜레이 (rate limit 방지)
-    if (i + batchSize < pageSymbols.length) {
+    if (i + batchSize < symbols.length) {
       await new Promise((r) => setTimeout(r, 100));
     }
   }
@@ -396,6 +410,65 @@ export function useMarketScan(
     }
     fetchData(true);
   }, [page, pageSize, interval, fetchData]);
+
+  return { data, isLoading, isFetching, error, refetch };
+}
+
+export function useFullMarketScan(interval: TimeframeValue) {
+  const [data, setData] = useState<ScanPageResult | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const abortRef = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchData = useCallback(async (isRefetch = false) => {
+    if (isRefetch) {
+      setIsFetching(true);
+    } else {
+      setIsLoading(true);
+    }
+    setError(null);
+    abortRef.current = false;
+
+    try {
+      const result = await scanAllCoins(interval);
+      if (!abortRef.current) {
+        setData(result);
+      }
+    } catch (err: any) {
+      if (!abortRef.current) {
+        setError(err);
+      }
+    } finally {
+      if (!abortRef.current) {
+        setIsLoading(false);
+        setIsFetching(false);
+      }
+    }
+  }, [interval]);
+
+  useEffect(() => {
+    fetchData(false);
+
+    intervalRef.current = setInterval(() => {
+      fetchData(true);
+    }, 5 * 60 * 1000);
+
+    return () => {
+      abortRef.current = true;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [fetchData]);
+
+  const refetch = useCallback(() => {
+    for (const symbol of TOP_COINS) {
+      scanCache.delete(cacheKey(symbol, interval));
+    }
+    fetchData(true);
+  }, [interval, fetchData]);
 
   return { data, isLoading, isFetching, error, refetch };
 }

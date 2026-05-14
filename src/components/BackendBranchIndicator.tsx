@@ -12,7 +12,11 @@ type HealthState =
  * - 연결 OK 시 초록 배지 + 브랜치 이름
  * - 실패 시 빨간 배지 + 에러 사유
  */
-export function BackendBranchIndicator() {
+export function BackendBranchIndicator({
+  variant = "stacked",
+}: {
+  variant?: "stacked" | "topbar";
+}) {
   const [state, setState] = useState<HealthState>({ status: "loading" });
 
   useEffect(() => {
@@ -65,6 +69,31 @@ export function BackendBranchIndicator() {
       ? `Backend health failed: ${state.detail}`
       : "Backend /api/health";
 
+  if (variant === "topbar") {
+    return (
+      <div className="hidden items-center gap-2 lg:flex">
+        <div
+          className="inline-flex h-8 items-center gap-2 rounded-md bg-muted px-3 font-sans text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/80"
+          title={title}
+        >
+          <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+          <span>
+            Backend <span className="text-foreground">{text}</span>
+          </span>
+        </div>
+        <div
+          className="inline-flex h-8 items-center gap-2 rounded-md bg-muted px-3 font-sans text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/80"
+          title="PATTERN_SYSTEM_AUDIT v1 권고 적용: 다중 패턴 합산 + 거래량/추세 컨텍스트 + TF 차등 + look-ahead 안전"
+        >
+          <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+          <span>
+            Patterns <span className="text-foreground">audit v1</span>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1 mb-2">
       <div
@@ -72,7 +101,7 @@ export function BackendBranchIndicator() {
         title={title}
       >
         <span className={`h-2 w-2 rounded-full ${dot} shrink-0`} />
-        <span className="text-[10px] font-mono text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
+        <span className="text-[10px] font-sans text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
           Backend: <span className="text-neon-cyan">{text}</span>
         </span>
       </div>
@@ -81,7 +110,7 @@ export function BackendBranchIndicator() {
         title="PATTERN_SYSTEM_AUDIT v1 권고 적용: 다중 패턴 합산 + 거래량/추세 컨텍스트 + TF 차등 + look-ahead 안전"
       >
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-        <span className="text-[9px] font-mono text-emerald-400 truncate">
+        <span className="text-[9px] font-sans text-emerald-400 truncate">
           Patterns: audit v1 ✓
         </span>
       </div>

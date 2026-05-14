@@ -58,15 +58,15 @@ function StatCard({
     <div className="flex flex-col gap-1 p-3 rounded-sm border border-border/20 bg-card/40">
       <div className="flex items-center gap-1.5">
         {Icon && <Icon className={cn("h-3 w-3", colorMap[color])} />}
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+        <span className="font-sans text-[10px] text-muted-foreground tracking-wider">
           {label}
         </span>
       </div>
-      <div className={cn("font-display text-xl font-bold", colorMap[color])}>
+      <div className={cn("tl-market-number text-xl leading-none", colorMap[color])}>
         {value}
       </div>
       {sub && (
-        <div className="font-mono text-[10px] text-muted-foreground">{sub}</div>
+        <div className="font-sans text-[10px] text-muted-foreground">{sub}</div>
       )}
     </div>
   );

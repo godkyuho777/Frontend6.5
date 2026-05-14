@@ -38,7 +38,7 @@ export default function LiteCoinDetail() {
     return (
       <div className="flex items-center justify-center py-16 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
-        <span className="font-mono text-sm text-muted-foreground">
+        <span className="font-sans text-sm text-muted-foreground">
           {symbol} 분석 중...
         </span>
       </div>
@@ -48,14 +48,14 @@ export default function LiteCoinDetail() {
   if (error || !data) {
     return (
       <LiteCard variant="bad" title="코인 정보를 불러오지 못했어요">
-        <p className="font-mono text-xs text-neon-red mb-3">
+        <p className="font-sans text-xs text-neon-red mb-3">
           {String(error?.message ?? "데이터 없음")}
         </p>
         <Button
           size="sm"
           variant="outline"
           onClick={() => setLocation("/lite")}
-          className="border-border/40 font-mono text-[11px]"
+          className="border-border/40 font-sans text-[11px]"
         >
           <ArrowLeft className="h-3 w-3 mr-1" />
           돌아가기
@@ -81,7 +81,7 @@ export default function LiteCoinDetail() {
             <div className="font-display text-2xl font-bold tracking-wide text-foreground">
               {data.base}
             </div>
-            <div className="font-mono text-xs text-muted-foreground">
+            <div className="font-sans text-xs text-muted-foreground">
               {data.symbol}
             </div>
           </div>
@@ -90,7 +90,7 @@ export default function LiteCoinDetail() {
           size="sm"
           variant="outline"
           onClick={() => setPickerOpen((v) => !v)}
-          className="font-mono text-[11px]"
+          className="font-sans text-[11px]"
         >
           코인 바꾸기
         </Button>
@@ -107,7 +107,7 @@ export default function LiteCoinDetail() {
                   setLocation(`/lite/coin/${s}`);
                 }}
                 className={cn(
-                  "px-2 py-1.5 rounded-lg font-mono text-[11px] border transition-colors",
+                  "px-2 py-1.5 rounded-lg font-sans text-[11px] border transition-colors",
                   s === data.symbol
                     ? "border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan"
                     : "border-border/30 text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -135,13 +135,13 @@ export default function LiteCoinDetail() {
         <div className="space-y-3">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <div>
-              <div className="font-mono text-xs text-muted-foreground">현재 가격</div>
-              <div className="font-display text-3xl font-bold text-foreground">
+              <div className="font-sans text-xs text-muted-foreground">현재 가격</div>
+              <div className="tl-market-number text-3xl leading-none text-foreground">
                 ${formatPrice(data.price)}
               </div>
               <div
                 className={cn(
-                  "font-mono text-sm",
+                  "font-sans text-sm",
                   data.change24h >= 0 ? "text-neon-green" : "text-neon-red"
                 )}
               >
@@ -155,11 +155,11 @@ export default function LiteCoinDetail() {
               size="lg"
             />
           </div>
-          <p className="font-mono text-sm text-foreground leading-relaxed">
+          <p className="font-sans text-sm text-foreground leading-relaxed">
             {data.recommendationLabel.oneLiner}
           </p>
           {data.reasons.length > 0 && (
-            <ul className="font-mono text-[12px] text-muted-foreground space-y-1 pt-2 border-t border-border/30">
+            <ul className="font-sans text-[12px] text-muted-foreground space-y-1 pt-2 border-t border-border/30">
               {data.reasons.map((r, i) => (
                 <li key={i} className="leading-relaxed">• {r}</li>
               ))}
@@ -177,7 +177,7 @@ export default function LiteCoinDetail() {
         {data.chartCandles.length > 0 ? (
           <LiteCoinChart candles={data.chartCandles} bb={data.bb} height={240} />
         ) : (
-          <p className="font-mono text-xs text-muted-foreground py-6 text-center">
+          <p className="font-sans text-xs text-muted-foreground py-6 text-center">
             차트 데이터 없음
           </p>
         )}
@@ -194,7 +194,7 @@ export default function LiteCoinDetail() {
           size="sm"
           variant="outline"
           onClick={() => setLocation(`/coin/${data.symbol}`)}
-          className="font-mono text-[11px] border-neon-cyan/30 text-neon-cyan"
+          className="font-sans text-[11px] border-neon-cyan/30 text-neon-cyan"
         >
           Pro 상세 분석 보기
         </Button>

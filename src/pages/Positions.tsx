@@ -108,7 +108,7 @@ export default function Positions() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="font-mono text-muted-foreground">Sign in to track positions</p>
+        <p className="font-sans text-muted-foreground">Sign in to track positions</p>
         <SignInDialog>
           <Button className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30">
             CONNECT
@@ -127,8 +127,8 @@ export default function Positions() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink">
-            POSITIONS
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Positions
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
             PORTFOLIO TRACKING // REAL-TIME PNL
@@ -139,7 +139,7 @@ export default function Positions() {
             <Button
               variant="outline"
               size="sm"
-              className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-mono text-xs"
+              className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-sans text-xs"
             >
               <Plus className="h-3 w-3 mr-1" />
               NEW POSITION
@@ -188,7 +188,7 @@ export default function Positions() {
             size="sm"
             onClick={() => setFilter(f.value)}
             className={cn(
-              "font-mono text-xs",
+              "font-sans text-xs",
               filter === f.value
                 ? "border-neon-pink text-neon-pink bg-neon-pink/10"
                 : "border-border/30 text-muted-foreground hover:text-foreground"
@@ -207,7 +207,7 @@ export default function Positions() {
           </div>
         ) : displayPositions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="font-mono text-sm text-muted-foreground">No positions found</p>
+            <p className="font-sans text-sm text-muted-foreground">No positions found</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -231,24 +231,24 @@ export default function Positions() {
                       <span className="font-display text-sm font-bold text-foreground">
                         {pos.symbol.replace("USDT", "")}
                       </span>
-                      <Badge className="font-mono text-[10px] bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30">
+                      <Badge className="font-sans text-[10px] bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30">
                         {pos.leverage}x
                       </Badge>
                     </div>
-                    <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                    <div className="font-sans text-[10px] text-muted-foreground mt-0.5">
                       Entry: {formatPrice(pos.entryPrice)} | Target: {formatPrice(pos.targetPrice)}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <div className="font-mono text-xs text-muted-foreground">Current</div>
-                    <div className="font-mono text-sm text-foreground">{formatPrice(pos.currentPrice)}</div>
+                    <div className="font-sans text-xs text-muted-foreground">Current</div>
+                    <div className="font-sans text-sm text-foreground">{formatPrice(pos.currentPrice)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono text-xs text-muted-foreground">PnL</div>
+                    <div className="font-sans text-xs text-muted-foreground">PnL</div>
                     <div className={cn(
-                      "font-mono text-sm font-bold flex items-center gap-1",
+                      "font-sans text-sm font-bold flex items-center gap-1",
                       (pos.pnlPercent ?? 0) >= 0 ? "text-neon-green" : "text-neon-red"
                     )}>
                       {(pos.pnlPercent ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -265,7 +265,7 @@ export default function Positions() {
                         }
                       }}
                       disabled={closeMutation.isPending}
-                      className="border-neon-red/30 text-neon-red hover:bg-neon-red/10 font-mono text-[10px]"
+                      className="border-neon-red/30 text-neon-red hover:bg-neon-red/10 font-sans text-[10px]"
                     >
                       <X className="h-3 w-3 mr-0.5" />
                       CLOSE
@@ -303,59 +303,59 @@ function NewPositionForm({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="font-mono text-xs text-muted-foreground">Symbol</Label>
+        <Label className="font-sans text-xs text-muted-foreground">Symbol</Label>
         <Input
           placeholder="BTCUSDT"
           value={symbol}
           onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          className="font-mono bg-background/50 border-border/30"
+          className="font-sans bg-background/50 border-border/30"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="font-mono text-xs text-muted-foreground">Entry Price</Label>
+          <Label className="font-sans text-xs text-muted-foreground">Entry Price</Label>
           <Input
             type="number"
             step="any"
             placeholder="0.00"
             value={entryPrice}
             onChange={(e) => setEntryPrice(e.target.value)}
-            className="font-mono bg-background/50 border-border/30"
+            className="font-sans bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-xs text-muted-foreground">Target Price</Label>
+          <Label className="font-sans text-xs text-muted-foreground">Target Price</Label>
           <Input
             type="number"
             step="any"
             placeholder="0.00"
             value={targetPrice}
             onChange={(e) => setTargetPrice(e.target.value)}
-            className="font-mono bg-background/50 border-border/30"
+            className="font-sans bg-background/50 border-border/30"
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="font-mono text-xs text-muted-foreground">Quantity</Label>
+          <Label className="font-sans text-xs text-muted-foreground">Quantity</Label>
           <Input
             type="number"
             step="any"
             placeholder="0"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="font-mono bg-background/50 border-border/30"
+            className="font-sans bg-background/50 border-border/30"
           />
         </div>
         <div>
-          <Label className="font-mono text-xs text-muted-foreground">Leverage</Label>
+          <Label className="font-sans text-xs text-muted-foreground">Leverage</Label>
           <Input
             type="number"
             min="1"
             max="125"
             value={leverage}
             onChange={(e) => setLeverage(e.target.value)}
-            className="font-mono bg-background/50 border-border/30"
+            className="font-sans bg-background/50 border-border/30"
           />
         </div>
       </div>
@@ -374,7 +374,7 @@ function NewPositionForm({
           });
         }}
         disabled={isPending}
-        className="w-full bg-neon-green/20 border border-neon-green text-neon-green hover:bg-neon-green/30 font-mono"
+        className="w-full bg-neon-green/20 border border-neon-green text-neon-green hover:bg-neon-green/30 font-sans"
       >
         {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TrendingUp className="h-4 w-4 mr-2" />}
         OPEN LONG POSITION

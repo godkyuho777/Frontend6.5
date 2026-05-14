@@ -51,7 +51,7 @@ export default function LiteLearn() {
         title="용어 사전"
         subtitle="실제 BTC 의 현재 값으로 보여드려요"
       >
-        <p className="font-mono text-sm text-muted-foreground">
+        <p className="font-sans text-sm text-muted-foreground">
           어려워 보이는 단어들을 일상 언어로 풀어드려요. 각 카드의 *현재 라벨*은 지금
           BTC 의 실제 값을 기반으로 해요.
         </p>
@@ -64,7 +64,7 @@ export default function LiteLearn() {
       </div>
 
       <LiteCard variant="muted">
-        <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+        <p className="font-sans text-[11px] text-muted-foreground leading-relaxed">
           이 모든 단어는 결국 한 가지를 알려줘요: <strong>지금 사도 좋은 자리인가, 팔
           시점인가, 아니면 가만히 있어야 하는가</strong>. Lite 모드는 이 결론만 보여
           드리고 raw 수치는 숨겨요. 더 자세한 수치를 보고 싶으면 상단 [Pro 모드로]
@@ -93,11 +93,11 @@ function LearnCard({
 
   return (
     <LiteCard title={title} icon={<Sparkles className="h-5 w-5 text-neon-pink" />}>
-      <p className="font-mono text-[12px] text-muted-foreground leading-relaxed mb-3">
+      <p className="font-sans text-[12px] text-muted-foreground leading-relaxed mb-3">
         {desc}
       </p>
       <div className="border-t border-border/30 pt-2">
-        <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+        <div className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
           예시 — {kind} = {String(example)}
         </div>
         {data ? (
@@ -118,12 +118,12 @@ function LearnCard({
             >
               {data.result.label}
             </div>
-            <p className="font-mono text-[12px] text-foreground mt-0.5">
+            <p className="font-sans text-[12px] text-foreground mt-0.5">
               {data.result.oneLiner}
             </p>
           </>
         ) : (
-          <span className="font-mono text-[11px] text-muted-foreground">로딩...</span>
+          <span className="font-sans text-[11px] text-muted-foreground">로딩...</span>
         )}
       </div>
     </LiteCard>

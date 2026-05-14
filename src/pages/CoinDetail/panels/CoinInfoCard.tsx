@@ -23,7 +23,7 @@ function formatLargeNumber(n: number | null, prefix = ""): string {
 export function CoinInfoCard({ meta }: CoinInfoCardProps) {
   return (
     <HudPanel title="Coin Info" subtitle={meta?.symbol ?? ""}>
-      <dl className="grid grid-cols-2 gap-2 text-xs font-mono">
+      <dl className="grid grid-cols-2 gap-2 text-xs font-sans">
         <div>
           <dt className="text-[10px] text-muted-foreground uppercase">Mcap</dt>
           <dd className="text-foreground">{formatLargeNumber(meta?.mcap ?? null, "$")}</dd>
@@ -70,7 +70,7 @@ export function CoinInfoCard({ meta }: CoinInfoCardProps) {
           </dd>
         </div>
       </dl>
-      <p className="font-mono text-[9px] text-muted-foreground/70 mt-3 leading-relaxed">
+      <p className="font-sans text-[9px] text-muted-foreground/70 mt-3 leading-relaxed">
         * Mcap / supply / dominance 는 백엔드 coin.meta 라우트 추가 후 표시됩니다.
       </p>
     </HudPanel>

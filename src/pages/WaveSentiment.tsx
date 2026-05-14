@@ -1,4 +1,6 @@
 import { HudPanel, StatCard } from "@/components/HudPanel";
+import { RefreshIconButton } from "@/components/RefreshIconButton";
+import { TimeRangeSegmented } from "@/components/TimeRangeSegmented";
 import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
@@ -10,7 +12,6 @@ import { useWaveTracker } from "@/hooks/useWaveTracker";
 import { WaveMatrixCard } from "@/components/wave/WaveMatrixCard";
 import { cn } from "@/lib/utils";
 import {
-  Activity,
   AlertTriangle,
   Loader2,
   RefreshCw,
@@ -98,10 +99,10 @@ function WaveGauge({ score, label }: { score: number; label: string }) {
 
   const getLabelText = () => {
     switch (label) {
-      case "WAVE_LIKELY": return "WAVE LIKELY";
-      case "IMMINENT": return "IMMINENT";
-      case "BUILDING": return "BUILDING";
-      default: return "SIDEWAYS";
+      case "WAVE_LIKELY": return "Wave likely";
+      case "IMMINENT": return "Imminent";
+      case "BUILDING": return "Building";
+      default: return "Sideways";
     }
   };
 
@@ -143,10 +144,10 @@ function WaveGauge({ score, label }: { score: number; label: string }) {
         </svg>
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("font-display text-3xl font-bold", colors.ring, colors.glow)}>
+          <span className={cn("tl-market-number text-3xl leading-none", colors.ring, colors.glow)}>
             {score}
           </span>
-          <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">
+          <span className="font-sans text-[9px] text-muted-foreground tracking-wider">
             / 100
           </span>
         </div>
@@ -155,7 +156,7 @@ function WaveGauge({ score, label }: { score: number; label: string }) {
         <div className={cn("font-display text-sm font-bold tracking-wider", colors.ring)}>
           {getLabelText()}
         </div>
-        <div className="font-mono text-xs text-muted-foreground mt-0.5">
+        <div className="font-sans text-xs text-muted-foreground mt-0.5">
           {getLabelKo()}
         </div>
       </div>
@@ -183,13 +184,13 @@ function LiquidationPressureBar({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-3.5 w-3.5 text-neon-green" />
-          <span className="font-mono text-xs text-neon-green">
-            LONG {longPressure}%
+          <span className="font-sans text-xs text-neon-green">
+            Long {longPressure}%
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-neon-red">
-            SHORT {shortPressure}%
+          <span className="font-sans text-xs text-neon-red">
+            Short {shortPressure}%
           </span>
           <TrendingDown className="h-3.5 w-3.5 text-neon-red" />
         </div>
@@ -211,7 +212,7 @@ function LiquidationPressureBar({
 
       <div className="text-center">
         <span className={cn(
-          "font-mono text-[10px] uppercase tracking-wider",
+          "font-sans text-[10px] tracking-wider",
           dominantSide === "long" ? "text-neon-green" : dominantSide === "short" ? "text-neon-red" : "text-muted-foreground"
         )}>
           {dominantSide === "long"
@@ -275,49 +276,25 @@ export default function WaveSentiment() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-3">
-            <Waves className="h-6 w-6" />
-            SENTIMENT & MATRIX
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Sentiment & matrix
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            BTC PERPETUAL // OI · LONG/SHORT · FUNDING · LIQUIDATIONS // BYBIT DATA
+            BTC perpetual / OI · long/short · funding · liquidations / Bybit data
           </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Interval Selector */}
-          <div className="flex items-center gap-1.5 bg-card/50 border border-border/30 rounded-sm px-2 py-1">
-            <Activity className="h-3 w-3 text-neon-cyan" />
-            <div className="flex gap-0.5">
-              {OI_INTERVALS.map((iv) => (
-                <button
-                  key={iv.value}
-                  onClick={() => setOiInterval(iv.value)}
-                  className={cn(
-                    "font-mono text-[10px] px-2 py-1 rounded-sm transition-all",
-                    oiInterval === iv.value
-                      ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  )}
-                >
-                  {iv.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
+          <TimeRangeSegmented
+            options={OI_INTERVALS}
+            value={oiInterval}
+            onChange={setOiInterval}
+          />
+          <RefreshIconButton
             onClick={refetch}
-            disabled={isLoading}
-            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs"
-          >
-            {isLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <RefreshCw className="h-3 w-3 mr-1" />
-            )}
-            REFRESH
-          </Button>
+            label="Refresh wave sentiment"
+            isLoading={isLoading}
+          />
         </div>
       </div>
 
@@ -326,7 +303,7 @@ export default function WaveSentiment() {
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-neon-pink" />
           <div className="text-center">
-            <p className="font-mono text-sm text-foreground">Loading BTC derivatives data...</p>
+            <p className="font-sans text-sm text-foreground">Loading BTC derivatives data...</p>
             <p className="font-mono text-xs text-muted-foreground mt-1">
               Fetching OI, Long/Short Ratio, Funding Rate from Bybit
             </p>
@@ -338,15 +315,15 @@ export default function WaveSentiment() {
       {error && !snapshot && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <AlertTriangle className="h-8 w-8 text-neon-red" />
-          <p className="font-mono text-sm text-neon-red">Failed to load data</p>
+          <p className="font-sans text-sm text-neon-red">Failed to load data</p>
           <Button
             variant="outline"
             size="sm"
             onClick={refetch}
-            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-mono text-xs mt-2"
+            className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-xs mt-2"
           >
             <RefreshCw className="h-3 w-3 mr-1" />
-            RETRY
+            Retry
           </Button>
         </div>
       )}
@@ -395,7 +372,7 @@ export default function WaveSentiment() {
             {/* Wave Gauge */}
             <HudPanel
               title="Wave Score"
-              subtitle="OI + LS RATIO + FUNDING COMPOSITE"
+              subtitle="OI + LS ratio + funding composite"
               variant="highlight"
             >
               <div className="flex flex-col items-center py-4">
@@ -406,7 +383,7 @@ export default function WaveSentiment() {
             {/* Liquidation Pressure */}
             <HudPanel
               title="Liquidation Pressure"
-              subtitle="ESTIMATED FROM LONG/SHORT RATIO"
+              subtitle="Estimated from long/short ratio"
             >
               <div className="py-4">
                 <LiquidationPressureBar
@@ -420,13 +397,13 @@ export default function WaveSentiment() {
             {/* Analysis Reasons */}
             <HudPanel
               title="Analysis Detail"
-              subtitle="WAVE DETECTION REASONS"
+              subtitle="Wave detection reasons"
             >
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {analysis.reasons.map((reason, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-2 text-xs font-mono"
+                    className="flex items-start gap-2 text-xs font-sans"
                   >
                     <Zap className={cn(
                       "h-3 w-3 mt-0.5 shrink-0",
@@ -442,7 +419,7 @@ export default function WaveSentiment() {
           {/* OI History Chart */}
           <HudPanel
             title="Open Interest History"
-            subtitle={`BTCUSDT PERP · ${oiInterval.toUpperCase()} INTERVAL · ${oiHistory.length} DATA POINTS`}
+            subtitle={`BTCUSDT perp · ${oiInterval.toUpperCase()} interval · ${oiHistory.length} data points`}
           >
             {oiChartData.length > 0 ? (
               <ChartContainer config={oiChartConfig} className="h-[250px] w-full">
@@ -473,7 +450,7 @@ export default function WaveSentiment() {
                           return "";
                         }}
                         formatter={(value) => (
-                          <span className="font-mono text-neon-cyan">
+                          <span className="font-sans text-neon-cyan">
                             {Number(value).toLocaleString()} BTC
                           </span>
                         )}
@@ -490,7 +467,7 @@ export default function WaveSentiment() {
                 </AreaChart>
               </ChartContainer>
             ) : (
-              <div className="flex items-center justify-center h-[250px] text-muted-foreground font-mono text-sm">
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground font-sans text-sm">
                 No OI data available
               </div>
             )}
@@ -499,7 +476,7 @@ export default function WaveSentiment() {
           {/* Long/Short Ratio Chart */}
           <HudPanel
             title="Long / Short Ratio"
-            subtitle={`ACCOUNT RATIO · ${oiInterval.toUpperCase()} INTERVAL`}
+            subtitle={`Account ratio · ${oiInterval.toUpperCase()} interval`}
           >
             {lsChartData.length > 0 ? (
               <ChartContainer config={lsChartConfig} className="h-[250px] w-full">
@@ -556,7 +533,7 @@ export default function WaveSentiment() {
                 </AreaChart>
               </ChartContainer>
             ) : (
-              <div className="flex items-center justify-center h-[250px] text-muted-foreground font-mono text-sm">
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground font-sans text-sm">
                 No Long/Short data available
               </div>
             )}
@@ -565,7 +542,7 @@ export default function WaveSentiment() {
           {/* Funding Rate Chart */}
           <HudPanel
             title="Funding Rate History"
-            subtitle="8H INTERVAL · BTCUSDT PERP"
+            subtitle="8H interval · BTCUSDT perp"
           >
             {fundingChartData.length > 0 ? (
               <ChartContainer config={fundingChartConfig} className="h-[200px] w-full">
@@ -589,7 +566,7 @@ export default function WaveSentiment() {
                           return "";
                         }}
                         formatter={(value) => (
-                          <span className="font-mono text-neon-yellow">
+                          <span className="font-sans text-neon-yellow">
                             {Number(value).toFixed(4)}%
                           </span>
                         )}
@@ -604,7 +581,7 @@ export default function WaveSentiment() {
                 </BarChart>
               </ChartContainer>
             ) : (
-              <div className="flex items-center justify-center h-[200px] text-muted-foreground font-mono text-sm">
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground font-sans text-sm">
                 No Funding Rate data available
               </div>
             )}
@@ -612,7 +589,7 @@ export default function WaveSentiment() {
 
           {/* Last updated */}
           {lastUpdated && (
-            <div className="text-center font-mono text-[10px] text-muted-foreground">
+            <div className="text-center font-sans text-[10px] text-muted-foreground">
               Last updated: {new Date(lastUpdated).toLocaleTimeString()} · Data from Bybit V5 API
             </div>
           )}
