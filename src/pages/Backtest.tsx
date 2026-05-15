@@ -118,7 +118,7 @@ const STRATEGY_META: Record<
     textClass: "text-neon-green",
   },
   "trend-follow": {
-    label: "Trend-Follow",
+    label: "EMA+ADX 정배열 ⭐",
     description:
       "5-gate (EMA 정배열 + ADX≥25 + +DI>-DI + price>SMA50 + HH) — winRate 44.8% (365d, P1 검증)",
     activeClass: "bg-foreground text-background",
@@ -500,7 +500,7 @@ export default function Backtest() {
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
           Multi-strategy historical calibration / BBDX v6.6 · Fibonacci · VWAP ·
-          Trend
+          Trend · EMA+ADX 정배열
         </p>
       </div>
 
