@@ -39,7 +39,10 @@ import EngineBTab from "./backtest/EngineBTab";
 
 type TfOption = "1h" | "4h" | "6h" | "1d" | "1w";
 // 백엔드 routers.ts 의 strategy enum 과 1:1 매핑. 새 전략 추가 시 양쪽 sync.
+// "bbdx-combined" (2026-05-15): runner 가 LONG bbdx + SHORT bbdx-short 둘 다
+// 실행 후 trade 배열 concat + metricsBySide(long/short/combined) 반환.
 type StrategyOption =
+  | "bbdx-combined"
   | "bbdx"
   | "bbdx-short"
   | "fibonacci"
@@ -71,15 +74,23 @@ const STRATEGY_META: Record<
     textClass: string;
   }
 > = {
+  "bbdx-combined": {
+    label: "BBDX v6.6 ⭐",
+    description:
+      "LONG + SHORT 통합 (BBDX bbdx + bbdx-short 동시 평가, 분리 메트릭 제공)",
+    activeClass: "bg-foreground text-background",
+    badgeClass: "text-emerald-700 bg-emerald-50",
+    textClass: "text-emerald-300",
+  },
   bbdx: {
-    label: "BBDX",
+    label: "BBDX (LONG only)",
     description: "RSI + BB + ADX 멀티-패스 (BB → PTN → NUM)",
     activeClass: "bg-foreground text-background",
     badgeClass: "text-foreground bg-muted",
     textClass: "text-foreground",
   },
   "bbdx-short": {
-    label: "BBDX SHORT",
+    label: "BBDX SHORT (SHORT only)",
     description: "BBDX 의 SHORT 진입 (BB 상단 돌파 후 reversal)",
     activeClass: "bg-foreground text-background",
     badgeClass: "text-rose-600 bg-rose-50",
@@ -417,7 +428,7 @@ export default function Backtest() {
     cooldownCandles: 5,
     saveToDb: true,
     runName: "",
-    strategy: "bbdx",
+    strategy: "bbdx-combined",
   });
   const [activeTab, setActiveTab] = useState("config");
   const [tradeWinFilter, setTradeWinFilter] = useState<"all" | "win" | "loss">(
@@ -472,7 +483,10 @@ export default function Backtest() {
       cooldownCandles: config.cooldownCandles,
       saveToDb: config.saveToDb,
       runName: config.runName || undefined,
-      strategy: config.strategy,
+      // "bbdx-combined" 는 백엔드에서 이미 지원하지만 GitHub dev 브랜치의
+      // @tradelab/backend 타입이 아직 갱신되지 않아 캐스트로 우회. 백엔드 zod
+      // enum 갱신 + 타입 재배포 후 캐스트 제거 가능.
+      strategy: config.strategy as unknown as "bbdx",
     });
   };
 
@@ -485,7 +499,7 @@ export default function Backtest() {
           Backtesting engine
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          Multi-strategy historical calibration / BBDX · Fibonacci · VWAP ·
+          Multi-strategy historical calibration / BBDX v6.6 · Fibonacci · VWAP ·
           Trend
         </p>
       </div>
@@ -876,6 +890,99 @@ export default function Backtest() {
 
               {/* Stat Cards */}
               <MetricCards overall={overall} variant="full" />
+
+              {/* bbdx-combined 전용: LONG / SHORT 분리 메트릭 sub-cards.
+                  백엔드 응답에 metricsBySide 가 있을 때만 노출. */}
+              {(() => {
+                const mbs = (
+                  result as unknown as {
+                    metricsBySide?: {
+                      long: typeof overall | null;
+                      short: typeof overall | null;
+                      combined: typeof overall;
+                    };
+                  }
+                ).metricsBySide;
+                if (!mbs || (!mbs.long && !mbs.short)) return null;
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {mbs.long && (
+                      <HudPanel
+                        title="LONG side"
+                        subtitle={`BBDX bbdx · ${mbs.long.totalTrades} 시그널`}
+                      >
+                        <div className="grid grid-cols-3 gap-2">
+                          <BacktestStatCard
+                            label="승률"
+                            value={`${(mbs.long.winRate * 100).toFixed(1)}%`}
+                            sub={`${mbs.long.wins}W / ${mbs.long.losses}L`}
+                            color={mbs.long.winRate >= 0.5 ? "green" : "red"}
+                          />
+                          <BacktestStatCard
+                            label="기댓값"
+                            value={`${mbs.long.expectancy >= 0 ? "+" : ""}${mbs.long.expectancy.toFixed(2)}%`}
+                            sub="per trade"
+                            color={mbs.long.expectancy > 0 ? "cyan" : "red"}
+                          />
+                          <BacktestStatCard
+                            label="Profit Factor"
+                            value={
+                              isFinite(mbs.long.profitFactor)
+                                ? mbs.long.profitFactor.toFixed(2)
+                                : "∞"
+                            }
+                            sub="이익/손실 비"
+                            color={
+                              mbs.long.profitFactor >= 1.5
+                                ? "green"
+                                : mbs.long.profitFactor >= 1
+                                  ? "yellow"
+                                  : "red"
+                            }
+                          />
+                        </div>
+                      </HudPanel>
+                    )}
+                    {mbs.short && (
+                      <HudPanel
+                        title="SHORT side"
+                        subtitle={`BBDX bbdx-short · ${mbs.short.totalTrades} 시그널`}
+                      >
+                        <div className="grid grid-cols-3 gap-2">
+                          <BacktestStatCard
+                            label="승률"
+                            value={`${(mbs.short.winRate * 100).toFixed(1)}%`}
+                            sub={`${mbs.short.wins}W / ${mbs.short.losses}L`}
+                            color={mbs.short.winRate >= 0.5 ? "green" : "red"}
+                          />
+                          <BacktestStatCard
+                            label="기댓값"
+                            value={`${mbs.short.expectancy >= 0 ? "+" : ""}${mbs.short.expectancy.toFixed(2)}%`}
+                            sub="per trade"
+                            color={mbs.short.expectancy > 0 ? "cyan" : "red"}
+                          />
+                          <BacktestStatCard
+                            label="Profit Factor"
+                            value={
+                              isFinite(mbs.short.profitFactor)
+                                ? mbs.short.profitFactor.toFixed(2)
+                                : "∞"
+                            }
+                            sub="이익/손실 비"
+                            color={
+                              mbs.short.profitFactor >= 1.5
+                                ? "green"
+                                : mbs.short.profitFactor >= 1
+                                  ? "yellow"
+                                  : "red"
+                            }
+                          />
+                        </div>
+                      </HudPanel>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Charts Row */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
