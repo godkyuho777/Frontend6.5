@@ -10,8 +10,12 @@ import { useCoinDetail } from "@/hooks/useMarketData";
 import { cn } from "@/lib/utils";
 import MultiTFTrendPanel from "@/components/wave/MultiTFTrendPanel";
 import type { Trendline as FibTrendline } from "@/lib/fibonacci-engine";
+import {
+  detectTrendlinesV2,
+  type Trendline as V2Trendline,
+} from "@/lib/trendline-engine";
 import { TOP_COINS } from "@shared/types";
-import type { Candle, TimeframeValue } from "@shared/types";
+import type { TimeframeValue } from "@shared/types";
 
 // Spec timeframes: 1W / 1D / 4H / 1H
 type WaveTimeframe = Extract<TimeframeValue, "1h" | "4h" | "1d" | "1w">;
@@ -65,105 +69,70 @@ function computeFibLevels(low: number, high: number): FibLevel[] {
   }));
 }
 
-/**
- * Adapt the page's TrendlineComputed shape into the fib-engine Trendline
- * shape consumed by <CandleChartLW>. WaveTrend's resolveTrendline already
- * vetted the lines, so we always render them as valid.
- *
- * 2026-05-14: Trendline 타입에 intercept/rSquared/tf 추가됨에 따라 채워넣음.
- */
-function toFibTrendline(
-  candles: Candle[],
-  tl: TrendlineComputed | null,
-  tf: "1h" | "4h" | "1d"
-): FibTrendline | null {
-  if (!tl) return null;
-  const startCandle = candles[tl.startIdx];
-  const endCandle = candles[tl.endIdx];
-  if (!startCandle || !endCandle) return null;
-  const lastTime = candles[candles.length - 1]?.openTime ?? endCandle.openTime;
-  const durationDays =
-    (lastTime - startCandle.openTime) / (1000 * 60 * 60 * 24);
-  const candlesFromStart = candles.length - 1 - tl.startIdx;
-  const currentPrice = tl.startPrice + tl.slope * candlesFromStart;
-  // intercept: 두 점으로부터 startPrice - slope * startIdx = intercept
-  const intercept = tl.startPrice - tl.slope * tl.startIdx;
-  return {
-    startPoint: { time: startCandle.openTime, price: tl.startPrice, index: tl.startIdx },
-    endPoint: { time: endCandle.openTime, price: tl.endPrice, index: tl.endIdx },
-    slope: tl.slope,
-    intercept,
-    type: tl.type,
-    touchCount: Math.max(2, Math.round((tl.strength / 100) * (tl.endIdx - tl.startIdx))),
-    durationDays,
-    isValid: true,
-    currentPrice,
-    rSquared: tl.strength / 100,
-    tf,
-  };
-}
-
 function formatPrice(p: number): string {
   if (p === 0) return "—";
   return p < 1 ? p.toFixed(6) : p < 100 ? p.toFixed(4) : p.toFixed(2);
 }
 
 /**
- * Convert the indicator-pipeline trendline format (2 time-anchored points)
- * into a candle-index-anchored line with strength. Walks the candle array
- * and counts touches within ±0.5%.
+ * V2 Trendline → 페이지 내부의 TrendlineComputed (legacy panel 호환).
+ * V2 의 touchCount / rSquared / inlierRatio 를 strength 0~100 으로 매핑.
  */
-function resolveTrendline(
-  candles: Candle[],
-  raw: { type: "support" | "resistance"; points: { time: number; price: number }[] }
-): TrendlineComputed | null {
-  if (raw.points.length < 2 || candles.length === 0) return null;
-  const sorted = [...raw.points].sort((a, b) => a.time - b.time);
-  const start = sorted[0];
-  const end = sorted[sorted.length - 1];
-
-  const findIdx = (time: number): number => {
-    let best = 0;
-    let bestDiff = Math.abs(candles[0].openTime - time);
-    for (let i = 1; i < candles.length; i++) {
-      const d = Math.abs(candles[i].openTime - time);
-      if (d < bestDiff) {
-        bestDiff = d;
-        best = i;
-      }
-    }
-    return best;
-  };
-
-  const startIdx = findIdx(start.time);
-  const endIdx = findIdx(end.time);
-  if (endIdx === startIdx) return null;
-  const slope = (end.price - start.price) / (endIdx - startIdx);
-
-  // Strength = candles touching the line within 0.5% / total candles
-  const tolerance = 0.005;
-  let touches = 0;
-  for (let i = 0; i < candles.length; i++) {
-    const linePrice = start.price + slope * (i - startIdx);
-    if (linePrice <= 0) continue;
-    const c = candles[i];
-    if (raw.type === "support") {
-      // Touch if low is within tolerance of line
-      if (Math.abs(c.low - linePrice) / linePrice <= tolerance) touches++;
-    } else {
-      if (Math.abs(c.high - linePrice) / linePrice <= tolerance) touches++;
-    }
+function v2ToComputed(tl: V2Trendline | undefined): TrendlineComputed | null {
+  if (!tl) return null;
+  // strength: quality 별로 다른 산식
+  //   ransac     → inlierRatio 가 주요 지표 (60~100)
+  //   regression → rSquared 가 주요 지표 (R² 0.3~1 → 30~100)
+  //   two-pivot  → 약 30 (시각적 hint)
+  let strength: number;
+  if (tl.quality === "ransac") {
+    strength = Math.min(100, 60 + tl.inlierRatio * 40);
+  } else if (tl.quality === "regression") {
+    strength = Math.min(100, 30 + tl.rSquared * 70);
+  } else {
+    strength = 25;
   }
-  const strength = (touches / candles.length) * 100;
-
   return {
-    type: raw.type,
-    startIdx,
-    endIdx,
-    startPrice: start.price,
-    endPrice: end.price,
-    slope,
-    strength,
+    type: tl.type,
+    startIdx: tl.startPoint.index,
+    endIdx: tl.endPoint.index,
+    startPrice: tl.startPoint.price,
+    endPrice: tl.endPoint.price,
+    slope: tl.slope,
+    strength: Math.round(strength),
+  };
+}
+
+/**
+ * V2 Trendline → CandleChartLW 가 받는 FibTrendline.
+ * quality 필드 보존하여 차트에서 quality 별 스타일 적용 가능.
+ */
+function v2ToFibTrendline(
+  tl: V2Trendline,
+  tf: "1h" | "4h" | "1d"
+): FibTrendline {
+  return {
+    startPoint: {
+      time: tl.startPoint.time,
+      price: tl.startPoint.price,
+      index: tl.startPoint.index,
+    },
+    endPoint: {
+      time: tl.endPoint.time,
+      price: tl.endPoint.price,
+      index: tl.endPoint.index,
+    },
+    slope: tl.slope,
+    intercept: tl.intercept,
+    type: tl.type,
+    touchCount: tl.touchCount,
+    durationDays: tl.durationDays,
+    isValid: tl.isValid,
+    currentPrice: tl.currentPrice,
+    rSquared: tl.rSquared,
+    tf,
+    quality: tl.quality,
+    isVisualHint: tl.isVisualHint,
   };
 }
 
@@ -200,32 +169,41 @@ export default function WaveTrend() {
     };
   }, [candles]);
 
-  // ─── Trendlines (resolved + strength) ──────────────────────────────
+  // ─── Trendlines — V2 (3-tier fallback, support + resistance 보장) ──
+  //
+  // 2026-05-15: 기존엔 백엔드 indicator.trendlines 만 사용 →
+  // 백엔드가 빈 배열을 보내면 라인이 안 그려짐. V2 알고리즘을 클라이언트에서
+  // 직접 호출하여 항상 가능한 한 support + resistance 두 라인을 그림.
+  // (구 백엔드 데이터는 더 이상 사용 X — V2 가 swing 검출부터 다시 함)
+  void indicators;
+  const v2Trendlines = useMemo<V2Trendline[]>(() => {
+    if (candles.length < 20) return [];
+    // V2 TF — interval 그대로 (V2 는 1h/4h/1d/1w 모두 지원)
+    return detectTrendlinesV2(candles, interval);
+  }, [candles, interval]);
+
+  // legacy panel (TrendlineSummary) 용 TrendlineComputed 어댑터
   const { upTrend, downTrend } = useMemo(() => {
-    const tls = indicators?.trendlines ?? [];
-    const support = tls.find((t) => t.type === "support");
-    const resistance = tls.find((t) => t.type === "resistance");
+    const support = v2Trendlines.find((t) => t.type === "support");
+    const resistance = v2Trendlines.find((t) => t.type === "resistance");
     return {
-      upTrend: support ? resolveTrendline(candles, support) : null,
-      downTrend: resistance ? resolveTrendline(candles, resistance) : null,
+      upTrend: v2ToComputed(support),
+      downTrend: v2ToComputed(resistance),
     };
-  }, [candles, indicators]);
+  }, [v2Trendlines]);
 
   // ─── Chart adapters (page → CandleChartLW) ────────────────────────
   const chartFibLevels: ChartFibLevel[] = useMemo(
     () => fibLevels.map((f) => ({ ratio: f.ratio, price: f.price, label: f.label })),
     [fibLevels]
   );
-  const chartTrendlines = useMemo(
-    () => {
-      // WaveTimeframe (1h/4h/1d/1w) → FibTimeframe (1h/4h/1d). 1w → 1d 매핑.
-      const fibTf: "1h" | "4h" | "1d" =
-        interval === "1h" ? "1h" : interval === "4h" ? "4h" : "1d";
-      return [toFibTrendline(candles, upTrend, fibTf), toFibTrendline(candles, downTrend, fibTf)]
-        .filter((t): t is FibTrendline => t !== null);
-    },
-    [candles, upTrend, downTrend, interval]
-  );
+  const chartTrendlines = useMemo<FibTrendline[]>(() => {
+    // WaveTimeframe (1h/4h/1d/1w) → FibTimeframe (1h/4h/1d). 1w → 1d 매핑
+    // (Trendline 타입의 tf 필드 호환성 — 차트 자체엔 영향 X)
+    const fibTf: "1h" | "4h" | "1d" =
+      interval === "1h" ? "1h" : interval === "4h" ? "4h" : "1d";
+    return v2Trendlines.map((v2) => v2ToFibTrendline(v2, fibTf));
+  }, [v2Trendlines, interval]);
 
   // ─── Trade signals ─────────────────────────────────────────────────
   const tradeSignals = useMemo(() => {

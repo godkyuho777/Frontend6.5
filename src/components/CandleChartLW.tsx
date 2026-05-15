@@ -249,8 +249,17 @@ export function CandleChartLW({
     //     priceRange (min/max) 를 산출하고, line value 가 그 범위의 ±30%
     //     를 벗어나면 그 시점부터 line 을 자른다.
     //   - endPoint.index + EXTRA_FORWARD_CANDLES 이후로는 extrapolate 하지 않음.
+    //
+    // Quality-aware styling (2026-05-15):
+    //   - "ransac"     → 굵은 실선 (가장 robust 한 라인)
+    //   - "regression" → 중간 실선
+    //   - "two-pivot"  → 옅은 dashed line + isVisualHint=true 표시
+    //   isValid=false 라인도 two-pivot hint 이면 약하게 그림 (사용자 요구:
+    //   라인 통째로 사라지는 것보다 fallback hint 라도 보여주는 게 나음).
     if (trendlines && trendlines.length > 0) {
-      const validTrendlines = trendlines.filter((t) => t.isValid);
+      const drawnTrendlines = trendlines.filter(
+        (t) => t.isValid || t.isVisualHint
+      );
 
       // 표시 가격 범위 계산 (캔들 high/low + fib levels)
       let visibleHigh = -Infinity;
@@ -275,8 +284,20 @@ export function CandleChartLW({
 
       const EXTRA_FORWARD_CANDLES = 10;
 
-      for (const tl of validTrendlines) {
-        const tlColor = tl.type === "support" ? "#00e676" : "#ff1744";
+      for (const tl of drawnTrendlines) {
+        const baseColor = tl.type === "support" ? "#00e676" : "#ff1744";
+        // Quality 별 스타일
+        const isHint = tl.isVisualHint === true || tl.quality === "two-pivot";
+        const isRansac = tl.quality === "ransac";
+        // hint 는 50% alpha, ransac 는 굵게
+        const tlColor = isHint
+          ? tl.type === "support"
+            ? "#00e67688" // green @ 53% alpha
+            : "#ff174488" // red @ 53% alpha
+          : baseColor;
+        const tlWidth: 1 | 2 | 3 = isHint ? 1 : isRansac ? 3 : 2;
+        const tlStyle = isHint ? LineStyle.Dashed : LineStyle.Solid;
+
         const chartStartIdx = Math.max(0, tl.startPoint.index - offsetIdx);
 
         if (tl.endPoint.index < offsetIdx) continue;
@@ -304,11 +325,13 @@ export function CandleChartLW({
         if (lineData.length >= 2) {
           const tlSeries = chart.addSeries(LineSeries, {
             color: tlColor,
-            lineWidth: 2,
-            lineStyle: LineStyle.Dashed,
+            lineWidth: tlWidth,
+            lineStyle: tlStyle,
             crosshairMarkerVisible: false,
             priceLineVisible: false,
             lastValueVisible: false,
+            // hint 라인 라벨 — endpoint 에 "AUTO" 작은 라벨
+            title: isHint ? "AUTO" : "",
           });
           tlSeries.setData(lineData as never);
         }

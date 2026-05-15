@@ -8,9 +8,19 @@
  *  - Inflection-point anchored trendline (추세 변환 지점부터 시작)
  *  - Linear regression best-fit (brute-force pair 검색 폐기)
  *  - Slope sanity check — 비합리적 slope 거부
+ *
+ * 2026-05-15 업데이트:
+ *  - Trendline detection 로직을 `trendline-engine.ts` 의 V2 (3-tier fallback)
+ *    로 교체. 구 `detectTrendlines` / `detectInflectionPoint` /
+ *    `findLocalSwingPoints` / `buildTrendlineFromInflection` 는 deprecated.
+ *    아직 외부에서 import 하는 곳이 있을 수 있어 보존만 함.
  */
 
 import type { Candle } from "@shared/types";
+import {
+  detectTrendlinesV2,
+  type Trendline as TrendlineV2,
+} from "./trendline-engine";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -47,6 +57,15 @@ export interface Trendline {
   currentPrice: number;   // 현재 시점에서의 빗각 가격
   rSquared: number;       // 회귀 fit 품질 (0~1)
   tf: FibTimeframe;       // 사용된 TF
+  /**
+   * Trendline V2 (2026-05-15) — 어느 fallback tier 에서 만들어졌나.
+   * "ransac" = robust RANSAC, "regression" = linear regression best-fit,
+   * "two-pivot" = lookback 내 가장 낮은/높은 두 swing 으로 그린 hint 라인.
+   * 미지정 시 legacy 분석 (regression default).
+   */
+  quality?: "ransac" | "regression" | "two-pivot";
+  /** Tier 3 fallback 일 때 true — 차트에서 옅은 dashed + "AUTO" 라벨로 그리기 */
+  isVisualHint?: boolean;
 }
 
 /** 피보나치 매매 시그널 */
@@ -151,6 +170,10 @@ export function findSwingPoints(
 }
 
 /**
+ * @deprecated 2026-05-15 — `trendline-engine.ts` 의 `findSwings` 로 대체됨.
+ * 본 함수는 strict 비교 (>=, <=) 만 사용하여 동가 swing 을 무시하는 문제 +
+ * fallback 없음의 문제로 폐기. 외부 import 호환성을 위해 보존만 함.
+ *
  * 로컬 스윙 포인트들을 찾습니다 (빗각 계산용).
  * 좌우 windowSize 캔들보다 높거나 낮은 포인트를 감지합니다.
  */
@@ -246,6 +269,47 @@ export function getCurrentFibZone(
 // ─── Trendline Detection ────────────────────────────────────────────
 
 /**
+ * V2 trendline (`trendline-engine.ts`) → 본 모듈의 legacy Trendline 타입으로 어댑트.
+ * Fibonacci 페이지의 CandleChartLW + FibonacciDetail 의 TrendlineCard 가 본 타입을
+ * 사용하므로 변환 필요. quality / isVisualHint 는 별도 보존.
+ */
+function adaptV2Trendline(
+  v2: TrendlineV2,
+  tf: FibTimeframe,
+  _lastCandle: Candle
+): Trendline {
+  void _lastCandle; // 향후 시각화 확장에 활용 가능 — 현재 미사용
+  return {
+    startPoint: {
+      time: v2.startPoint.time,
+      price: v2.startPoint.price,
+      index: v2.startPoint.index,
+    },
+    endPoint: {
+      time: v2.endPoint.time,
+      price: v2.endPoint.price,
+      index: v2.endPoint.index,
+    },
+    slope: v2.slope,
+    intercept: v2.intercept,
+    type: v2.type,
+    touchCount: v2.touchCount,
+    durationDays: v2.durationDays,
+    isValid: v2.isValid,
+    currentPrice: v2.currentPrice,
+    rSquared: v2.rSquared,
+    tf,
+    quality: v2.quality,
+    isVisualHint: v2.isVisualHint,
+  };
+}
+
+/**
+ * @deprecated 2026-05-15 — Use `detectTrendlinesV2` from `trendline-engine.ts`.
+ * Inflection point 기반 단순 분기는 변동성 큰 알트(ADA 등)에서 라인이
+ * 통째로 reject 되는 문제가 있어 V2 의 3-tier fallback 으로 대체됨.
+ * 본 함수는 외부 import 호환성을 위해 보존되나 내부적으로 V2 를 호출.
+ *
  * 변환점(Inflection Point) 검출.
  *
  * 기울기가 바뀌는 지점이 새 추세의 시작이라는 사용자 요구사항을 구현.
@@ -346,57 +410,37 @@ function linearRegression(
 
 /**
  * 추세 빗각을 자동으로 감지합니다.
- * TF 인식 + inflection point anchored + linear regression best-fit.
+ *
+ * 2026-05-15: 내부 구현을 `trendline-engine.ts` 의 V2 (3-tier fallback) 로
+ * 위임. swingPoints 파라미터는 backward-compat 위해 시그너처에만 남기고
+ * V2 가 자체적으로 다시 swing 을 찾음 (relaxed fallback 포함).
  *
  * Resistance 1개 (high-high) + Support 1개 (low-low), 총 최대 2개 반환.
+ * 라인 quality 는 Trendline.quality 필드에 "ransac" / "regression" /
+ * "two-pivot" 중 하나로 표시됨.
  */
 export function detectTrendlines(
   candles: Candle[],
   swingPoints: SwingPoint[],
   tf: FibTimeframe = "4h"
 ): Trendline[] {
-  const trendlines: Trendline[] = [];
-  if (candles.length === 0) return trendlines;
+  void swingPoints; // V2 가 자체적으로 swing 검출 (strict → relaxed fallback)
+  if (candles.length === 0) return [];
   const lastCandle = candles[candles.length - 1];
-  const params = FIB_TF_PARAMS[tf];
 
-  // 지지선 (저점 연결)
-  const lows = swingPoints
-    .filter((p) => p.type === "low")
-    .sort((a, b) => a.index - b.index);
-  const supportTL = buildTrendlineFromInflection(candles, lows, "support", tf);
-  if (supportTL) trendlines.push(supportTL);
-
-  // 저항선 (고점 연결)
-  const highs = swingPoints
-    .filter((p) => p.type === "high")
-    .sort((a, b) => a.index - b.index);
-  const resistanceTL = buildTrendlineFromInflection(candles, highs, "resistance", tf);
-  if (resistanceTL) trendlines.push(resistanceTL);
-
-  // 현재 가격 / 유지 기간 / 유효성 계산
-  return trendlines.map((tl) => {
-    const candlesFromStart = candles.length - 1 - tl.startPoint.index;
-    const currentPrice = tl.startPoint.price + tl.slope * candlesFromStart;
-    const durationMs = lastCandle.openTime - candles[tl.startPoint.index].openTime;
-    // TF 별 candle interval ms → days 환산
-    const tfMs =
-      tf === "1h" ? 60 * 60 * 1000 : tf === "4h" ? 4 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    const durationDays = durationMs / (1000 * 60 * 60 * 24);
-    // tfMs 는 추후 시각화 확장에 활용 가능 — 현재 미사용
-    void tfMs;
-    void params;
-
-    return {
-      ...tl,
-      currentPrice,
-      durationDays,
-      isValid: tl.touchCount >= MIN_TOUCH_COUNT || durationDays >= MIN_DURATION_DAYS,
-    };
-  });
+  // V2 는 TF 가 "1h" | "4h" | "1d" | "1w" — FibTimeframe (1h/4h/1d) 와 동일 prefix.
+  // 1w 가 FibTimeframe 에는 없으므로 1d 로 fallback (legacy 호환).
+  const v2Tf: "1h" | "4h" | "1d" = tf;
+  const v2Trendlines = detectTrendlinesV2(candles, v2Tf);
+  return v2Trendlines.map((v2) => adaptV2Trendline(v2, tf, lastCandle));
 }
 
 /**
+ * @deprecated 2026-05-15 — `trendline-engine.ts` 의 V2 로 대체됨.
+ * Inflection point + single-pass regression 방식은 swing 이 가까이 있을 때
+ * 라인이 매우 짧고 가파르게 만들어지는 문제 + outlier 1개로 라인 통째로
+ * reject 되는 문제로 폐기. 본 함수는 외부 import 호환성을 위해 보존만 함.
+ *
  * 단일 trendline 구축:
  *  1) detectInflectionPoint() 로 anchor + relevantSwings 추출
  *  2) lookback 범위 내로 필터
