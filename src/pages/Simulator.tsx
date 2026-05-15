@@ -1,32 +1,35 @@
 /**
  * Investment Simulator (모의투자) — Bybit-style Trading UI (2026-05-15).
  *
- * 로그인 X. 닉네임 + 클라이언트 UUID 기반 (useSimUser).
+ * Onboarding:
+ *   1. 신규 방문 → SimulatorWelcome 화면 (닉네임 입력 + Start with $200,000 버튼)
+ *   2. 등록 후 → simUser localStorage 영구 저장 → simulator UI 진입
+ *   3. 등록된 사용자는 바로 simulator UI
  *
- * 레이아웃 (Bybit /trade/usdt/BTCUSDT 미러):
- *   ┌─────────────────────────────────────────────────────────┐
- *   │  Symbol picker · Last · 24h chg · 24h volume · Nickname │  ← Top bar
- *   ├──────────────────────────────┬──────────────┬──────────┤
- *   │                              │              │          │
- *   │  Candle Chart                │  Order Book  │  Trade   │
- *   │  + Timeframes (1m~1M, 9개)   │  + Trades    │  Form    │
- *   │                              │              │          │
- *   ├──────────────────────────────┴──────────────┴──────────┤
- *   │  Tabs: Open Orders | Positions | Order History | ...    │
- *   │  (selected tab content)                                 │
- *   └─────────────────────────────────────────────────────────┘
+ * 레이아웃 (Bybit /trade/usdt/BTCUSDT 미러, md:768px 부터 3-column):
+ *   ┌──────────────────────────────────────────────────────────┐
+ *   │  Symbol · Last · 24h · 6 popular · Nickname               │
+ *   ├─────────────────────────────────────────────────────────┤
+ *   │  Cash · Equity · uPnL · rPnL · Open · Mark · Reset       │
+ *   ├──────────────────────┬──────────────┬───────────────────┤
+ *   │  Candle Chart        │  Order Book  │  Trade Form        │
+ *   │  + 9 TF tabs         │  + Recent    │  (Buy/Sell on top) │
+ *   ├──────────────────────┴──────────────┴───────────────────┤
+ *   │  Tabs: Positions / Order History / Trade History          │
+ *   └──────────────────────────────────────────────────────────┘
  *
  * Charter: 본 페이지는 BBDX 시그널 시스템과 완전 분리. 모의투자는 헌장 R4
  * (자본 보호) 와 별개로 사용자 학습 / UX 실험용.
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { CandleChartLW } from "@/components/CandleChartLW";
+import { SimulatorWelcome } from "@/components/SimulatorWelcome";
 import { useSimUser } from "@/hooks/useSimUser";
 import {
   fetchSimKlines,
@@ -50,6 +53,7 @@ import {
   Edit3,
   Check,
   X,
+  LogOut,
 } from "lucide-react";
 import type { Candle } from "@shared/types";
 
@@ -60,13 +64,9 @@ const POPULAR_SYMBOLS = [
   "XRPUSDT",
   "BNBUSDT",
   "DOGEUSDT",
-  "AVAXUSDT",
-  "LINKUSDT",
-  "ADAUSDT",
-  "MATICUSDT",
 ];
 
-type BottomTab = "open-orders" | "positions" | "order-history" | "trade-history";
+type BottomTab = "positions" | "order-history" | "trade-history";
 
 function formatPrice(p: number): string {
   if (!p || p === 0) return "—";
@@ -91,9 +91,10 @@ function formatQty(v: number): string {
 }
 
 export default function Simulator() {
-  const { simUser, mounted, setNickname, reset: resetSimUser } = useSimUser();
+  const { simUser, mounted, needsRegistration, register, setNickname, signOut } =
+    useSimUser();
 
-  // ── State ────────────────────────────────────────────────
+  // ── State (only used when registered) ─────────────────────
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [timeframe, setTimeframe] = useState<SimTimeframe>("1h");
   const [candles, setCandles] = useState<Candle[]>([]);
@@ -102,39 +103,44 @@ export default function Simulator() {
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [ticker, setTicker] = useState<SimTicker | null>(null);
 
-  // Trade form
   const [productType, setProductType] = useState<"spot" | "perp">("perp");
   const [marginMode, setMarginMode] = useState<"cross" | "isolated">("cross");
-  const [orderType, setOrderType] = useState<"limit" | "market">("limit");
+  const [orderType, setOrderType] = useState<"limit" | "market">("market");
   const [side, setSide] = useState<"long" | "short">("long");
   const [leverage, setLeverage] = useState(10);
   const [priceText, setPriceText] = useState("");
   const [qtyText, setQtyText] = useState("");
 
-  // Bottom tab
   const [bottomTab, setBottomTab] = useState<BottomTab>("positions");
 
-  // Nickname edit
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput] = useState("");
 
-  // ── tRPC (skip until simUser mounted) ─────────────────────
+  // ── tRPC (only when registered) ───────────────────────────
   const trpcEnabled = !!simUser?.id;
   const accountQuery = trpc.simulator.account.useQuery(
     { simUserId: simUser?.id ?? "" },
-    { enabled: trpcEnabled, refetchInterval: 10_000 },
+    { enabled: trpcEnabled, refetchInterval: 10_000, retry: 1 },
   );
   const positionsQuery = trpc.simulator.positions.useQuery(
     { simUserId: simUser?.id ?? "", includeClosed: false, limit: 50 },
-    { enabled: trpcEnabled, refetchInterval: 10_000 },
+    { enabled: trpcEnabled, refetchInterval: 10_000, retry: 1 },
   );
   const allPositionsQuery = trpc.simulator.positions.useQuery(
     { simUserId: simUser?.id ?? "", includeClosed: true, limit: 100 },
-    { enabled: trpcEnabled && bottomTab === "order-history", refetchInterval: 30_000 },
+    {
+      enabled: trpcEnabled && bottomTab === "order-history",
+      refetchInterval: 30_000,
+      retry: 1,
+    },
   );
   const transactionsQuery = trpc.simulator.transactions.useQuery(
     { simUserId: simUser?.id ?? "", limit: 100 },
-    { enabled: trpcEnabled && bottomTab === "trade-history", refetchInterval: 15_000 },
+    {
+      enabled: trpcEnabled && bottomTab === "trade-history",
+      refetchInterval: 15_000,
+      retry: 1,
+    },
   );
 
   const utils = trpc.useUtils();
@@ -143,39 +149,41 @@ export default function Simulator() {
     utils.simulator.positions.invalidate();
     utils.simulator.transactions.invalidate();
   };
-  const openMutation = trpc.simulator.openPosition.useMutation({ onSuccess: invalidateAll });
-  const closeMutation = trpc.simulator.closePosition.useMutation({ onSuccess: invalidateAll });
-  const refreshMutation = trpc.simulator.refresh.useMutation({ onSuccess: invalidateAll });
-  const resetMutation = trpc.simulator.reset.useMutation({ onSuccess: invalidateAll });
+  const openMutation = trpc.simulator.openPosition.useMutation({
+    onSuccess: invalidateAll,
+  });
+  const closeMutation = trpc.simulator.closePosition.useMutation({
+    onSuccess: invalidateAll,
+  });
+  const refreshMutation = trpc.simulator.refresh.useMutation({
+    onSuccess: invalidateAll,
+  });
+  const resetMutation = trpc.simulator.reset.useMutation({
+    onSuccess: invalidateAll,
+  });
 
   // ── Candle fetch ──────────────────────────────────────────
   useEffect(() => {
-    if (!symbol) return;
+    if (!symbol || !simUser) return;
     let cancelled = false;
     setCandlesLoading(true);
     fetchSimKlines(symbol, timeframe, 200)
-      .then((d) => {
-        if (!cancelled) setCandles(d);
-      })
-      .catch(() => {
-        if (!cancelled) setCandles([]);
-      })
-      .finally(() => {
-        if (!cancelled) setCandlesLoading(false);
-      });
+      .then((d) => !cancelled && setCandles(d))
+      .catch(() => !cancelled && setCandles([]))
+      .finally(() => !cancelled && setCandlesLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, simUser]);
 
   // ── Order book + recent trades + ticker polling ──────────
   useEffect(() => {
-    if (!symbol) return;
+    if (!symbol || !simUser) return;
     let cancelled = false;
     const refresh = async () => {
       const [ob, trades, t] = await Promise.all([
-        fetchOrderBook(symbol, 25),
-        fetchRecentTrades(symbol, 30),
+        fetchOrderBook(symbol, 20),
+        fetchRecentTrades(symbol, 25),
         fetchSimTicker(symbol),
       ]);
       if (cancelled) return;
@@ -189,9 +197,9 @@ export default function Simulator() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [symbol]);
+  }, [symbol, simUser]);
 
-  // ── Auto-fill price input when ticker changes (limit only) ─
+  // ── Auto-fill price input (limit) ────────────────────────
   useEffect(() => {
     if (orderType === "limit" && ticker && !priceText) {
       setPriceText(String(ticker.lastPrice));
@@ -217,35 +225,41 @@ export default function Simulator() {
   const cashAvailable = account?.cash ?? 0;
   const isAffordable =
     cashAvailable >= totalCost && qty > 0 && effectivePrice > 0;
-  const isLong = side === "long";
+  const isBackendUnavailable =
+    accountQuery.isError ||
+    (accountQuery.data && accountQuery.data.available === false);
 
   // ── Handlers ──────────────────────────────────────────────
-  const handleOpen = useCallback(() => {
-    if (!simUser?.id || !isAffordable) return;
-    openMutation.mutate({
-      simUserId: simUser.id,
+  const submitOrder = useCallback(
+    (forSide: "long" | "short") => {
+      if (!simUser?.id) return;
+      if (productType === "spot" && forSide === "short") return;
+      if (qty <= 0 || effectivePrice <= 0) return;
+      setSide(forSide);
+      openMutation.mutate({
+        simUserId: simUser.id,
+        symbol,
+        productType,
+        side: forSide,
+        leverage: productType === "spot" ? 1 : leverage,
+        quantity: qty,
+        entryPrice: orderType === "market" ? undefined : effectivePrice,
+        orderType,
+        marginMode,
+      });
+    },
+    [
+      simUser?.id,
+      openMutation,
       symbol,
       productType,
-      side,
-      leverage: productType === "spot" ? 1 : leverage,
-      quantity: qty,
-      entryPrice: orderType === "market" ? undefined : effectivePrice,
+      leverage,
+      qty,
       orderType,
+      effectivePrice,
       marginMode,
-    });
-  }, [
-    simUser?.id,
-    isAffordable,
-    openMutation,
-    symbol,
-    productType,
-    side,
-    leverage,
-    qty,
-    orderType,
-    effectivePrice,
-    marginMode,
-  ]);
+    ],
+  );
 
   const handleClose = (positionId: number) => {
     if (!simUser?.id) return;
@@ -268,6 +282,16 @@ export default function Simulator() {
     refreshMutation.mutate({ simUserId: simUser.id });
   };
 
+  const handleSignOut = () => {
+    if (
+      !window.confirm(
+        "닉네임을 변경하면 새로운 시뮬레이션 계정이 만들어집니다 (현재 포지션/거래내역은 서버에 남아있으나 본 브라우저에서는 더 이상 접근 불가). 진행할까요?",
+      )
+    )
+      return;
+    signOut();
+  };
+
   const setQtyByPercent = (pct: number) => {
     if (effectivePrice <= 0) return;
     const usable = (cashAvailable * pct) / 100;
@@ -284,65 +308,67 @@ export default function Simulator() {
     );
   }
 
-  // ── Render ───────────────────────────────────────────────
+  // ── Onboarding flow ──────────────────────────────────────
+  if (needsRegistration) {
+    return <SimulatorWelcome onRegister={register} />;
+  }
+
+  // ── Render simulator ─────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background flex flex-col p-2 gap-2 text-xs">
+    <div className="flex flex-col p-2 gap-2 text-xs">
       {/* ── Top bar ──────────────────────────────────────── */}
       <div className="rounded-md border border-border/30 bg-card/60 backdrop-blur-sm px-3 py-2 flex flex-wrap items-center gap-3">
         {/* Symbol picker */}
-        <div className="flex items-center gap-2 min-w-[180px]">
-          <Input
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            className="font-display font-bold text-base h-8 w-40"
-          />
-        </div>
+        <Input
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+          className="font-display font-bold text-base h-8 w-32 sm:w-40"
+        />
 
         {/* Last + change */}
-        <div className="flex flex-col">
-          <div
+        <div className="flex items-baseline gap-2">
+          <span
             className={cn(
-              "font-display font-bold text-xl leading-none",
+              "font-display font-bold text-lg sm:text-xl leading-none",
               (ticker?.pctChange24h ?? 0) >= 0
                 ? "text-neon-green"
                 : "text-neon-red",
             )}
           >
             {ticker ? `$${formatPrice(ticker.lastPrice)}` : "—"}
-          </div>
-          <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
-            24h Change
-          </div>
-        </div>
-        <div
-          className={cn(
-            "font-mono text-sm font-semibold",
-            (ticker?.pctChange24h ?? 0) >= 0 ? "text-neon-green" : "text-neon-red",
-          )}
-        >
-          {ticker
-            ? `${ticker.pctChange24h >= 0 ? "+" : ""}${ticker.pctChange24h.toFixed(2)}%`
-            : "—"}
+          </span>
+          <span
+            className={cn(
+              "font-mono text-xs sm:text-sm font-semibold",
+              (ticker?.pctChange24h ?? 0) >= 0
+                ? "text-neon-green"
+                : "text-neon-red",
+            )}
+          >
+            {ticker
+              ? `${ticker.pctChange24h >= 0 ? "+" : ""}${ticker.pctChange24h.toFixed(2)}%`
+              : "—"}
+          </span>
         </div>
 
         {/* 24h stats */}
-        <div className="hidden md:flex items-center gap-4 text-[10px] font-mono">
-          <StatPair label="24h High" value={ticker ? `$${formatPrice(ticker.high24h)}` : "—"} />
-          <StatPair label="24h Low" value={ticker ? `$${formatPrice(ticker.low24h)}` : "—"} />
+        <div className="hidden xl:flex items-center gap-3 text-[10px] font-mono">
+          <StatPair label="24h H" value={ticker ? `$${formatPrice(ticker.high24h)}` : "—"} />
+          <StatPair label="24h L" value={ticker ? `$${formatPrice(ticker.low24h)}` : "—"} />
           <StatPair
-            label="24h Vol (USDT)"
+            label="24h Vol"
             value={ticker ? `$${(ticker.turnover24h / 1e6).toFixed(2)}M` : "—"}
           />
         </div>
 
         {/* Popular symbols */}
-        <div className="flex gap-1 ml-auto flex-wrap">
-          {POPULAR_SYMBOLS.slice(0, 6).map((s) => (
+        <div className="flex gap-1 flex-wrap">
+          {POPULAR_SYMBOLS.map((s) => (
             <button
               key={s}
               onClick={() => setSymbol(s)}
               className={cn(
-                "px-2 py-1 rounded-sm border text-[10px] font-mono transition-colors",
+                "px-2 py-0.5 rounded-sm border text-[10px] font-mono transition-colors",
                 symbol === s
                   ? "border-neon-cyan text-neon-cyan bg-neon-cyan/10"
                   : "border-border/30 text-muted-foreground hover:border-neon-cyan/40",
@@ -353,8 +379,8 @@ export default function Simulator() {
           ))}
         </div>
 
-        {/* Nickname */}
-        <div className="flex items-center gap-2 pl-3 border-l border-border/30">
+        {/* Nickname (always rightmost) */}
+        <div className="flex items-center gap-2 ml-auto pl-3 border-l border-border/30">
           {editingNick ? (
             <>
               <Input
@@ -376,13 +402,13 @@ export default function Simulator() {
                   setNickname(nickInput);
                   setEditingNick(false);
                 }}
-                className="text-neon-green hover:opacity-80"
+                className="text-neon-green"
               >
                 <Check className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setEditingNick(false)}
-                className="text-muted-foreground hover:opacity-80"
+                className="text-muted-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -391,17 +417,24 @@ export default function Simulator() {
             <>
               <Wallet className="h-4 w-4 text-neon-cyan" />
               <span className="font-display font-semibold text-sm">
-                {simUser?.nickname ?? "Anonymous"}
+                {simUser?.nickname ?? "—"}
               </span>
               <button
                 onClick={() => {
                   setNickInput(simUser?.nickname ?? "");
                   setEditingNick(true);
                 }}
-                title="닉네임 변경"
+                title="닉네임 편집"
                 className="text-muted-foreground hover:text-neon-cyan"
               >
                 <Edit3 className="h-3 w-3" />
+              </button>
+              <button
+                onClick={handleSignOut}
+                title="다른 닉네임으로 시작"
+                className="text-muted-foreground hover:text-neon-red"
+              >
+                <LogOut className="h-3 w-3" />
               </button>
             </>
           )}
@@ -409,7 +442,7 @@ export default function Simulator() {
       </div>
 
       {/* ── Account quick bar ────────────────────────────── */}
-      <div className="rounded-md border border-border/30 bg-card/40 px-3 py-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="rounded-md border border-border/30 bg-card/40 px-3 py-2 grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-3 items-center">
         <KV label="Cash" value={formatUSD(account?.cash ?? 0)} color="text-neon-cyan" />
         <KV
           label="Equity"
@@ -426,8 +459,11 @@ export default function Simulator() {
           value={formatUSD(account?.realizedPnl ?? 0)}
           color={(account?.realizedPnl ?? 0) >= 0 ? "text-neon-green" : "text-neon-red"}
         />
-        <KV label="Open Positions" value={`${account?.openPositions ?? 0}`} />
-        <div className="flex gap-2 justify-end items-center">
+        <KV
+          label="Positions"
+          value={`${account?.openPositions ?? 0}`}
+        />
+        <div className="flex gap-2 justify-end items-center col-span-3 sm:col-span-1">
           <Button
             size="sm"
             variant="outline"
@@ -459,18 +495,29 @@ export default function Simulator() {
         </div>
       </div>
 
-      {/* ── Main 3-column grid ───────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px_300px] gap-2 flex-1 min-h-0">
+      {/* Backend status warning */}
+      {isBackendUnavailable && (
+        <div className="rounded-md border border-neon-yellow/40 bg-neon-yellow/10 px-3 py-1.5 font-mono text-[11px] text-neon-yellow flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>
+            백엔드 또는 DB 가 비활성 상태입니다 — 차트/Order Book 은 정상이나
+            포지션은 저장되지 않습니다. Railway 재배포 완료 후 새로고침하세요.
+          </span>
+        </div>
+      )}
+
+      {/* ── Main 3-column grid (md: 768px 부터) ─────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] xl:grid-cols-[1fr_240px_280px] gap-2">
         {/* Left — Chart */}
-        <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col min-h-[480px]">
+        <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col min-h-[420px]">
           {/* Timeframe tabs */}
-          <div className="flex items-center gap-1 mb-2 flex-wrap">
+          <div className="flex items-center gap-0.5 mb-2 flex-wrap">
             {SIM_TIMEFRAMES.map((tf) => (
               <button
                 key={tf.value}
                 onClick={() => setTimeframe(tf.value)}
                 className={cn(
-                  "px-2 py-1 rounded-sm font-mono text-[10px] uppercase transition-colors",
+                  "px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase transition-colors",
                   timeframe === tf.value
                     ? "bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/40"
                     : "text-muted-foreground border border-transparent hover:bg-muted/30",
@@ -481,17 +528,16 @@ export default function Simulator() {
             ))}
             <div className="ml-auto font-mono text-[10px] text-muted-foreground flex items-center gap-2">
               {candlesLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-              <span>{symbol}</span>
-              <span>· {candles.length} candles</span>
+              <span className="hidden sm:inline">{symbol} · {candles.length}c</span>
             </div>
           </div>
           {/* Chart */}
-          <div className="flex-1 min-h-[420px]">
+          <div className="flex-1 min-h-[380px]">
             {candles.length > 0 ? (
               <CandleChartLW
                 candles={candles}
                 currentPrice={currentPrice}
-                height={460}
+                height={420}
                 showLegend={false}
                 windowSize={120}
               />
@@ -503,14 +549,14 @@ export default function Simulator() {
           </div>
         </div>
 
-        {/* Middle — Order Book + Recent Trades */}
-        <div className="grid grid-rows-2 gap-2 min-h-[480px]">
+        {/* Middle — Order Book stacked over Recent Trades */}
+        <div className="grid grid-rows-[1fr_1fr] gap-2 min-h-[420px] max-h-[480px]">
           <OrderBookPanel ob={orderBook} ticker={ticker} symbol={symbol} />
           <RecentTradesPanel trades={recentTrades} symbol={symbol} />
         </div>
 
-        {/* Right — Trade Form */}
-        <div className="rounded-md border border-border/30 bg-card/60 p-3 flex flex-col gap-3">
+        {/* Right — Trade Form (xl shows separately; md/lg stacks under) */}
+        <div className="rounded-md border border-border/30 bg-card/60 p-3 flex flex-col gap-2 xl:col-span-1 md:col-span-2 xl:col-auto">
           {/* Product type tabs */}
           <div className="flex gap-1">
             {(["perp", "spot"] as const).map((t) => (
@@ -526,7 +572,7 @@ export default function Simulator() {
                   }
                 }}
                 className={cn(
-                  "flex-1 py-1.5 rounded-sm border text-xs font-mono uppercase transition-colors",
+                  "flex-1 py-1 rounded-sm border text-[11px] font-mono uppercase transition-colors",
                   productType === t
                     ? "border-neon-pink text-neon-pink bg-neon-pink/10"
                     : "border-border/30 text-muted-foreground hover:border-neon-pink/40",
@@ -537,11 +583,11 @@ export default function Simulator() {
             ))}
           </div>
 
-          {/* Margin mode + Leverage (perp only) */}
+          {/* Margin + Leverage (perp only) */}
           {productType === "perp" && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 items-end">
               <div>
-                <label className="font-mono text-[9px] uppercase text-muted-foreground mb-1 block">
+                <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
                   Margin
                 </label>
                 <div className="flex gap-1">
@@ -550,7 +596,7 @@ export default function Simulator() {
                       key={m}
                       onClick={() => setMarginMode(m)}
                       className={cn(
-                        "flex-1 py-1 rounded-sm border text-[10px] font-mono uppercase",
+                        "flex-1 py-0.5 rounded-sm border text-[10px] font-mono uppercase",
                         marginMode === m
                           ? "border-neon-yellow text-neon-yellow bg-neon-yellow/10"
                           : "border-border/30 text-muted-foreground",
@@ -562,7 +608,7 @@ export default function Simulator() {
                 </div>
               </div>
               <div>
-                <label className="font-mono text-[9px] uppercase text-muted-foreground mb-1 block">
+                <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
                   Leverage {leverage}x
                 </label>
                 <input
@@ -572,7 +618,7 @@ export default function Simulator() {
                   step={1}
                   value={leverage}
                   onChange={(e) => setLeverage(parseInt(e.target.value))}
-                  className="w-full accent-neon-cyan h-7"
+                  className="w-full accent-neon-cyan h-6"
                 />
               </div>
             </div>
@@ -580,12 +626,12 @@ export default function Simulator() {
 
           {/* Order type tabs */}
           <div className="flex gap-1 border-b border-border/30">
-            {(["limit", "market"] as const).map((t) => (
+            {(["market", "limit"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setOrderType(t)}
                 className={cn(
-                  "px-3 py-1.5 font-mono text-xs uppercase border-b-2 transition-colors",
+                  "px-3 py-1 font-mono text-[11px] uppercase border-b-2 transition-colors",
                   orderType === t
                     ? "border-neon-cyan text-neon-cyan"
                     : "border-transparent text-muted-foreground hover:text-foreground",
@@ -598,7 +644,7 @@ export default function Simulator() {
 
           {/* Price */}
           <div>
-            <label className="font-mono text-[10px] uppercase text-muted-foreground mb-1 block">
+            <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
               Price (USDT)
             </label>
             <Input
@@ -608,13 +654,13 @@ export default function Simulator() {
               onChange={(e) => setPriceText(e.target.value)}
               disabled={orderType === "market"}
               placeholder={ticker ? formatPrice(ticker.lastPrice) : "0.00"}
-              className="font-mono text-sm h-9"
+              className="font-mono text-xs h-8"
             />
           </div>
 
           {/* Quantity */}
           <div>
-            <label className="font-mono text-[10px] uppercase text-muted-foreground mb-1 block">
+            <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
               Quantity ({symbol.replace("USDT", "")})
             </label>
             <Input
@@ -623,14 +669,14 @@ export default function Simulator() {
               value={qtyText}
               onChange={(e) => setQtyText(e.target.value)}
               placeholder="0.00"
-              className="font-mono text-sm h-9"
+              className="font-mono text-xs h-8"
             />
             <div className="flex gap-1 mt-1">
               {[25, 50, 75, 100].map((p) => (
                 <button
                   key={p}
                   onClick={() => setQtyByPercent(p)}
-                  className="flex-1 py-1 rounded-sm border border-border/30 text-[10px] font-mono text-muted-foreground hover:border-neon-cyan/40 hover:text-neon-cyan transition-colors"
+                  className="flex-1 py-0.5 rounded-sm border border-border/30 text-[10px] font-mono text-muted-foreground hover:border-neon-cyan/40 hover:text-neon-cyan transition-colors"
                 >
                   {p}%
                 </button>
@@ -638,8 +684,52 @@ export default function Simulator() {
             </div>
           </div>
 
+          {/* Buy/Sell — ALWAYS HIGH UP (Bybit style) */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button
+              onClick={() => submitOrder("long")}
+              disabled={!isAffordable || openMutation.isPending}
+              className={cn(
+                "h-10 font-display font-bold uppercase text-sm",
+                "bg-neon-green hover:bg-neon-green/80 text-background",
+                (!isAffordable || openMutation.isPending) && "opacity-60",
+              )}
+            >
+              {openMutation.isPending && side === "long" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  Buy / Long
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => submitOrder("short")}
+              disabled={
+                productType === "spot" ||
+                openMutation.isPending ||
+                !isAffordable
+              }
+              className={cn(
+                "h-10 font-display font-bold uppercase text-sm",
+                "bg-neon-red hover:bg-neon-red/80 text-background",
+                (productType === "spot" || !isAffordable) && "opacity-60",
+              )}
+            >
+              {openMutation.isPending && side === "short" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <TrendingDown className="h-4 w-4 mr-1" />
+                  Sell / Short
+                </>
+              )}
+            </Button>
+          </div>
+
           {/* Order summary */}
-          <div className="grid grid-cols-2 gap-y-1 gap-x-3 text-[10px] font-mono">
+          <div className="grid grid-cols-2 gap-y-0.5 gap-x-3 text-[10px] font-mono mt-1 pt-1 border-t border-border/20">
             <span className="text-muted-foreground">Value</span>
             <span className="text-right text-foreground">{formatUSD(positionValue)}</span>
             <span className="text-muted-foreground">Margin</span>
@@ -659,80 +749,6 @@ export default function Simulator() {
             <span className="text-right text-foreground">{formatUSD(cashAvailable)}</span>
           </div>
 
-          {/* Side toggle (visual only) — actual submit picks side */}
-          <div className="flex gap-1 pt-1">
-            <button
-              onClick={() => setSide("long")}
-              className={cn(
-                "flex-1 py-1 rounded-sm border text-[10px] font-mono uppercase",
-                side === "long"
-                  ? "border-neon-green text-neon-green bg-neon-green/10"
-                  : "border-border/30 text-muted-foreground",
-              )}
-            >
-              Long
-            </button>
-            <button
-              onClick={() => setSide("short")}
-              disabled={productType === "spot"}
-              className={cn(
-                "flex-1 py-1 rounded-sm border text-[10px] font-mono uppercase",
-                side === "short"
-                  ? "border-neon-red text-neon-red bg-neon-red/10"
-                  : productType === "spot"
-                    ? "border-border/20 text-muted-foreground/40 cursor-not-allowed"
-                    : "border-border/30 text-muted-foreground",
-              )}
-            >
-              Short
-            </button>
-          </div>
-
-          {/* Buy/Sell buttons — Bybit style */}
-          <div className="grid grid-cols-2 gap-2 mt-auto">
-            <Button
-              onClick={() => {
-                setSide("long");
-                handleOpen();
-              }}
-              disabled={!isAffordable || openMutation.isPending || productType === "spot" ? false : false}
-              className={cn(
-                "h-10 font-display font-bold uppercase",
-                "bg-neon-green hover:bg-neon-green/80 text-background",
-              )}
-            >
-              {openMutation.isPending && side === "long" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                  Buy / Long
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => {
-                setSide("short");
-                handleOpen();
-              }}
-              disabled={productType === "spot"}
-              className={cn(
-                "h-10 font-display font-bold uppercase",
-                "bg-neon-red hover:bg-neon-red/80 text-background",
-                productType === "spot" && "opacity-40 cursor-not-allowed",
-              )}
-            >
-              {openMutation.isPending && side === "short" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <TrendingDown className="h-4 w-4 mr-1" />
-                  Sell / Short
-                </>
-              )}
-            </Button>
-          </div>
-
           {/* Inline error */}
           {!isAffordable && qty > 0 && effectivePrice > 0 && (
             <div className="font-mono text-[10px] text-neon-red flex items-center gap-1">
@@ -750,11 +766,10 @@ export default function Simulator() {
       </div>
 
       {/* ── Bottom tabs ───────────────────────────────────── */}
-      <div className="rounded-md border border-border/30 bg-card/60 flex flex-col min-h-[200px]">
-        <div className="flex gap-1 border-b border-border/30 px-2">
+      <div className="rounded-md border border-border/30 bg-card/60 flex flex-col">
+        <div className="flex gap-0 border-b border-border/30 px-2 overflow-x-auto">
           {(
             [
-              { value: "open-orders", label: "Open Orders" },
               { value: "positions", label: `Positions (${positions.length})` },
               { value: "order-history", label: "Order History" },
               { value: "trade-history", label: "Trade History" },
@@ -764,7 +779,7 @@ export default function Simulator() {
               key={t.value}
               onClick={() => setBottomTab(t.value)}
               className={cn(
-                "px-3 py-2 font-mono text-xs uppercase border-b-2 transition-colors",
+                "px-3 py-2 font-mono text-[11px] uppercase border-b-2 transition-colors whitespace-nowrap",
                 bottomTab === t.value
                   ? "border-neon-cyan text-neon-cyan"
                   : "border-transparent text-muted-foreground hover:text-foreground",
@@ -774,14 +789,7 @@ export default function Simulator() {
             </button>
           ))}
         </div>
-        <div className="p-2 overflow-auto max-h-[320px]">
-          {bottomTab === "open-orders" && (
-            <p className="text-center py-8 text-muted-foreground font-mono text-xs">
-              Limit order book 미구현 — 현재는 모든 주문이 시장가/지정가 즉시 체결됩니다.
-              <br />
-              포지션 탭에서 보유 자산을 확인하세요.
-            </p>
-          )}
+        <div className="p-2 overflow-auto max-h-[280px]">
           {bottomTab === "positions" && (
             <PositionsTable
               positions={positions}
@@ -831,7 +839,9 @@ function KV({
       <span className="font-mono text-[9px] uppercase text-muted-foreground">
         {label}
       </span>
-      <span className={cn("font-display font-bold text-sm", color)}>{value}</span>
+      <span className={cn("font-display font-bold text-xs sm:text-sm", color)}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -845,8 +855,8 @@ function OrderBookPanel({
   ticker: SimTicker | null;
   symbol: string;
 }) {
-  const askSlice = ob?.asks.slice(0, 12).reverse() ?? [];
-  const bidSlice = ob?.bids.slice(0, 12) ?? [];
+  const askSlice = ob?.asks.slice(0, 8).reverse() ?? [];
+  const bidSlice = ob?.bids.slice(0, 8) ?? [];
   const maxSize = Math.max(
     ...askSlice.map((l) => l.size),
     ...bidSlice.map((l) => l.size),
@@ -854,25 +864,24 @@ function OrderBookPanel({
   );
 
   return (
-    <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col text-xs min-h-0">
+    <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col text-xs min-h-0 overflow-hidden">
       <div className="flex justify-between items-center mb-1 px-1">
-        <span className="font-display font-bold text-foreground">Order Book</span>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-display font-bold text-foreground text-[11px]">
+          Order Book
+        </span>
+        <span className="font-mono text-[9px] text-muted-foreground">
           {symbol}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-1 font-mono text-[9px] text-muted-foreground border-b border-border/20 pb-1 px-1">
-        <span>Price (USDT)</span>
+      <div className="grid grid-cols-3 gap-1 font-mono text-[9px] text-muted-foreground border-b border-border/20 pb-0.5 px-1">
+        <span>Price</span>
         <span className="text-right">Size</span>
         <span className="text-right">Total</span>
       </div>
-      <div className="flex-1 overflow-auto min-h-0">
-        {/* Asks (sells) - shown top-down with highest first to be Bybit-style */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div>
           {askSlice.map((l, i) => {
-            const total = askSlice
-              .slice(i)
-              .reduce((sum, x) => sum + x.size, 0);
+            const total = askSlice.slice(i).reduce((sum, x) => sum + x.size, 0);
             return (
               <OrderBookRow
                 key={`ask-${i}`}
@@ -885,8 +894,7 @@ function OrderBookPanel({
             );
           })}
         </div>
-        {/* Spread / last price */}
-        <div className="border-y border-border/30 py-1 px-1 my-1 flex justify-between font-mono text-[11px]">
+        <div className="border-y border-border/30 py-0.5 px-1 my-0.5 flex justify-between font-mono text-[10px]">
           <span
             className={cn(
               "font-bold",
@@ -899,11 +907,10 @@ function OrderBookPanel({
           </span>
           <span className="text-muted-foreground">
             {ob && ob.asks[0] && ob.bids[0]
-              ? `Spread ${(ob.asks[0].price - ob.bids[0].price).toFixed(2)}`
+              ? `↕${(ob.asks[0].price - ob.bids[0].price).toFixed(2)}`
               : ""}
           </span>
         </div>
-        {/* Bids (buys) */}
         <div>
           {bidSlice.map((l, i) => {
             const total = bidSlice
@@ -922,8 +929,8 @@ function OrderBookPanel({
           })}
         </div>
         {!ob && (
-          <p className="text-center text-muted-foreground font-mono text-[10px] py-4">
-            Loading order book…
+          <p className="text-center text-muted-foreground font-mono text-[9px] py-2">
+            Loading…
           </p>
         )}
       </div>
@@ -946,7 +953,7 @@ function OrderBookRow({
 }) {
   const pct = Math.min(100, (size / maxSize) * 100);
   return (
-    <div className="relative grid grid-cols-3 gap-1 font-mono text-[10px] px-1 py-0.5 hover:bg-muted/20">
+    <div className="relative grid grid-cols-3 gap-1 font-mono text-[10px] px-1 py-0 hover:bg-muted/20 leading-tight">
       <div
         className={cn(
           "absolute right-0 top-0 bottom-0 opacity-15",
@@ -978,28 +985,30 @@ function RecentTradesPanel({
   symbol: string;
 }) {
   return (
-    <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col text-xs min-h-0">
+    <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col text-xs min-h-0 overflow-hidden">
       <div className="flex justify-between items-center mb-1 px-1">
-        <span className="font-display font-bold text-foreground">Recent Trades</span>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-display font-bold text-foreground text-[11px]">
+          Recent Trades
+        </span>
+        <span className="font-mono text-[9px] text-muted-foreground">
           {symbol}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-1 font-mono text-[9px] text-muted-foreground border-b border-border/20 pb-1 px-1">
+      <div className="grid grid-cols-3 gap-1 font-mono text-[9px] text-muted-foreground border-b border-border/20 pb-0.5 px-1">
         <span>Price</span>
         <span className="text-right">Size</span>
         <span className="text-right">Time</span>
       </div>
-      <div className="flex-1 overflow-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {trades.length === 0 ? (
-          <p className="text-center text-muted-foreground font-mono text-[10px] py-4">
-            Loading trades…
+          <p className="text-center text-muted-foreground font-mono text-[9px] py-2">
+            Loading…
           </p>
         ) : (
-          trades.map((t, i) => (
+          trades.slice(0, 18).map((t, i) => (
             <div
               key={i}
-              className="grid grid-cols-3 gap-1 font-mono text-[10px] px-1 py-0.5 hover:bg-muted/20"
+              className="grid grid-cols-3 gap-1 font-mono text-[10px] px-1 py-0 leading-tight hover:bg-muted/20"
             >
               <span
                 className={cn(
@@ -1016,6 +1025,7 @@ function RecentTradesPanel({
                   hour: "2-digit",
                   minute: "2-digit",
                   second: "2-digit",
+                  hour12: false,
                 })}
               </span>
             </div>
@@ -1039,7 +1049,7 @@ function PositionsTable({
 }) {
   if (positions.length === 0) {
     return (
-      <p className="text-center py-8 text-muted-foreground font-mono text-xs">
+      <p className="text-center py-6 text-muted-foreground font-mono text-xs">
         {showClosed ? "닫힌 포지션 없음" : "보유 포지션 없음"}
       </p>
     );
@@ -1056,10 +1066,10 @@ function PositionsTable({
             <th className="text-right px-2 py-1.5">Qty</th>
             <th className="text-right px-2 py-1.5">Entry</th>
             <th className="text-right px-2 py-1.5">{showClosed ? "Exit" : "Mark"}</th>
-            <th className="text-right px-2 py-1.5">P&L (USD)</th>
+            <th className="text-right px-2 py-1.5">P&L</th>
             <th className="text-right px-2 py-1.5">P&L %</th>
             <th className="text-left px-2 py-1.5">Time</th>
-            {!showClosed && <th className="text-right px-2 py-1.5"></th>}
+            {!showClosed && <th className="px-2 py-1.5"></th>}
           </tr>
         </thead>
         <tbody>
@@ -1126,15 +1136,14 @@ function PositionsTable({
                   {pnlPct.toFixed(2)}%
                 </td>
                 <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
-                  {new Date(showClosed ? p.closedAt ?? p.openedAt : p.openedAt).toLocaleString(
-                    "ko-KR",
-                    {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    },
-                  )}
+                  {new Date(
+                    showClosed ? p.closedAt ?? p.openedAt : p.openedAt,
+                  ).toLocaleString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </td>
                 {!showClosed && (
                   <td className="px-2 py-1.5 text-right">
@@ -1165,7 +1174,7 @@ function PositionsTable({
 function TradeHistoryTable({ transactions }: { transactions: any[] }) {
   if (transactions.length === 0) {
     return (
-      <p className="text-center py-8 text-muted-foreground font-mono text-xs">
+      <p className="text-center py-6 text-muted-foreground font-mono text-xs">
         거래 내역 없음
       </p>
     );
@@ -1179,13 +1188,16 @@ function TradeHistoryTable({ transactions }: { transactions: any[] }) {
             <th className="text-left px-2 py-1.5">Type</th>
             <th className="text-left px-2 py-1.5">Symbol</th>
             <th className="text-right px-2 py-1.5">Price</th>
-            <th className="text-right px-2 py-1.5">Amount (USDT)</th>
+            <th className="text-right px-2 py-1.5">Amount</th>
             <th className="text-left px-2 py-1.5">Note</th>
           </tr>
         </thead>
         <tbody>
           {transactions.map((tx: any) => (
-            <tr key={tx.id} className="border-b border-border/10 font-mono text-[11px]">
+            <tr
+              key={tx.id}
+              className="border-b border-border/10 font-mono text-[11px]"
+            >
               <td className="px-2 py-1.5 text-muted-foreground text-[10px] whitespace-nowrap">
                 {new Date(tx.ts).toLocaleString("ko-KR", {
                   month: "short",
@@ -1198,12 +1210,16 @@ function TradeHistoryTable({ transactions }: { transactions: any[] }) {
                 <Badge
                   className={cn(
                     "font-mono text-[9px] uppercase",
-                    tx.type === "open" && "bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40",
-                    tx.type === "close" && "bg-neon-green/15 text-neon-green border-neon-green/40",
+                    tx.type === "open" &&
+                      "bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40",
+                    tx.type === "close" &&
+                      "bg-neon-green/15 text-neon-green border-neon-green/40",
                     tx.type === "commission" &&
                       "bg-neon-yellow/15 text-neon-yellow border-neon-yellow/40",
-                    tx.type === "funding" && "bg-orange-500/15 text-orange-400 border-orange-500/40",
-                    tx.type === "deposit" && "bg-neon-pink/15 text-neon-pink border-neon-pink/40",
+                    tx.type === "funding" &&
+                      "bg-orange-500/15 text-orange-400 border-orange-500/40",
+                    tx.type === "deposit" &&
+                      "bg-neon-pink/15 text-neon-pink border-neon-pink/40",
                     tx.type === "liquidation" &&
                       "bg-neon-red/15 text-neon-red border-neon-red/40",
                   )}

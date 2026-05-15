@@ -6,6 +6,10 @@
  * 닉네임은 클라이언트 표시용.
  *
  * Charter rule: 시뮬레이터는 실제 자본 영향 X. 로그인 불요 + 익명 허용.
+ *
+ * 2026-05-15 (revision): 자동 닉네임 생성 제거 — 사용자가 명시적으로 닉네임을
+ * 입력하고 [Start with $200,000] 을 눌러야 simUser 가 생성됨. 등록 전에는
+ * `simUser` = null + `needsRegistration` = true 가 반환된다.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,21 +19,6 @@ export interface SimUser {
   id: string;
   nickname: string;
   createdAt: number;
-}
-
-function randomNickname(): string {
-  const adjectives = [
-    "Cyber", "Quantum", "Crypto", "Nebula", "Lunar", "Solar", "Pixel",
-    "Neon", "Stealth", "Quantum", "Phantom", "Volt", "Plasma", "Nova",
-  ];
-  const animals = [
-    "Wolf", "Falcon", "Tiger", "Eagle", "Dragon", "Shark", "Panther",
-    "Phoenix", "Lynx", "Cobra", "Raven", "Mantis", "Otter", "Whale",
-  ];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const ani = animals[Math.floor(Math.random() * animals.length)];
-  const num = Math.floor(Math.random() * 9000 + 1000);
-  return `${adj}${ani}${num}`;
 }
 
 /** crypto.randomUUID polyfill (구형 브라우저 대비) */
@@ -70,28 +59,44 @@ function saveSimUser(u: SimUser): void {
   }
 }
 
+function clearSimUser(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Persistent anonymous simulator user.
  *
- * @returns `simUser` (null until mounted), `setNickname`, `reset`
+ * Flow:
+ *  1. Mount → localStorage 조회.
+ *  2. 없으면 `needsRegistration = true` 반환 → 페이지에서 onboarding UI 표시.
+ *  3. `register(nickname)` 호출 → UUID 생성 + 저장 → simUser 활성화.
+ *  4. `signOut()` → localStorage 비우고 needsRegistration 으로 복귀.
  */
 export function useSimUser() {
   const [simUser, setSimUser] = useState<SimUser | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // 첫 렌더에서 localStorage 로드 + 없으면 자동 생성
   useEffect(() => {
-    let u = loadSimUser();
-    if (!u) {
-      u = {
-        id: uuid(),
-        nickname: randomNickname(),
-        createdAt: Date.now(),
-      };
-      saveSimUser(u);
-    }
-    setSimUser(u);
+    setSimUser(loadSimUser());
     setMounted(true);
+  }, []);
+
+  const register = useCallback((nickname: string): SimUser | null => {
+    const trimmed = nickname.trim().slice(0, 24);
+    if (!trimmed) return null;
+    const next: SimUser = {
+      id: uuid(),
+      nickname: trimmed,
+      createdAt: Date.now(),
+    };
+    saveSimUser(next);
+    setSimUser(next);
+    return next;
   }, []);
 
   const setNickname = useCallback((nickname: string) => {
@@ -105,16 +110,18 @@ export function useSimUser() {
     });
   }, []);
 
-  /** 새 UUID + 새 닉네임 — Reset 버튼용 */
-  const reset = useCallback(() => {
-    const next: SimUser = {
-      id: uuid(),
-      nickname: randomNickname(),
-      createdAt: Date.now(),
-    };
-    saveSimUser(next);
-    setSimUser(next);
+  /** 사용자 식별을 폐기 — onboarding 화면으로 복귀 */
+  const signOut = useCallback(() => {
+    clearSimUser();
+    setSimUser(null);
   }, []);
 
-  return { simUser, mounted, setNickname, reset };
+  return {
+    simUser,
+    mounted,
+    needsRegistration: mounted && !simUser,
+    register,
+    setNickname,
+    signOut,
+  };
 }
