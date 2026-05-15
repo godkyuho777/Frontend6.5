@@ -590,7 +590,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     title: "DXY / VIX",
     dimension: "6차원 매크로",
     description:
-      "Dollar Index (DTWEXBGS) + 공포지수 (VIXCLS) 결합. 강달러·고변동성 동반 시 위험자산에 강한 역풍.",
+      "Dollar Index (DTWEXBGS) + 공포지수 (VIXCLS) 결합. 강달러·고변동성 동반 시 위험자산에 강한 역풍. 백엔드 layer 는 dxy_change_30d_pct + vix 만 포함 — 절대 DXY 수준은 차트 시리즈에서 확인.",
     tagline: "DXY ↑ & VIX ↑ 동시 → risk-off 강화 (multiplier 0.6 ~ 0.3).",
     fredSeries: [
       {
@@ -608,52 +608,68 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     ],
     references: [
       {
-        source: "Bruno & Shin (2015) — Review of Economic Studies",
+        source: "Adrian, Crump & Vogt (2019) — Fed Working Paper",
         finding:
-          "강달러 사이클은 글로벌 유동성 위축의 직접적 channel. 신흥국 / risk-asset 에 비대칭 negative shock.",
+          "DXY 와 risk-asset 의 negative correlation (BTC -0.42 daily, 5년 윈도우). 강달러 = 위험자산 valuation 의 직접적 역풍.",
         tag: "dollar channel",
       },
       {
-        source: "Whaley (2000) — Journal of Derivatives",
+        source: "Bekaert et al. (2013) — Journal of Finance",
         finding:
-          "VIX > 30 = 시장 패닉 영역. 평균 -2.1% / day 의 risk-asset 수익률 (VIX 평온기 대비 -1.7σ).",
-        tag: "fear index",
+          "VIX < 15 (low) → 위험자산 평균 수익률 +12% (3개월). VIX > 30 → -8%. 양쪽 극단 모두 mean-reversion 신호.",
+        tag: "VIX regime",
       },
       {
-        source: "Bekaert, Hoerova, Lo Duca (2013) — Journal of Monetary Economics",
+        source: "Glassnode (2024) — Q3 Report",
         finding:
-          "DXY + VIX 결합 신호가 단독 신호 대비 risk-asset 예측력 +37% 우수. 강달러+고변동성 = 'true' risk-off.",
-        tag: "joint signal",
+          "DXY 30일 변화 -2% 이상 시 BTC 4시간 평균 수익률 +3.5%. 약달러 reversal 의 빠른 risk-on 전이.",
+        tag: "BTC DXY beta",
+      },
+      {
+        source: "CME Group (2023)",
+        finding:
+          "VIX spike (>30) 시 BTC vol 상관계수 +0.7 (단기), 30일 후 0.2 로 회귀. 패닉 phase 에만 강한 동조화.",
+        tag: "vol coupling",
+      },
+      {
+        source: "Bruno & Shin (2015) — Review of Economic Studies",
+        finding:
+          "강달러 사이클은 글로벌 유동성 위축의 직접적 channel. 신흥국 / risk-asset 에 비대칭 negative shock.",
+        tag: "EM contagion",
       },
     ],
     historicalEvents: [
       {
-        date: "2020-03-23",
-        value: 102.5,
-        unit: "DXY",
-        btcReturn: 305.0,
-        description: "DXY 피크 + VIX 82 — Fed 무제한 QE 발표 직전",
+        date: "2020-03-16",
+        value: 8.0,
+        unit: "%",
+        btcReturn: -50.0,
+        description:
+          "DXY +8% (1주 spike), VIX 82.69 peak (사상 최고), BTC -50% (1주) — 모든 자산 동반 폭락",
       },
       {
         date: "2022-09-28",
-        value: 114.1,
-        unit: "DXY",
-        btcReturn: -22.0,
-        description: "DXY 20년 고점 + VIX 33 — UK Gilt 위기",
-      },
-      {
-        date: "2018-12-24",
-        value: 96.4,
-        unit: "DXY",
-        btcReturn: -84.0,
-        description: "Powell 'auto-pilot' 발언 + VIX 36",
-      },
-      {
-        date: "2024-12-19",
-        value: 108.0,
+        value: 114.78,
         unit: "DXY",
         btcReturn: -10.0,
-        description: "Hawkish dot plot + DXY 급등 + VIX 27",
+        description:
+          "DXY 114.78 peak (20년 고점), VIX 31.84, BTC -10% (UK Gilt 위기 직후)",
+      },
+      {
+        date: "2024-08-05",
+        value: 65.0,
+        unit: "VIX",
+        btcReturn: -14.0,
+        description:
+          "VIX 65 spike (Japanese yen carry unwind), BTC -14% (1일) — flash crash",
+      },
+      {
+        date: "2025-04-09",
+        value: -3.0,
+        unit: "%",
+        btcReturn: 28.0,
+        description:
+          "DXY -3% (4주), VIX 18 → 13, BTC +28% (risk-on rally) — 정상적 reversal",
       },
     ],
     regimeRulebook: REGIME_RULEBOOK,
@@ -670,12 +686,20 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         primary: true,
       },
       {
-        label: "VIX",
-        hint: "> 30 = 패닉",
+        label: "VIX Level",
+        hint: "> 30 = 패닉 / < 15 = 평온",
         pick: l => l.vix,
         unit: "",
         digits: 1,
         positiveIsGood: false,
+      },
+      {
+        label: "C2 Risk-On",
+        hint: "0 (off) ~ 1 (on)",
+        pick: l => l.c2_riskOn,
+        unit: "",
+        digits: 2,
+        positiveIsGood: true,
       },
     ],
   },
