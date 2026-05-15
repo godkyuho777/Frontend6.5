@@ -476,52 +476,62 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     ],
     references: [
       {
-        source: "Estrella & Mishkin (1998) — Review of Economics and Statistics",
+        source: "Estrella & Mishkin (1998) — Fed Working Paper",
         finding:
-          "10Y-3M 스프레드 역전 시 12개월 후 NBER 침체 확률 70%+. 1960 년 이후 false positive 단 1회.",
+          "Inverted yield curve 의 12개월 recession prediction power ROC 0.78. 1960 년 이후 9번의 inversion 중 8번 recession 동반.",
         tag: "recession predictor",
       },
       {
         source: "Bauer & Mertens (2018) — FRBSF Economic Letter",
         finding:
-          "10Y-2Y 와 10Y-3M 가 거의 동일한 예측력. 다만 10Y-2Y 가 더 빠르게 반응 (3M ~ 6개월 lead).",
+          "1968 이후 9번의 inversion 중 8번 recession 동반 (12-18m lag). 10Y-2Y 와 10Y-3M 가 거의 동일한 예측력 — 10Y-2Y 가 더 빠른 lead.",
         tag: "term structure",
+      },
+      {
+        source: "Aramonte et al. (2024) — BIS",
+        finding:
+          "Inversion 시점의 crypto 수익률 — 12개월 내 평균 -23% (small sample). 단, Fed pivot 시점 (정상화) 부터는 강한 reversal.",
+        tag: "crypto cycle",
       },
       {
         source: "Hu & Hong (2024) — Working Paper",
         finding:
           "Crypto bull cycle 의 평균 시작점은 yield curve 역전 후 18-24개월. Fed pivot 직전이 진입 spot.",
-        tag: "crypto cycle",
+        tag: "pivot timing",
       },
     ],
     historicalEvents: [
       {
-        date: "2007-08-17",
-        value: -0.45,
-        unit: "%",
-        btcReturn: 0,
-        description: "GFC 직전 역전 심화 — 14개월 후 Lehman 파산",
-      },
-      {
         date: "2019-08-14",
         value: -0.04,
         unit: "%",
-        btcReturn: -7.0,
-        description: "역전 시작 — 6개월 후 COVID crash",
+        btcReturn: -32.0,
+        description:
+          "10Y-2Y first inverted (-0.04), 12개월 후 BTC -32% (COVID crash 포함)",
       },
       {
         date: "2022-07-05",
-        value: -0.02,
+        value: -0.05,
         unit: "%",
-        btcReturn: -22.0,
-        description: "역전 진입 — 24개월 후까지 침체 신호 지속",
+        btcReturn: -56.0,
+        description:
+          "Inversion 시작 (-0.05), BTC peak-to-trough -56% (24개월 침체 신호 지속)",
+      },
+      {
+        date: "2023-07-05",
+        value: -1.08,
+        unit: "%",
+        btcReturn: 154.0,
+        description:
+          "최대 inversion (-1.08, 40년 최저), 12개월 후 BTC +154% (lagged response — 침체 X)",
       },
       {
         date: "2024-09-04",
         value: 0.06,
         unit: "%",
-        btcReturn: 25.0,
-        description: "정상화 (steepening) — Fed pivot 본격 신호",
+        btcReturn: 45.0,
+        description:
+          "Un-inversion (+0.06), Fed cut cycle 시작, BTC +45% (90일) — 정상화 = bull spot",
       },
     ],
     regimeRulebook: REGIME_RULEBOOK,
@@ -539,9 +549,38 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       },
       {
         label: "C4 Cycle Phase",
-        hint: "현재 사이클 단계",
-        pick: () => null, // categorical, special-cased in card
+        hint: "현재 사이클 단계 (categorical)",
+        pick: () => null,
         unit: "",
+        valueType: "categorical",
+        pickCategorical: l => l.c4_cycle_phase,
+        categoricalLabel: v => {
+          const map: Record<string, string> = {
+            pre_recession: "PRE-RECESSION",
+            recession_imminent: "RECESSION IMMINENT",
+            fed_pivot: "FED PIVOT",
+            crypto_rally: "CRYPTO RALLY",
+            neutral: "NEUTRAL",
+          };
+          return map[v] ?? v.toUpperCase();
+        },
+        categoricalColor: v => {
+          const map: Record<string, string> = {
+            pre_recession: "text-orange-300",
+            recession_imminent: "text-red-400",
+            fed_pivot: "text-cyan-300",
+            crypto_rally: "text-emerald-300",
+            neutral: "text-muted-foreground",
+          };
+          return map[v] ?? "text-foreground";
+        },
+      },
+      {
+        label: "Macro Score",
+        hint: "-100 ~ +100",
+        pick: l => l.score,
+        unit: "",
+        digits: 0,
       },
     ],
   },
