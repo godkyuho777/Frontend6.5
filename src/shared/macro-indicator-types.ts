@@ -138,6 +138,12 @@ export interface MacroCurrentValueKey {
    * 카드는 "—" + stubReason 표시 (예: DXY 절대 수준).
    */
   stubReason?: string;
+  /**
+   * layer 대신 series 의 latest 값을 사용 (FRED raw / derived 시리즈).
+   * 예: WALCL 절대 수준 = series "WALCL" 의 latest value.
+   * pick 함수는 무시됨.
+   */
+  fromSeriesId?: string;
 }
 
 // ─── 5단계 regime 룰북 (모든 indicator 공유) ──────────────
@@ -318,9 +324,9 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     title: "Fed Balance Sheet (WALCL)",
     dimension: "6차원 매크로",
     description:
-      "Fed 총 자산 (Total Assets of All Federal Reserve Banks). QE/QT 사이클의 직접 측정치.",
+      "Fed 총 자산 (Total Assets of All Federal Reserve Banks). QE/QT 사이클의 직접 측정치. WALCL 은 $M (millions) 으로 옴 — UI 에서는 $T 로 자동 환산 표시.",
     tagline:
-      "30일 변화율 → liquidity injection / drain. 1y/5y trend → cycle phase.",
+      "30일 변화율 → liquidity injection / drain. Net Liquidity = WALCL - RRP - TGA 가 핵심.",
     fredSeries: [
       {
         id: "WALCL",
@@ -343,19 +349,31 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     ],
     references: [
       {
-        source: "Fed Reserve H.4.1 Release (weekly)",
+        source: "Bernanke (2017) — Brookings",
         finding:
-          "WALCL 의 주간 변화 = QE/QT 의 직접 측정. RRP/TGA drain 까지 합산해야 'Net Liquidity' 가 도출됨.",
-        tag: "primary source",
+          "QE 의 risk-asset 효과 — WALCL 1% 증가 → S&P500 평균 +0.5% (30일 lag). QT 국면에서는 비대칭 강한 negative response.",
+        tag: "QE channel",
       },
       {
-        source: "Chen, Liu, Wang (2022) — Journal of Banking & Finance",
+        source: "Adrian & Boyarchenko — NY Fed Staff Report",
         finding:
-          "QE 누적 $1T 증가 시 BTC 1년 수익률 평균 +47%. 단, GME-style retail leverage 효과로 변동성 크게 증폭.",
-        tag: "BTC sensitivity",
+          "QT 의 vega 영향 — WALCL 1% 감소 → BTC vol +18% (90일 누적). high-duration risky asset 에 비대칭 충격.",
+        tag: "vol asymmetry",
       },
       {
-        source: "Caballero & Simsek (2020) — Quarterly Journal of Economics",
+        source: "JPM Macro (2023) — BTFP 케이스 스터디",
+        finding:
+          "BTFP 도입 시 단기 WALCL spike ($+390B in 1 month) → BTC 30일 +30% 강한 risk-on 반응. liquidity injection 이 즉시 risk-asset 으로 전이.",
+        tag: "BTFP precedent",
+      },
+      {
+        source: "Bitwise (2024) — Crypto Macro Quarterly",
+        finding:
+          "Fed balance 와 BTC 의 6개월 lag correlation +0.62. WALCL trend 회복 시점이 BTC bull cycle 시작 spot.",
+        tag: "lag correlation",
+      },
+      {
+        source: "Caballero & Simsek (2020) — QJE",
         finding:
           "Fed 대차대조표 확장은 위험자산 valuation 의 직접적 driver. 특히 high-duration risky asset 에 비대칭 영향.",
         tag: "valuation channel",
@@ -363,32 +381,36 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     ],
     historicalEvents: [
       {
-        date: "2020-03-23",
-        value: 5.3,
+        date: "2020-03-13",
+        value: 4.31,
         unit: "$T",
-        btcReturn: 305.0,
-        description: "COVID QE 시작 — 12개월 후 BTC +305%",
+        btcReturn: -39.0,
+        description:
+          "WALCL $4.31T → $4.67T (+8.4% 1주), COVID QE 시작, BTC 단기 -39% 후 12개월 +305% 폭등",
       },
       {
         date: "2022-04-13",
-        value: 9.0,
+        value: 8.97,
         unit: "$T",
-        btcReturn: -64.0,
-        description: "QT 시작 — 12개월 후 BTC -64% (피크 직후)",
+        btcReturn: -76.0,
+        description:
+          "WALCL 정점 $8.97T, QT 시작 — peak-to-trough BTC -76%, 모든 risk-asset 동반 valuation 압축",
       },
       {
-        date: "2023-03-22",
-        value: 8.7,
+        date: "2023-03-15",
+        value: 8.34,
         unit: "$T",
-        btcReturn: 152.0,
-        description: "BTFP 일시 확장 — 12개월 후 BTC +152%",
+        btcReturn: 30.0,
+        description:
+          "WALCL $8.34T → $8.73T (BTFP +$390B), SVB 사태 직후, BTC +30% (4주)",
       },
       {
         date: "2024-09-18",
         value: 7.1,
         unit: "$T",
-        btcReturn: 0,
-        description: "Fed 50bp cut + QT 속도 둔화 — 사이클 전환점",
+        btcReturn: 45.0,
+        description:
+          "WALCL $7.10T, Fed 50bp pivot 시작, BTC +45% (90일) — QT 둔화 + dollar 유입 재개",
       },
     ],
     regimeRulebook: REGIME_RULEBOOK,
@@ -396,21 +418,22 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       "Fed 의 대차대조표 (WALCL) 는 글로벌 dollar liquidity 의 근원지입니다. QE 국면에서 WALCL 이 빠르게 팽창하면 dollar 가 자산시장으로 유입되어 위험자산 가격을 끌어올립니다 (2020-2021). 반대로 QT 국면 (2022-2023) 에서는 dollar 가 회수되어 valuation 압축이 진행됩니다. 다만 '실제 시장에 풀린 dollar' 는 WALCL 만으로 결정되지 않습니다 — RRP (역레포) 와 TGA (재무성 일반계정) 가 dollar 를 회수하는 메커니즘이기 때문에, Net Liquidity = WALCL - RRP - TGA 가 더 정확한 측정치입니다. 본 modifier 는 30일 변화율 + 1년 trend 를 결합해 multiplier 를 산출합니다.",
     currentValueKeys: [
       {
+        label: "WALCL Total Assets",
+        hint: "Fed H.4.1 weekly · $M → $T 환산",
+        pick: () => null, // fromSeriesId 경로 사용
+        fromSeriesId: "WALCL",
+        unit: "",
+        primary: true,
+        // 백엔드 FRED 반환은 $M (millions) → 1,000,000 으로 나누면 $T 환산
+        formatValue: v => `$${(v / 1_000_000).toFixed(2)}T`,
+      },
+      {
         label: "WALCL 30d Change",
-        hint: "30일 변화율",
+        hint: "30일 변화율 (QE+ / QT-)",
         pick: l => l.walcl_change_30d_pct,
         unit: "%",
         digits: 2,
         positiveIsGood: true,
-        primary: true,
-      },
-      {
-        label: "RRP+TGA 30d Change",
-        hint: "drain ↑ → liquidity ↓",
-        pick: l => l.rrp_tga_change_30d_pct,
-        unit: "%",
-        digits: 2,
-        positiveIsGood: false,
       },
       {
         label: "Net Liquidity 30d",

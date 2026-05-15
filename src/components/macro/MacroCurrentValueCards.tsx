@@ -114,6 +114,56 @@ export function MacroCurrentValueCards({
             );
           }
 
+          // fromSeriesId — layer 대신 FRED 시리즈의 latest 값 사용
+          if (k.fromSeriesId) {
+            const srcSeries = series?.find(s => s.id === k.fromSeriesId);
+            const srcLatest = srcSeries?.latest ?? null;
+            const srcStub =
+              !srcSeries ||
+              srcSeries.status === "stub" ||
+              srcSeries.status === "error" ||
+              srcLatest == null;
+            const formatted = srcStub
+              ? "—"
+              : k.formatValue && srcLatest != null
+                ? k.formatValue(srcLatest)
+                : defaultFmtNumber(srcLatest, digits, k.unit);
+            return (
+              <div
+                key={`${k.label}-${i}`}
+                className={cn(
+                  "hud-frame p-3",
+                  isPrimary && "border-neon-cyan/30",
+                )}
+              >
+                <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
+                  {k.label}
+                </div>
+                <div
+                  className={cn(
+                    "font-display font-bold",
+                    isPrimary ? "text-3xl" : "text-xl",
+                    srcStub
+                      ? "text-muted-foreground/50"
+                      : valueColor(srcLatest, k.positiveIsGood),
+                  )}
+                >
+                  {formatted}
+                </div>
+                {k.hint && (
+                  <div className="font-mono text-[9px] text-muted-foreground/70 mt-1 leading-tight">
+                    {k.hint}
+                  </div>
+                )}
+                {srcStub && (
+                  <div className="mt-2 font-mono text-[9px] text-orange-300/80">
+                    STUB — FRED 시리즈 미수신
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           // stubReason — 백엔드 layer 에 필드가 아예 없는 경우 (예 DXY 절대 수준)
           if (hasStubReason) {
             return (
