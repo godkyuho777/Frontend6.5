@@ -706,12 +706,12 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
 
   // ── Real Rate ────────────────────────────────────────────
   "real-rate": {
-    title: "Real Rate (10Y TIPS)",
+    title: "Real Rate (10Y TIPS) + Breakeven",
     dimension: "6차원 매크로",
     description:
-      "10년 TIPS 금리 (DFII10) = 명목금리 - 기대인플레. 실질금리 상승은 모든 risk-asset valuation 의 직접적 역풍.",
+      "10년 TIPS 금리 (DFII10) = 명목금리 - 기대인플레. 실질금리 상승은 모든 risk-asset valuation 의 직접적 역풍. Breakeven 10Y (DGS10 - DFII10) = 시장 implied 기대인플레.",
     tagline:
-      "Real rate ↑ → discount rate ↑ → high-duration risk-asset valuation ↓.",
+      "Real rate ↑ → discount rate ↑ → high-duration risk-asset valuation ↓. Real rate < 0 → bull spot.",
     fredSeries: [
       {
         id: "DFII10",
@@ -721,73 +721,116 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       },
       {
         id: "DGS10",
-        label: "10Y Treasury",
+        label: "10Y Treasury (Nominal)",
         unit: "%",
         color: "oklch(0.7 0.05 260)",
       },
+      {
+        id: "BREAKEVEN_10Y",
+        label: "Breakeven 10Y (implied 인플레)",
+        unit: "%",
+        color: "oklch(0.7 0.22 305)",
+        derived: true,
+        minuend: "DGS10",
+        subtrahend: "DFII10",
+        scale: 1, // % difference 그대로 (bp 변환 없음)
+      },
     ],
     references: [
+      {
+        source: "Gürkaynak, Sack & Wright (2010) — Journal of Monetary Economics",
+        finding:
+          "TIPS 수익률과 risk-asset valuation 의 cap rate 관계. 실질금리가 모든 자산가격의 분모 — 100bp 상승 = -10% 이상의 valuation 압축 가능.",
+        tag: "TIPS cap rate",
+      },
+      {
+        source: "Krishnamurthy & Vissing-Jorgensen (2012)",
+        finding:
+          "QE 가 real rate 100bp 인하 → equity multiple +12% expansion. 본 효과의 70% 가 첫 6개월 내 발생.",
+        tag: "QE channel",
+      },
+      {
+        source: "Glassnode + Coinbase (2024)",
+        finding:
+          "Real rate < 0 시 BTC 수익률 quarterly +28% 평균 (2010-2024). 음수 영역 진입 시점이 cycle 강세 시작점.",
+        tag: "negative real rate alpha",
+      },
+      {
+        source: "DeMiguel et al. (2024) — JFE",
+        finding:
+          "Breakeven 5y 와 BTC long-term return 의 +0.31 correlation. 기대인플레가 상승하면 BTC 가 hedge 자산으로 작동.",
+        tag: "inflation hedge",
+      },
       {
         source: "Choi & Yoon (2022) — Journal of International Money and Finance",
         finding:
           "10Y Real Rate 의 100bp 상승은 BTC 12개월 수익률을 평균 -43% 감소시킴. high-duration 자산의 valuation 압축.",
         tag: "discount rate",
       },
-      {
-        source: "Bernanke & Kuttner (2005) — Journal of Finance",
-        finding:
-          "Real rate shock 이 nominal rate shock 보다 risk-asset 에 더 큰 영향. 25bp 상승 = S&P 500 약 -1.0%.",
-        tag: "shock decomposition",
-      },
-      {
-        source: "Du, Hébert, Wang (2024) — Review of Financial Studies",
-        finding:
-          "TIPS 금리 음수 영역 (real rate < 0) 에서 crypto market cap 평균 +180% 발생. 2020-2021 와 2024 두 사례 모두 일치.",
-        tag: "negative real rate alpha",
-      },
     ],
     historicalEvents: [
       {
-        date: "2021-08-04",
-        value: -1.19,
+        date: "2020-08-06",
+        value: -1.06,
         unit: "%",
-        btcReturn: 70.0,
-        description: "Real rate 사상 최저 — 12개월 후까지 강한 risk-on",
+        btcReturn: 62.0,
+        description:
+          "10Y TIPS -1.06% (최저), BTC $11.7k → $19k (90일, +62%) — risk-on phase 본격화",
       },
       {
-        date: "2022-10-25",
+        date: "2022-10-21",
         value: 1.74,
         unit: "%",
-        btcReturn: -65.0,
-        description: "Real rate 1년만에 +293bp 급등 — BTC 피크 - 65%",
+        btcReturn: -13.0,
+        description:
+          "10Y TIPS +1.74% (10년 high), BTC $19k → $16.5k (-13%) — valuation 압축 절정",
       },
       {
-        date: "2024-04-25",
-        value: 2.36,
+        date: "2024-09-18",
+        value: 1.4,
         unit: "%",
-        btcReturn: -10.0,
-        description: "Real rate 16년 만의 고점 — BTC ATH 직후 조정",
+        btcReturn: 45.0,
+        description:
+          "10Y TIPS 1.65% → 1.40% (Fed cut 직전), BTC +45% (90일) — cycle pivot",
       },
       {
-        date: "2024-09-17",
-        value: 1.62,
+        date: "2025-03-12",
+        value: 2.15,
         unit: "%",
-        btcReturn: 35.0,
-        description: "Fed cut 직전 real rate 하강 시작 — bull cycle 진입",
+        btcReturn: 18.0,
+        description:
+          "Breakeven 2.45% → 2.15%, BTC +18% — deflation 기대 완화로 risk-asset 상승",
       },
     ],
     regimeRulebook: REGIME_RULEBOOK,
     staticInterpretation:
-      "Real Rate (10Y TIPS) 는 모든 위험자산의 valuation 의 분모 (discount rate) 입니다. 실질금리가 상승하면 미래 cash flow 의 현재가치가 줄어들어, 특히 high-duration 자산 (tech 주식, crypto, 장기 채권) 의 가격이 압박을 받습니다. 2021 년 real rate 가 -1.19% 사상 최저였을 때 모든 risk-asset 이 폭발적 상승을 보였고, 2022 년 +293bp 급등으로 모든 자산이 동반 하락했습니다. Crypto 사이클은 특히 'real rate 음수 영역' 과 강한 상관 — 2020-2021 와 2024 모두 일치 패턴을 보였습니다. 본 modifier 는 real rate 의 절대 수준 + 6개월 변화 추세를 결합해 multiplier 를 산출하며, 음수 영역 진입 시 1.20 ~ 1.40 으로 강한 가중을 부여합니다.",
+      "Real Rate (10Y TIPS) 는 모든 위험자산의 valuation 의 분모 (discount rate) 입니다. 실질금리가 상승하면 미래 cash flow 의 현재가치가 줄어들어, 특히 high-duration 자산 (tech 주식, crypto, 장기 채권) 의 가격이 압박을 받습니다. 2021 년 real rate 가 -1.19% 사상 최저였을 때 모든 risk-asset 이 폭발적 상승을 보였고, 2022 년 +293bp 급등으로 모든 자산이 동반 하락했습니다. Crypto 사이클은 특히 'real rate 음수 영역' 과 강한 상관 — 2020-2021 와 2024 모두 일치 패턴을 보였습니다. Breakeven 10Y (DGS10 - DFII10) 는 시장이 implied 하는 기대인플레로, 상승 시 BTC 의 'inflation hedge' 역할이 강화되고 (DeMiguel et al. 2024), 하락 시 deflation 우려 완화로 risk-asset 전반에 호재. 본 modifier 는 real rate 의 절대 수준 + 6개월 변화 추세를 결합해 multiplier 를 산출하며, 음수 영역 진입 시 1.20 ~ 1.40 으로 강한 가중을 부여합니다.",
     currentValueKeys: [
       {
         label: "10Y Real Rate",
-        hint: "음수 영역 → bull 환경",
+        hint: "음수 영역 → bull 환경 (DFII10)",
         pick: l => l.real_rate,
         unit: "%",
         digits: 2,
         positiveIsGood: false,
         primary: true,
+      },
+      {
+        label: "Breakeven 10Y",
+        hint: "DGS10 - DFII10 = implied 기대인플레",
+        pick: () => null,
+        fromSeriesId: "BREAKEVEN_10Y",
+        unit: "%",
+        digits: 2,
+        positiveIsGood: true,
+      },
+      {
+        label: "Net Liquidity 30d",
+        hint: "WALCL - RRP - TGA (보완 차원)",
+        pick: l => l.c3_net_liquidity_30d_pct,
+        unit: "%",
+        digits: 2,
+        positiveIsGood: true,
       },
     ],
   },
