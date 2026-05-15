@@ -123,6 +123,21 @@ export interface MacroCurrentValueKey {
   positiveIsGood?: boolean;
   /** 카드 강조 (true 면 큰 글씨). */
   primary?: boolean;
+  /** 값 타입 — "number" (default) 또는 "categorical" (string label 표시). */
+  valueType?: "number" | "categorical";
+  /** 커스텀 포맷터 — 단위/digits 무시하고 자유로운 문자열 반환. */
+  formatValue?: (v: number) => string;
+  /** valueType === "categorical" 일 때 layer 에서 string 추출. */
+  pickCategorical?: (layer: any) => string | null | undefined;
+  /** categorical 값 → Tailwind text color class 매핑 (예 "text-emerald-300"). */
+  categoricalColor?: (v: string) => string;
+  /** categorical 값 → 사람-친화 라벨 매핑 (예 "crypto_rally" → "CRYPTO RALLY"). */
+  categoricalLabel?: (v: string) => string;
+  /**
+   * snapshot 미포함 (백엔드 layer 에 필드 없는 경우 사용).
+   * 카드는 "—" + stubReason 표시 (예: DXY 절대 수준).
+   */
+  stubReason?: string;
 }
 
 // ─── 5단계 regime 룰북 (모든 indicator 공유) ──────────────

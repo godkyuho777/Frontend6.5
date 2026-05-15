@@ -20,13 +20,13 @@ interface MacroCurrentValueCardsProps {
   primarySeriesId?: string;
 }
 
-function fmtNumber(
+function defaultFmtNumber(
   v: number | null | undefined,
   digits: number,
   unit: string,
 ): string {
   if (v == null || !Number.isFinite(v)) return "—";
-  return `${v >= 0 ? "" : ""}${v.toFixed(digits)}${unit}`;
+  return `${v.toFixed(digits)}${unit}`;
 }
 
 function fmtChange(v: number | null): string {
@@ -65,10 +65,96 @@ export function MacroCurrentValueCards({
     >
       <div className={cn("grid gap-3", cols)}>
         {keys.map((k, i) => {
-          const raw = layer ? k.pick(layer) : null;
           const isPrimary = !!k.primary;
           const digits = k.digits ?? 2;
-          const isStub = status === "stub" || status === "error" || layer == null;
+          const isCategorical = k.valueType === "categorical";
+          const layerMissing = status === "stub" || status === "error" || layer == null;
+          const hasStubReason = !!k.stubReason;
+
+          // categorical 경로 — layer 의 string 필드를 그대로 표시
+          if (isCategorical) {
+            const rawCat = layer ? k.pickCategorical?.(layer) : null;
+            const labelTxt =
+              rawCat && k.categoricalLabel ? k.categoricalLabel(rawCat) : rawCat ?? "";
+            const colorClass =
+              rawCat && k.categoricalColor
+                ? k.categoricalColor(rawCat)
+                : "text-foreground";
+            return (
+              <div
+                key={`${k.label}-${i}`}
+                className={cn(
+                  "hud-frame p-3",
+                  isPrimary && "border-neon-cyan/30",
+                )}
+              >
+                <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
+                  {k.label}
+                </div>
+                <div
+                  className={cn(
+                    "font-display font-bold",
+                    isPrimary ? "text-2xl" : "text-lg",
+                    layerMissing || !rawCat ? "text-muted-foreground/50" : colorClass,
+                  )}
+                >
+                  {layerMissing || !rawCat ? "—" : labelTxt}
+                </div>
+                {k.hint && (
+                  <div className="font-mono text-[9px] text-muted-foreground/70 mt-1 leading-tight">
+                    {k.hint}
+                  </div>
+                )}
+                {layerMissing && (
+                  <div className="mt-2 font-mono text-[9px] text-orange-300/80">
+                    STUB — FRED_API_KEY 미설정
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // stubReason — 백엔드 layer 에 필드가 아예 없는 경우 (예 DXY 절대 수준)
+          if (hasStubReason) {
+            return (
+              <div
+                key={`${k.label}-${i}`}
+                className={cn(
+                  "hud-frame p-3",
+                  isPrimary && "border-neon-cyan/30",
+                )}
+              >
+                <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
+                  {k.label}
+                </div>
+                <div
+                  className={cn(
+                    "font-display font-bold text-muted-foreground/50",
+                    isPrimary ? "text-3xl" : "text-xl",
+                  )}
+                >
+                  —
+                </div>
+                {k.hint && (
+                  <div className="font-mono text-[9px] text-muted-foreground/70 mt-1 leading-tight">
+                    {k.hint}
+                  </div>
+                )}
+                <div className="mt-2 font-mono text-[9px] text-orange-300/80 leading-tight">
+                  {k.stubReason}
+                </div>
+              </div>
+            );
+          }
+
+          // number 경로 (기본)
+          const raw = layer ? k.pick(layer) : null;
+          const isStub = layerMissing;
+          const formatted = isStub
+            ? "—"
+            : k.formatValue && raw != null && Number.isFinite(raw)
+              ? k.formatValue(raw)
+              : defaultFmtNumber(raw, digits, k.unit);
           return (
             <div
               key={`${k.label}-${i}`}
@@ -89,7 +175,7 @@ export function MacroCurrentValueCards({
                     : valueColor(raw ?? null, k.positiveIsGood),
                 )}
               >
-                {isStub ? "—" : fmtNumber(raw, digits, k.unit)}
+                {formatted}
               </div>
               {k.hint && (
                 <div className="font-mono text-[9px] text-muted-foreground/70 mt-1 leading-tight">
