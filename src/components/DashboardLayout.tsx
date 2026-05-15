@@ -12,6 +12,7 @@ import {
   BarChart3,
   Bell,
   CheckCircle2,
+  Coins,
   Copy,
   Database,
   FlaskConical,
@@ -27,6 +28,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Wallet,
   Waves,
   X,
 } from "lucide-react";
@@ -106,6 +108,7 @@ const workspaceItems: MenuItem[] = [
   },
   { icon: BarChart3, label: "Tech tracker (Pro)", path: "/tech-tracker" },
   { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
+  { icon: Wallet, label: "Investment Simulator 💰", path: "/simulator" },
   { icon: Database, label: "Onchain data", path: "/onchain" },
 ];
 

@@ -22,6 +22,7 @@ import WaveSentiment from "./pages/WaveSentiment";
 import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
+import Simulator from "./pages/Simulator";
 import Onchain from "./pages/Onchain";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
@@ -128,6 +129,7 @@ function ProShell() {
         <Route path={"/alerts"} component={AlertSettings} />
         <Route path={"/ai"} component={AIInsight} />
         <Route path={"/backtest"} component={Backtest} />
+        <Route path={"/simulator"} component={Simulator} />
         <Route path={"/onchain"} component={Onchain} />
         <Route path={"/charter"} component={Charter} />
         <Route path={"/admin/health"} component={HealthCheck} />
