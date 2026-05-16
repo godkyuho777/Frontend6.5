@@ -17,7 +17,10 @@
 const INITIAL_CASH = 200_000;
 const COMMISSION_RATE = 0.0001; // 0.01%
 
-function storageKey(simUserId: string, kind: "account" | "positions" | "transactions") {
+function storageKey(
+  simUserId: string,
+  kind: "account" | "positions" | "transactions" | "orders",
+) {
   return `tradelab.sim.${kind}.${simUserId}`;
 }
 
@@ -64,6 +67,33 @@ export interface LocalSimTransaction {
   price: number | null;
   note: string | null;
   ts: string;
+}
+
+/**
+ * Pending / filled / cancelled limit orders (로컬 모드 전용).
+ *
+ * Market 주문은 즉시 position 으로 변환되므로 SimOrder 로 저장되지 않는다.
+ * Limit 주문만 SimOrder.status = "pending" 으로 보관 후, ticker 갱신 시
+ * Simulator 의 useEffect 가 트리거 조건 (mark price ↔ limitPrice) 을
+ * 검사해 자동 체결 또는 사용자 취소로 종결.
+ */
+export interface SimOrder {
+  id: string;
+  userId: string;
+  symbol: string;
+  productType: "spot" | "perp";
+  side: "long" | "short";
+  type: "market" | "limit";
+  qty: number;
+  /** Required when type === "limit" */
+  limitPrice?: number;
+  leverage: number;
+  marginMode: "cross" | "isolated";
+  status: "pending" | "filled" | "cancelled";
+  createdAt: number;
+  filledAt?: number;
+  filledPrice?: number;
+  cancelledAt?: number;
 }
 
 // ─── Storage helpers ───────────────────────────────────────
@@ -401,9 +431,94 @@ export function localResetAccount(simUserId: string): void {
     window.localStorage.removeItem(storageKey(simUserId, "account"));
     window.localStorage.removeItem(storageKey(simUserId, "positions"));
     window.localStorage.removeItem(storageKey(simUserId, "transactions"));
+    window.localStorage.removeItem(storageKey(simUserId, "orders"));
   } catch {
     // ignore
   }
   // 즉시 fresh 계정 생성 (deposit transaction 포함)
   getLocalAccount(simUserId);
+}
+
+// ─── Orders (pending limit orders) ─────────────────────────
+
+/** crypto.randomUUID polyfill (구형 브라우저 대비) */
+function genOrderId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `ord_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function getLocalOrders(
+  simUserId: string,
+  filter?: "pending" | "filled" | "cancelled",
+): SimOrder[] {
+  const all = loadJson<SimOrder[]>(storageKey(simUserId, "orders"), []);
+  const filtered = filter ? all.filter((o) => o.status === filter) : all;
+  // 최신순 (createdAt desc)
+  filtered.sort((a, b) => b.createdAt - a.createdAt);
+  return filtered;
+}
+
+function setLocalOrders(simUserId: string, orders: SimOrder[]): void {
+  saveJson(storageKey(simUserId, "orders"), orders);
+}
+
+export interface AddLocalOrderInput {
+  simUserId: string;
+  symbol: string;
+  productType: "spot" | "perp";
+  side: "long" | "short";
+  type: "limit" | "market";
+  qty: number;
+  limitPrice?: number;
+  leverage: number;
+  marginMode: "cross" | "isolated";
+}
+
+export function addLocalOrder(input: AddLocalOrderInput): SimOrder {
+  const orders = loadJson<SimOrder[]>(
+    storageKey(input.simUserId, "orders"),
+    [],
+  );
+  const next: SimOrder = {
+    id: genOrderId(),
+    userId: input.simUserId,
+    symbol: input.symbol,
+    productType: input.productType,
+    side: input.side,
+    type: input.type,
+    qty: input.qty,
+    limitPrice: input.limitPrice,
+    leverage: input.leverage,
+    marginMode: input.marginMode,
+    status: "pending",
+    createdAt: Date.now(),
+  };
+  orders.push(next);
+  setLocalOrders(input.simUserId, orders);
+  return next;
+}
+
+export function updateLocalOrder(
+  simUserId: string,
+  orderId: string,
+  patch: Partial<Omit<SimOrder, "id" | "userId">>,
+): SimOrder | null {
+  const orders = loadJson<SimOrder[]>(storageKey(simUserId, "orders"), []);
+  const idx = orders.findIndex((o) => o.id === orderId);
+  if (idx < 0) return null;
+  orders[idx] = { ...orders[idx], ...patch };
+  setLocalOrders(simUserId, orders);
+  return orders[idx];
+}
+
+export function cancelLocalOrder(
+  simUserId: string,
+  orderId: string,
+): SimOrder | null {
+  return updateLocalOrder(simUserId, orderId, {
+    status: "cancelled",
+    cancelledAt: Date.now(),
+  });
 }
