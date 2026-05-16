@@ -306,10 +306,12 @@ function buildCompositeExplain(
       : c2 >= 0.5
         ? `C2 risk-on ${c2.toFixed(2)} → 중립적 risk-on`
         : `C2 risk-on ${c2.toFixed(2)} → risk-on 신호 약함`;
+  // c3 는 백엔드에서 fraction (예 -0.0108 = -1.08%) — × 100 변환
+  const c3Pct = c3 * 100;
   const c3Txt =
-    c3 >= 0
-      ? `C3 net liquidity 30d ${c3 >= 0 ? "+" : ""}${c3.toFixed(2)}% → 순유동성 유입 환경`
-      : `C3 net liquidity 30d ${c3.toFixed(2)}% → 순유동성 유출 / drain 환경`;
+    c3Pct >= 0
+      ? `C3 net liquidity 30d +${c3Pct.toFixed(2)}% → 순유동성 유입 환경`
+      : `C3 net liquidity 30d ${c3Pct.toFixed(2)}% → 순유동성 유출 / drain 환경`;
   const c4LabelMap: Record<string, string> = {
     pre_recession: "PRE-RECESSION (yield curve 역전 후 초기)",
     recession_imminent: "RECESSION IMMINENT (Fed pivot 임박)",
