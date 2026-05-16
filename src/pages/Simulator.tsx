@@ -51,6 +51,11 @@ import {
   localClosePosition,
   localResetAccount,
   localMarkToMarket,
+  getLocalOrders,
+  addLocalOrder,
+  updateLocalOrder,
+  cancelLocalOrder,
+  type SimOrder,
 } from "@/lib/sim-local-store";
 import {
   Wallet,
@@ -64,6 +69,8 @@ import {
   Check,
   X,
   LogOut,
+  Trash2,
+  ClipboardList,
 } from "lucide-react";
 import type { Candle } from "@shared/types";
 
@@ -76,7 +83,11 @@ const POPULAR_SYMBOLS = [
   "DOGEUSDT",
 ];
 
-type BottomTab = "positions" | "order-history" | "trade-history";
+type BottomTab =
+  | "positions"
+  | "open-orders"
+  | "order-history"
+  | "trade-history";
 
 function formatPrice(p: number): string {
   if (!p || p === 0) return "—";
@@ -226,7 +237,7 @@ export default function Simulator() {
   const isBackendUnavailable =
     accountQuery.isError ||
     (accountQuery.data && accountQuery.data.available === false);
-  const useLocalMode = !!simUser?.id && isBackendUnavailable;
+  const useLocalMode: boolean = !!simUser?.id && !!isBackendUnavailable;
 
   // ── Derived (backend OR local store) ─────────────────────
   // 의존성: useLocalMode + localRev → mutation 후 자동 refresh
@@ -262,6 +273,14 @@ export default function Simulator() {
         ? getLocalTransactions(simUser.id, 100)
         : [],
     [simUser?.id, useLocalMode, bottomTab, localRev],
+  );
+  /** Pending limit orders — 항상 가져와 Open Orders 탭 카운트 표시 + 트리거 검사 */
+  const localPendingOrders = useMemo<SimOrder[]>(
+    () =>
+      simUser?.id && useLocalMode
+        ? getLocalOrders(simUser.id, "pending")
+        : [],
+    [simUser?.id, useLocalMode, localRev],
   );
 
   const account = useLocalMode
@@ -307,6 +326,62 @@ export default function Simulator() {
     if (updated > 0) bumpLocal();
   }, [useLocalMode, simUser?.id, ticker]);
 
+  /**
+   * Local 모드 — pending limit 주문 트리거.
+   *
+   * ticker 갱신마다 현재 ticker.symbol 의 pending limit 주문을 순회해 mark
+   * price 가 limitPrice 에 도달했는지 검사. 도달 시 즉시 localOpenPosition
+   * 으로 포지션 생성 + order.status = "filled".
+   *
+   * 트리거 규칙 (정통 거래소 limit 동작):
+   *   - LONG 매수 limit: mark ≤ limitPrice 시 체결 (저가 매수 의도)
+   *   - SHORT 매도 limit: mark ≥ limitPrice 시 체결 (고가 매도 의도)
+   *
+   * 체결 가격은 사용자가 지정한 limitPrice 그대로 (mark price 아님).
+   * 잔액 부족으로 localOpenPosition 이 실패하면 order 는 그대로 pending 유지
+   * (자동 취소 안 함) — 사용자가 직접 취소 또는 잔액 보충 후 자동 재시도.
+   */
+  useEffect(() => {
+    if (!useLocalMode || !simUser?.id || !ticker) return;
+    const orders = getLocalOrders(simUser.id, "pending");
+    if (orders.length === 0) return;
+    let triggered = 0;
+    for (const order of orders) {
+      if (order.type !== "limit") continue;
+      if (!order.limitPrice || order.limitPrice <= 0) continue;
+      if (order.symbol !== ticker.symbol) continue;
+      const mark = ticker.lastPrice;
+      const shouldFill =
+        order.side === "long"
+          ? mark <= order.limitPrice
+          : mark >= order.limitPrice;
+      if (!shouldFill) continue;
+      const result = localOpenPosition({
+        simUserId: simUser.id,
+        symbol: order.symbol,
+        productType: order.productType,
+        side: order.side,
+        leverage: order.leverage,
+        entryPrice: order.limitPrice,
+        quantity: order.qty,
+      });
+      if (result.error) {
+        // 잔액 부족 등 — order 는 pending 유지, 다음 갱신에서 재시도.
+        continue;
+      }
+      updateLocalOrder(simUser.id, order.id, {
+        status: "filled",
+        filledAt: Date.now(),
+        filledPrice: order.limitPrice,
+      });
+      triggered++;
+    }
+    if (triggered > 0) bumpLocal();
+    // localRev 는 의도적으로 의존성에서 제외 — 위 mark-to-market useEffect 가
+    // 갱신할 때 무한루프 방지.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useLocalMode, simUser?.id, ticker]);
+
   /** 로컬 모드에서 mutation 결과 errors 표시용 */
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -320,6 +395,29 @@ export default function Simulator() {
       setLocalError(null);
 
       if (useLocalMode) {
+        if (orderType === "limit") {
+          // Limit 주문: 즉시 체결하지 않고 pending order 로 저장.
+          // ticker 갱신 시 트리거 useEffect 가 limitPrice 검사 후 자동 체결.
+          if (!effectivePrice || effectivePrice <= 0) {
+            setLocalError("Limit price 입력 필요");
+            return;
+          }
+          addLocalOrder({
+            simUserId: simUser.id,
+            symbol,
+            productType,
+            side: forSide,
+            type: "limit",
+            qty,
+            limitPrice: effectivePrice,
+            leverage: productType === "spot" ? 1 : leverage,
+            marginMode,
+          });
+          setQtyText("");
+          bumpLocal();
+          return;
+        }
+        // Market 주문 — 기존 흐름 (즉시 position 생성).
         const result = localOpenPosition({
           simUserId: simUser.id,
           symbol,
@@ -360,6 +458,13 @@ export default function Simulator() {
       marginMode,
     ],
   );
+
+  const handleCancelOrder = (orderId: string) => {
+    if (!simUser?.id) return;
+    if (!useLocalMode) return;
+    cancelLocalOrder(simUser.id, orderId);
+    bumpLocal();
+  };
 
   const handleClose = (positionId: number) => {
     if (!simUser?.id) return;
@@ -923,6 +1028,12 @@ export default function Simulator() {
           {(
             [
               { value: "positions", label: `Positions (${positions.length})` },
+              {
+                value: "open-orders",
+                label: `Open Orders${
+                  useLocalMode ? ` (${localPendingOrders.length})` : ""
+                }`,
+              },
               { value: "order-history", label: "Order History" },
               { value: "trade-history", label: "Trade History" },
             ] as { value: BottomTab; label: string }[]
@@ -947,6 +1058,14 @@ export default function Simulator() {
               positions={positions}
               onClose={handleClose}
               isClosing={closeMutation.isPending}
+            />
+          )}
+          {bottomTab === "open-orders" && (
+            <OpenOrdersTable
+              orders={localPendingOrders}
+              ticker={ticker}
+              onCancel={handleCancelOrder}
+              useLocalMode={useLocalMode}
             />
           )}
           {bottomTab === "order-history" && (
@@ -1314,6 +1433,140 @@ function PositionsTable({
                     </Button>
                   </td>
                 )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OpenOrdersTable({
+  orders,
+  ticker,
+  onCancel,
+  useLocalMode,
+}: {
+  orders: SimOrder[];
+  ticker: SimTicker | null;
+  onCancel: (id: string) => void;
+  useLocalMode: boolean;
+}) {
+  if (!useLocalMode) {
+    return (
+      <p className="text-center py-6 text-muted-foreground font-mono text-xs">
+        백엔드 모드에서는 Open Orders 가 거래소 측에서 관리됩니다. (현재 페이지는
+        local-only 모의투자 모드 전용)
+      </p>
+    );
+  }
+  if (orders.length === 0) {
+    return (
+      <p className="text-center py-6 text-muted-foreground font-mono text-xs">
+        <ClipboardList className="h-4 w-4 inline-block mr-1 -mt-0.5 opacity-60" />
+        Pending orders 없음 — Limit 주문을 제출하면 여기 표시됩니다.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border/20 font-mono text-[10px] text-muted-foreground uppercase">
+            <th className="text-left px-2 py-1.5">Symbol</th>
+            <th className="text-left px-2 py-1.5">Side</th>
+            <th className="text-left px-2 py-1.5">Type</th>
+            <th className="text-right px-2 py-1.5">Lev</th>
+            <th className="text-right px-2 py-1.5">Qty</th>
+            <th className="text-right px-2 py-1.5">Limit</th>
+            <th className="text-right px-2 py-1.5">Mark</th>
+            <th className="text-right px-2 py-1.5">Distance</th>
+            <th className="text-left px-2 py-1.5">Time</th>
+            <th className="px-2 py-1.5"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((o) => {
+            const isTickerSymbol =
+              ticker?.symbol === o.symbol && ticker.lastPrice > 0;
+            const mark = isTickerSymbol ? ticker!.lastPrice : null;
+            const distancePct =
+              mark != null && o.limitPrice && o.limitPrice > 0
+                ? ((o.limitPrice - mark) / mark) * 100
+                : null;
+            // LONG limit: limit 이 mark 보다 낮을 때 정상 (체결 대기 = 가격 하락 기대)
+            // SHORT limit: limit 이 mark 보다 높을 때 정상 (체결 대기 = 가격 상승 기대)
+            return (
+              <tr
+                key={o.id}
+                className="border-b border-border/10 font-mono text-[11px] hover:bg-muted/10"
+              >
+                <td className="px-2 py-1.5 text-foreground font-semibold">
+                  {o.symbol.replace("USDT", "")}
+                </td>
+                <td className="px-2 py-1.5">
+                  <Badge
+                    className={cn(
+                      "font-mono text-[9px] uppercase",
+                      o.side === "long"
+                        ? "bg-neon-green/15 text-neon-green border-neon-green/40"
+                        : "bg-neon-red/15 text-neon-red border-neon-red/40",
+                    )}
+                  >
+                    {o.side}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5">
+                  <Badge className="font-mono text-[9px] uppercase bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40">
+                    {o.type}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5 text-right text-foreground">
+                  {o.leverage}×
+                </td>
+                <td className="px-2 py-1.5 text-right text-foreground">
+                  {formatQty(o.qty)}
+                </td>
+                <td className="px-2 py-1.5 text-right text-neon-cyan">
+                  {o.limitPrice ? `$${formatPrice(o.limitPrice)}` : "—"}
+                </td>
+                <td className="px-2 py-1.5 text-right text-foreground">
+                  {mark != null ? `$${formatPrice(mark)}` : "—"}
+                </td>
+                <td
+                  className={cn(
+                    "px-2 py-1.5 text-right",
+                    distancePct == null
+                      ? "text-muted-foreground"
+                      : Math.abs(distancePct) < 0.5
+                        ? "text-neon-yellow"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {distancePct != null
+                    ? `${distancePct >= 0 ? "+" : ""}${distancePct.toFixed(2)}%`
+                    : "—"}
+                </td>
+                <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
+                  {new Date(o.createdAt).toLocaleString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onCancel(o.id)}
+                    className="h-6 px-2 font-mono text-[10px] text-neon-red hover:bg-neon-red/10"
+                    title="주문 취소"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </td>
               </tr>
             );
           })}
