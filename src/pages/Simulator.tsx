@@ -22,7 +22,7 @@
  * (자본 보호) 와 별개로 사용자 학습 / UX 실험용.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -230,26 +230,39 @@ export default function Simulator() {
 
   // ── Derived (backend OR local store) ─────────────────────
   // 의존성: useLocalMode + localRev → mutation 후 자동 refresh
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const localAccount = simUser?.id && useLocalMode ? getLocalAccount(simUser.id) : null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const localEquity =
-    simUser?.id && useLocalMode ? computeLocalEquity(simUser.id) : null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const localOpenPositions =
-    simUser?.id && useLocalMode ? getLocalPositions(simUser.id, { includeClosed: false }) : [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const localAllPositions =
-    simUser?.id && useLocalMode && bottomTab === "order-history"
-      ? getLocalPositions(simUser.id, { includeClosed: true, limit: 100 })
-      : [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const localTxs =
-    simUser?.id && useLocalMode && bottomTab === "trade-history"
-      ? getLocalTransactions(simUser.id, 100)
-      : [];
-
-  void localRev; // touch dependency so React re-reads after mutation
+  // localRev 를 명시적으로 useMemo dep 에 포함시켜야 bumpLocal() 호출이 실제
+  // 재계산을 유발한다 (`void localRev;` 만으로는 React 가 의존성을 추적하지 못함).
+  const localAccount = useMemo(
+    () =>
+      simUser?.id && useLocalMode ? getLocalAccount(simUser.id) : null,
+    [simUser?.id, useLocalMode, localRev],
+  );
+  const localEquity = useMemo(
+    () =>
+      simUser?.id && useLocalMode ? computeLocalEquity(simUser.id) : null,
+    [simUser?.id, useLocalMode, localRev],
+  );
+  const localOpenPositions = useMemo(
+    () =>
+      simUser?.id && useLocalMode
+        ? getLocalPositions(simUser.id, { includeClosed: false })
+        : [],
+    [simUser?.id, useLocalMode, localRev],
+  );
+  const localAllPositions = useMemo(
+    () =>
+      simUser?.id && useLocalMode && bottomTab === "order-history"
+        ? getLocalPositions(simUser.id, { includeClosed: true, limit: 100 })
+        : [],
+    [simUser?.id, useLocalMode, bottomTab, localRev],
+  );
+  const localTxs = useMemo(
+    () =>
+      simUser?.id && useLocalMode && bottomTab === "trade-history"
+        ? getLocalTransactions(simUser.id, 100)
+        : [],
+    [simUser?.id, useLocalMode, bottomTab, localRev],
+  );
 
   const account = useLocalMode
     ? localAccount
