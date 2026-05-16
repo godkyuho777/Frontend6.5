@@ -417,11 +417,33 @@ export default function Simulator() {
     signOut();
   };
 
+  /**
+   * 사용자가 %  버튼을 누르면 (가용 현금 × pct%) 를 totalCost (= margin +
+   * commission) 로 환산해 maxQty 를 계산.
+   *
+   * 기존 식 `maxQty = (usable * leverage) / price` 는 commission (0.01% ×
+   * leverage) 를 무시했기 때문에 100% 슬라이더에서 totalCost > cashAvailable
+   * 이 발생해 isAffordable=false → Long/Short 버튼이 disable 되었다.
+   *
+   * 새 식 (commission 포함):
+   *   margin     = price × qty / leverage
+   *   commission = price × qty × 0.0001 × leverage
+   *   totalCost  = qty × (price/leverage + price × 0.0001 × leverage)
+   *              = qty × costPerUnit
+   *   ∴ qty = usable / costPerUnit
+   *
+   * 부동소수점 오차 안전망으로 0.9999 곱 (4 자리 안전 margin).
+   */
   const setQtyByPercent = (pct: number) => {
     if (effectivePrice <= 0) return;
+    const effLeverage = productType === "spot" ? 1 : Math.max(1, leverage);
     const usable = (cashAvailable * pct) / 100;
-    const maxQty = (usable * Math.max(1, leverage)) / effectivePrice;
-    setQtyText(maxQty.toFixed(6));
+    const costPerUnit =
+      effectivePrice / effLeverage + effectivePrice * 0.0001 * effLeverage;
+    if (costPerUnit <= 0) return;
+    const maxQty = usable / costPerUnit;
+    const safeQty = maxQty * 0.9999;
+    setQtyText(safeQty > 0 ? safeQty.toFixed(6) : "0");
   };
 
   // ── Bot guard: until simUser mounted ─────────────────────
