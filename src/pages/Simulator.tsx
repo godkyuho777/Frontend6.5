@@ -43,6 +43,16 @@ import {
   type SimTicker,
 } from "@/lib/bybit-simulator";
 import {
+  getLocalAccount,
+  getLocalPositions,
+  getLocalTransactions,
+  computeLocalEquity,
+  localOpenPosition,
+  localClosePosition,
+  localResetAccount,
+  localMarkToMarket,
+} from "@/lib/sim-local-store";
+import {
   Wallet,
   TrendingUp,
   TrendingDown,
@@ -116,6 +126,10 @@ export default function Simulator() {
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput] = useState("");
 
+  /** Local store revision counter — increment to force re-read after mutation */
+  const [localRev, setLocalRev] = useState(0);
+  const bumpLocal = () => setLocalRev((r) => r + 1);
+
   // ── tRPC (only when registered) ───────────────────────────
   const trpcEnabled = !!simUser?.id;
   const accountQuery = trpc.simulator.account.useQuery(
@@ -162,12 +176,12 @@ export default function Simulator() {
     onSuccess: invalidateAll,
   });
 
-  // ── Candle fetch ──────────────────────────────────────────
+  // ── Candle fetch (500 candles — Bybit / TradingView 같은 자유로운 zoom/scroll) ─
   useEffect(() => {
     if (!symbol || !simUser) return;
     let cancelled = false;
     setCandlesLoading(true);
-    fetchSimKlines(symbol, timeframe, 200)
+    fetchSimKlines(symbol, timeframe, 500)
       .then((d) => !cancelled && setCandles(d))
       .catch(() => !cancelled && setCandles([]))
       .finally(() => !cancelled && setCandlesLoading(false));
@@ -206,13 +220,59 @@ export default function Simulator() {
     }
   }, [ticker, orderType, priceText]);
 
-  // ── Derived ──────────────────────────────────────────────
-  const account = accountQuery.data;
-  const positions = positionsQuery.data ?? [];
-  const closedPositions = (allPositionsQuery.data ?? []).filter(
-    (p: any) => p.status !== "open",
-  );
-  const transactions = transactionsQuery.data ?? [];
+  // ── Local mode detection ──────────────────────────────────
+  // 백엔드 응답이 `available: false` 거나 query error 가 발생하면 localStorage
+  // 기반 fallback 으로 전환. 사용자가 익명 모드에서 즉시 모의투자를 체험 가능.
+  const isBackendUnavailable =
+    accountQuery.isError ||
+    (accountQuery.data && accountQuery.data.available === false);
+  const useLocalMode = !!simUser?.id && isBackendUnavailable;
+
+  // ── Derived (backend OR local store) ─────────────────────
+  // 의존성: useLocalMode + localRev → mutation 후 자동 refresh
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const localAccount = simUser?.id && useLocalMode ? getLocalAccount(simUser.id) : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const localEquity =
+    simUser?.id && useLocalMode ? computeLocalEquity(simUser.id) : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const localOpenPositions =
+    simUser?.id && useLocalMode ? getLocalPositions(simUser.id, { includeClosed: false }) : [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const localAllPositions =
+    simUser?.id && useLocalMode && bottomTab === "order-history"
+      ? getLocalPositions(simUser.id, { includeClosed: true, limit: 100 })
+      : [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const localTxs =
+    simUser?.id && useLocalMode && bottomTab === "trade-history"
+      ? getLocalTransactions(simUser.id, 100)
+      : [];
+
+  void localRev; // touch dependency so React re-reads after mutation
+
+  const account = useLocalMode
+    ? localAccount
+      ? {
+          cash: localAccount.cash,
+          equity: localEquity?.equity ?? localAccount.cash,
+          realizedPnl: localAccount.realizedPnl,
+          totalCommission: localAccount.totalCommission,
+          totalFunding: localAccount.totalFunding,
+          liquidationCount: localAccount.liquidationCount,
+          openPositions: localEquity?.openCount ?? 0,
+          unrealizedPnl: localEquity?.unrealizedPnl ?? 0,
+          available: false as const,
+        }
+      : null
+    : accountQuery.data;
+
+  const positions = useLocalMode ? localOpenPositions : (positionsQuery.data ?? []);
+  const closedPositions = useLocalMode
+    ? localAllPositions.filter((p) => p.status !== "open")
+    : (allPositionsQuery.data ?? []).filter((p: any) => p.status !== "open");
+  const transactions = useLocalMode ? localTxs : (transactionsQuery.data ?? []);
+
   const currentPrice = ticker?.lastPrice ?? 0;
 
   const qty = parseFloat(qtyText) || 0;
@@ -225,9 +285,17 @@ export default function Simulator() {
   const cashAvailable = account?.cash ?? 0;
   const isAffordable =
     cashAvailable >= totalCost && qty > 0 && effectivePrice > 0;
-  const isBackendUnavailable =
-    accountQuery.isError ||
-    (accountQuery.data && accountQuery.data.available === false);
+
+  /** Local 모드에서 ticker 갱신 시 해당 심볼의 open 포지션을 mark-to-market. */
+  useEffect(() => {
+    if (!useLocalMode || !simUser?.id || !ticker) return;
+    const prices = new Map<string, number>([[ticker.symbol, ticker.lastPrice]]);
+    const { updated } = localMarkToMarket(simUser.id, prices);
+    if (updated > 0) bumpLocal();
+  }, [useLocalMode, simUser?.id, ticker]);
+
+  /** 로컬 모드에서 mutation 결과 errors 표시용 */
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // ── Handlers ──────────────────────────────────────────────
   const submitOrder = useCallback(
@@ -236,6 +304,24 @@ export default function Simulator() {
       if (productType === "spot" && forSide === "short") return;
       if (qty <= 0 || effectivePrice <= 0) return;
       setSide(forSide);
+      setLocalError(null);
+
+      if (useLocalMode) {
+        const result = localOpenPosition({
+          simUserId: simUser.id,
+          symbol,
+          productType,
+          side: forSide,
+          leverage: productType === "spot" ? 1 : leverage,
+          entryPrice: effectivePrice,
+          quantity: qty,
+        });
+        if (result.error) setLocalError(result.error);
+        else setQtyText("");
+        bumpLocal();
+        return;
+      }
+
       openMutation.mutate({
         simUserId: simUser.id,
         symbol,
@@ -250,6 +336,7 @@ export default function Simulator() {
     },
     [
       simUser?.id,
+      useLocalMode,
       openMutation,
       symbol,
       productType,
@@ -263,6 +350,18 @@ export default function Simulator() {
 
   const handleClose = (positionId: number) => {
     if (!simUser?.id) return;
+    setLocalError(null);
+    if (useLocalMode) {
+      const result = localClosePosition({
+        simUserId: simUser.id,
+        positionId,
+        exitPrice: currentPrice,
+        reason: "manual",
+      });
+      if (result.error) setLocalError(result.error);
+      bumpLocal();
+      return;
+    }
     closeMutation.mutate({ simUserId: simUser.id, positionId });
   };
 
@@ -274,11 +373,24 @@ export default function Simulator() {
       )
     )
       return;
+    if (useLocalMode) {
+      localResetAccount(simUser.id);
+      setLocalError(null);
+      bumpLocal();
+      return;
+    }
     resetMutation.mutate({ simUserId: simUser.id });
   };
 
   const handleRefresh = () => {
     if (!simUser?.id) return;
+    if (useLocalMode) {
+      if (ticker) {
+        localMarkToMarket(simUser.id, new Map([[ticker.symbol, ticker.lastPrice]]));
+      }
+      bumpLocal();
+      return;
+    }
     refreshMutation.mutate({ simUserId: simUser.id });
   };
 
@@ -495,13 +607,13 @@ export default function Simulator() {
         </div>
       </div>
 
-      {/* Backend status warning */}
-      {isBackendUnavailable && (
-        <div className="rounded-md border border-neon-yellow/40 bg-neon-yellow/10 px-3 py-1.5 font-mono text-[11px] text-neon-yellow flex items-center gap-2">
+      {/* Local mode notice (backend DB unavailable) */}
+      {useLocalMode && (
+        <div className="rounded-md border border-neon-cyan/40 bg-neon-cyan/10 px-3 py-1.5 font-mono text-[11px] text-neon-cyan flex items-center gap-2">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           <span>
-            백엔드 또는 DB 가 비활성 상태입니다 — 차트/Order Book 은 정상이나
-            포지션은 저장되지 않습니다. Railway 재배포 완료 후 새로고침하세요.
+            로컬 모드 (LOCAL MODE) — 백엔드 DB 비활성. 포지션 / 거래내역이 이
+            브라우저에만 저장됩니다. 브라우저 캐시 삭제 시 사라집니다.
           </span>
         </div>
       )}
@@ -539,7 +651,6 @@ export default function Simulator() {
                 currentPrice={currentPrice}
                 height={420}
                 showLegend={false}
-                windowSize={120}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground font-mono">
@@ -760,6 +871,12 @@ export default function Simulator() {
             <div className="font-mono text-[10px] text-neon-red flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               {String((openMutation.data as any).error)}
+            </div>
+          )}
+          {localError && (
+            <div className="font-mono text-[10px] text-neon-red flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {localError}
             </div>
           )}
         </div>

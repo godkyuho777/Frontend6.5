@@ -29,7 +29,9 @@ interface CandleChartLWProps {
   trendlines?: Trendline[];
   bbSeries?: ChartBBPoint[];
   height?: number;
-  /** how many trailing candles to display (default 120) */
+  /** how many trailing candles to display (default: all loaded candles).
+   *  Pass a number to limit; pass undefined or 0 to show all loaded data so
+   *  the user can scroll/zoom freely through the full series. */
   windowSize?: number;
   /** show the floating legend row under the chart (default true) */
   showLegend?: boolean;
@@ -52,7 +54,7 @@ export function CandleChartLW({
   trendlines,
   bbSeries,
   height = 500,
-  windowSize = 120,
+  windowSize,
   showLegend = true,
 }: CandleChartLWProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,22 @@ export function CandleChartLW({
         borderColor: "rgba(255,255,255,0.1)",
         timeVisible: true,
         secondsVisible: false,
+        // 사용자가 차트 우측 끝을 넘어 미래 방향으로 스크롤 시 빈 공간 표시.
+        // Bybit / TradingView 와 동일한 UX.
+        rightOffset: 12,
+        // 휠 + 드래그로 시간축 panning 활성 (기본 true 인데 명시).
+        shiftVisibleRangeOnNewBar: true,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
       },
     });
 
@@ -118,7 +136,11 @@ export function CandleChartLW({
       wickDownColor: "#ff1744",
     });
 
-    const offsetIdx = Math.max(0, candles.length - windowSize);
+    // windowSize undefined / 0 → 전체 로드된 캔들 표시 (사용자가 마우스 휠 +
+    // 드래그로 자유롭게 zoom in / zoom out / scroll 가능). 시그널 트래커가
+    // 특정 범위만 시각화하려면 windowSize 를 명시적으로 넘긴다.
+    const effectiveWindow = windowSize && windowSize > 0 ? windowSize : candles.length;
+    const offsetIdx = Math.max(0, candles.length - effectiveWindow);
     const chartCandles = candles.slice(offsetIdx);
 
     candleSeries.setData(
