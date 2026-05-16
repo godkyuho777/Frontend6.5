@@ -16,18 +16,10 @@
 import { HudPanel } from "@/components/HudPanel";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ReferenceLine,
-} from "recharts";
+import { ReferenceLine } from "recharts";
 import { TrendingUp, TrendingDown, Check, X as IconX } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { computeVwapChartSeries } from "@/lib/vwap-engine";
 
 // ---------------------------------------------------------------------------
 // 타입 — 백엔드 d.ts 미러 (types-entry 에서 export 안 되어 인라인 정의)
@@ -158,28 +150,336 @@ export function VwapMultChip({ vwapMult }: { vwapMult: number | undefined }) {
 }
 
 // ---------------------------------------------------------------------------
-// VwapChartPanel — 캔들 + VWAP/EMA9 + ±σ 밴드
+// VwapChartPanel — lightweight-charts 기반 캔들 차트 + VWAP/EMA9 + ±σ 밴드
+//                  + 우측 Volume Profile DOM overlay
+//
+// 재설계 (2026-05-16):
+//   문제 1) Recharts Line 차트 → lightweight-charts CandlestickSeries 로 교체.
+//   문제 2) VWAP / EMA9 / Volume Profile 을 동일 차트 안에 통합.
+//   문제 3) 캔들 색상을 neon-cyan/neon-red 진하게 + grid opacity 낮춤.
+//   문제 4) 스칼라 한 점을 시리즈로 박는 버그 → vwap-engine 으로 캔들별 rolling 계산.
+//
+// Volume Profile 통합 — 옵션 1 (DOM overlay).
+//   lightweight-charts v5 의 `priceScale().priceToCoordinate(price)` 로
+//   Y 픽셀 좌표를 얻어 우측에서 좌측으로 horizontal histogram 을 SVG 로 그림.
+//   캔버스를 안 쓰는 이유: SVG 가 zoom/resize 시 React state 재계산 단순.
+//   기존 `<VolumeProfilePanel>` (상세 패널) 은 그대로 유지 — overlay 는 직관, 패널은 정량.
 // ---------------------------------------------------------------------------
 
-export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
-  const data = useMemo(() => {
-    const { candles, bands, vwap, ema9 } = detail;
-    return candles.map((c, i) => ({
-      idx: i,
-      ts: c.timestamp,
-      close: c.close,
-      vwap,
-      ema9,
-      upper1: bands.upper1,
-      upper2: bands.upper2,
-      upper3: bands.upper3,
-      lower1: bands.lower1,
-      lower2: bands.lower2,
-      lower3: bands.lower3,
-    }));
-  }, [detail]);
+// 색상 팔레트 — cyberpunk neon (RGBA / hex). lightweight-charts API 가 oklch 미지원.
+const COLOR = {
+  candleUp: "#00f0ff",         // neon-cyan
+  candleDown: "#ff4e82",       // neon-red/pink
+  candleUpWick: "rgba(0, 240, 255, 0.7)",
+  candleDownWick: "rgba(255, 78, 130, 0.7)",
+  vwap: "#FFD700",             // 노랑 — 핵심 reference
+  ema9: "#FF2EA0",             // neon-magenta
+  band1: "rgba(255, 200, 100, 0.55)",
+  band2: "rgba(255, 200, 100, 0.40)",
+  band3: "rgba(255, 200, 100, 0.25)",
+  bandLow1: "rgba(120, 200, 255, 0.55)",
+  bandLow2: "rgba(120, 200, 255, 0.40)",
+  bandLow3: "rgba(120, 200, 255, 0.25)",
+  grid: "rgba(255,255,255,0.05)",
+  axisText: "#888",
+  crosshair: "rgba(0,229,255,0.3)",
+  vpPoc: "rgba(255, 46, 160, 0.85)",      // POC — neon-pink 진하게
+  vpHvn: "rgba(0, 240, 255, 0.70)",        // HVN — neon-cyan
+  vpLvn: "rgba(180, 180, 180, 0.30)",      // LVN — 흐림
+  vpInVA: "rgba(0, 240, 255, 0.45)",       // Value Area 내부
+  vpDefault: "rgba(0, 240, 255, 0.35)",
+};
 
-  if (data.length === 0) {
+/**
+ * Volume Profile overlay 의 단일 bin 메타데이터.
+ * Y 픽셀 좌표는 차트 재렌더 시 priceToCoordinate 로 즉시 갱신되므로 state 에 저장.
+ */
+interface VpRow {
+  yTop: number;
+  yBottom: number;
+  widthPct: number;
+  color: string;
+  label?: string;
+}
+
+export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<{ remove: () => void } | null>(null);
+  const seriesApiRef = useRef<{
+    priceToCoordinate: (price: number) => number | null;
+  } | null>(null);
+
+  const [vpRows, setVpRows] = useState<VpRow[]>([]);
+
+  // 클라이언트 사이드 rolling 시리즈 — 백엔드 detail 은 스칼라만 주므로 재계산.
+  const series = useMemo(() => computeVwapChartSeries(detail.candles, 9), [detail.candles]);
+
+  /**
+   * Volume Profile bin 좌표 재계산.
+   * priceToCoordinate 는 차트 zoom/scroll/resize 후 매번 다른 값을 반환하므로
+   * timeScale / priceScale change 이벤트 마다 호출되어야 한다.
+   */
+  const recomputeVpRows = useCallback(() => {
+    const api = seriesApiRef.current;
+    const profile = detail.volumeProfile;
+    if (!api || !profile || profile.bins.length === 0) {
+      setVpRows([]);
+      return;
+    }
+    const maxVol = profile.bins.reduce((m, b) => (b.volume > m ? b.volume : m), 0);
+    if (maxVol <= 0) {
+      setVpRows([]);
+      return;
+    }
+    const hvnSet = new Set(profile.hvnList);
+    const lvnSet = new Set(profile.lvnList);
+    const va = profile.valueArea;
+    const rows: VpRow[] = [];
+    for (const bin of profile.bins) {
+      const yHigh = api.priceToCoordinate(bin.priceHigh);
+      const yLow = api.priceToCoordinate(bin.priceLow);
+      if (yHigh == null || yLow == null) continue;
+      const mid = (bin.priceLow + bin.priceHigh) / 2;
+      const isPoc = Math.abs(mid - profile.poc) < 1e-9;
+      const isHvn = hvnSet.has(mid);
+      const isLvn = lvnSet.has(mid);
+      const inVA = mid >= va.low && mid <= va.high;
+      const color = isPoc
+        ? COLOR.vpPoc
+        : isHvn
+          ? COLOR.vpHvn
+          : isLvn
+            ? COLOR.vpLvn
+            : inVA
+              ? COLOR.vpInVA
+              : COLOR.vpDefault;
+      rows.push({
+        yTop: Math.min(yHigh, yLow),
+        yBottom: Math.max(yHigh, yLow),
+        widthPct: (bin.volume / maxVol) * 100,
+        color,
+        label: isPoc ? "POC" : undefined,
+      });
+    }
+    setVpRows(rows);
+  }, [detail.volumeProfile]);
+
+  // 차트 초기화 — useCallback 으로 deps 안정화.
+  const initChart = useCallback(async () => {
+    if (!containerRef.current || detail.candles.length === 0) return;
+
+    const {
+      createChart,
+      CandlestickSeries,
+      HistogramSeries,
+      LineSeries,
+      ColorType,
+      LineStyle,
+      CrosshairMode,
+    } = await import("lightweight-charts");
+
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+
+    const container = containerRef.current;
+
+    const chart = createChart(container, {
+      width: container.clientWidth,
+      height: 360,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: COLOR.axisText,
+        fontFamily: "'Share Tech Mono', 'JetBrains Mono', monospace",
+        fontSize: 10,
+      },
+      grid: {
+        vertLines: { color: COLOR.grid },
+        horzLines: { color: COLOR.grid },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: COLOR.crosshair, width: 1, style: LineStyle.Dashed },
+        horzLine: { color: COLOR.crosshair, width: 1, style: LineStyle.Dashed },
+      },
+      rightPriceScale: {
+        borderColor: "rgba(255,255,255,0.1)",
+        scaleMargins: { top: 0.08, bottom: 0.22 }, // 하단 22% 는 볼륨 패널.
+      },
+      timeScale: {
+        borderColor: "rgba(255,255,255,0.1)",
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 4,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
+    });
+
+    chartRef.current = chart;
+
+    // ── 캔들 시리즈 ──────────────────────────────────────────────────────
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: COLOR.candleUp,
+      downColor: COLOR.candleDown,
+      borderUpColor: COLOR.candleUp,
+      borderDownColor: COLOR.candleDown,
+      wickUpColor: COLOR.candleUpWick,
+      wickDownColor: COLOR.candleDownWick,
+    });
+
+    seriesApiRef.current = {
+      priceToCoordinate: (price: number) => candleSeries.priceToCoordinate(price),
+    };
+
+    const candleData = detail.candles.map((c) => ({
+      time: Math.floor(c.timestamp / 1000) as never,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+    }));
+    candleSeries.setData(candleData);
+
+    // ── 볼륨 시리즈 (하단 패널) ─────────────────────────────────────────
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+      color: "rgba(100,100,255,0.4)",
+    });
+    chart.priceScale("volume").applyOptions({
+      scaleMargins: { top: 0.85, bottom: 0 },
+    });
+    volumeSeries.setData(
+      detail.candles.map((c) => ({
+        time: Math.floor(c.timestamp / 1000) as never,
+        value: c.volume,
+        color: c.close >= c.open ? "rgba(0,240,255,0.4)" : "rgba(255,78,130,0.4)",
+      }))
+    );
+
+    // ── VWAP 라인 (굵은 노랑) ───────────────────────────────────────────
+    const vwapLine = chart.addSeries(LineSeries, {
+      color: COLOR.vwap,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: false,
+      title: "VWAP",
+    });
+    vwapLine.setData(
+      detail.candles.map((c, i) => ({
+        time: Math.floor(c.timestamp / 1000) as never,
+        value: series.vwap[i],
+      }))
+    );
+
+    // ── EMA(9) 라인 (neon-magenta) ──────────────────────────────────────
+    const emaLine = chart.addSeries(LineSeries, {
+      color: COLOR.ema9,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: false,
+      title: "EMA(9)",
+    });
+    emaLine.setData(
+      detail.candles.map((c, i) => ({
+        time: Math.floor(c.timestamp / 1000) as never,
+        value: series.ema9[i],
+      }))
+    );
+
+    // ── ±σ 밴드 라인 6개 (dashed, 옅음) ─────────────────────────────────
+    const bandConfigs: {
+      key: keyof typeof series.bands;
+      color: string;
+      width: 1;
+      label: string;
+    }[] = [
+      { key: "upper3", color: COLOR.band3, width: 1, label: "+3σ" },
+      { key: "upper2", color: COLOR.band2, width: 1, label: "+2σ" },
+      { key: "upper1", color: COLOR.band1, width: 1, label: "+1σ" },
+      { key: "lower1", color: COLOR.bandLow1, width: 1, label: "-1σ" },
+      { key: "lower2", color: COLOR.bandLow2, width: 1, label: "-2σ" },
+      { key: "lower3", color: COLOR.bandLow3, width: 1, label: "-3σ" },
+    ];
+    for (const cfg of bandConfigs) {
+      const line = chart.addSeries(LineSeries, {
+        color: cfg.color,
+        lineWidth: cfg.width,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        title: cfg.label,
+      });
+      line.setData(
+        detail.candles.map((c, i) => ({
+          time: Math.floor(c.timestamp / 1000) as never,
+          value: series.bands[cfg.key][i],
+        }))
+      );
+    }
+
+    chart.timeScale().fitContent();
+
+    // ── Volume Profile overlay 좌표 재계산 트리거 ──────────────────────
+    // 차트 timeScale 변경 / priceScale autoscale 발생 시마다 priceToCoordinate
+    // 결과가 달라지므로, subscribe 콜백에서 setState.
+    recomputeVpRows();
+    const subscription = chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+      recomputeVpRows();
+    });
+
+    // Resize handler — container 폭 변경 + Y 축 픽셀 좌표 재계산.
+    const handleResize = () => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth });
+        // priceToCoordinate 가 즉시 갱신 안 될 수 있어 다음 frame 에 재계산.
+        requestAnimationFrame(recomputeVpRows);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      try {
+        chart.timeScale().unsubscribeVisibleTimeRangeChange(subscription as never);
+      } catch {
+        // ignore
+      }
+      chart.remove();
+    };
+  }, [detail.candles, series, recomputeVpRows]);
+
+  useEffect(() => {
+    const cleanupPromise = initChart();
+    return () => {
+      cleanupPromise?.then((fn) => fn?.());
+      if (chartRef.current) {
+        try {
+          chartRef.current.remove();
+        } catch {
+          // ignore
+        }
+        chartRef.current = null;
+      }
+      seriesApiRef.current = null;
+    };
+  }, [initChart]);
+
+  if (detail.candles.length === 0) {
     return (
       <p className="font-mono text-xs text-muted-foreground py-4">
         캔들 데이터 없음 — 잠시 후 다시 시도하세요.
@@ -188,127 +488,85 @@ export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
   }
 
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="oklch(0.3 0 0 / 0.3)" strokeDasharray="2 4" />
-          <XAxis
-            dataKey="idx"
-            tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
-            stroke="oklch(0.6 0 0)"
-          />
-          <YAxis
-            domain={["auto", "auto"]}
-            tick={{ fontSize: 9, fontFamily: "Share Tech Mono" }}
-            stroke="oklch(0.6 0 0)"
-            width={56}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "oklch(0.18 0 0 / 0.95)",
-              border: "1px solid oklch(0.4 0.15 280)",
-              fontFamily: "Share Tech Mono",
-              fontSize: "11px",
-            }}
-            labelFormatter={(v) => `Candle #${v}`}
-            formatter={(v: number, name) => [
-              typeof v === "number" ? v.toFixed(4) : v,
-              name,
-            ]}
-          />
-          {/* Bands — 얇은 점선 */}
-          <Line
-            type="monotone"
-            dataKey="upper3"
-            stroke="oklch(0.7 0.15 30 / 0.4)"
-            strokeWidth={1}
-            strokeDasharray="2 3"
-            dot={false}
-            isAnimationActive={false}
-            name="+3σ"
-          />
-          <Line
-            type="monotone"
-            dataKey="upper2"
-            stroke="oklch(0.7 0.15 30 / 0.6)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-            dot={false}
-            isAnimationActive={false}
-            name="+2σ"
-          />
-          <Line
-            type="monotone"
-            dataKey="upper1"
-            stroke="oklch(0.7 0.15 30 / 0.7)"
-            strokeWidth={1}
-            strokeDasharray="1 2"
-            dot={false}
-            isAnimationActive={false}
-            name="+1σ"
-          />
-          <Line
-            type="monotone"
-            dataKey="lower1"
-            stroke="oklch(0.7 0.15 200 / 0.7)"
-            strokeWidth={1}
-            strokeDasharray="1 2"
-            dot={false}
-            isAnimationActive={false}
-            name="-1σ"
-          />
-          <Line
-            type="monotone"
-            dataKey="lower2"
-            stroke="oklch(0.7 0.15 200 / 0.6)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-            dot={false}
-            isAnimationActive={false}
-            name="-2σ"
-          />
-          <Line
-            type="monotone"
-            dataKey="lower3"
-            stroke="oklch(0.7 0.15 200 / 0.4)"
-            strokeWidth={1}
-            strokeDasharray="2 3"
-            dot={false}
-            isAnimationActive={false}
-            name="-3σ"
-          />
-          {/* VWAP — 노란색 실선 */}
-          <Line
-            type="monotone"
-            dataKey="vwap"
-            stroke="oklch(0.85 0.18 95)"
-            strokeWidth={1.5}
-            dot={false}
-            isAnimationActive={false}
-            name="VWAP"
-          />
-          {/* EMA(9) — 청록색 실선 */}
-          <Line
-            type="monotone"
-            dataKey="ema9"
-            stroke="oklch(0.75 0.15 200)"
-            strokeWidth={1.5}
-            dot={false}
-            isAnimationActive={false}
-            name="EMA(9)"
-          />
-          {/* Close — 흰색 굵은 선 (캔들 대신 단순화) */}
-          <Line
-            type="monotone"
-            dataKey="close"
-            stroke="oklch(0.95 0 0)"
-            strokeWidth={1.5}
-            dot={false}
-            isAnimationActive={false}
-            name="Close"
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+    <div className="space-y-2">
+      <div className="relative">
+        <div ref={containerRef} className="w-full" style={{ minHeight: 360 }} />
+        {/* Volume Profile overlay — 우측에서 좌측으로 가로 막대. 차트 영역 위 */}
+        {/* 절대 위치 SVG (pointer-events: none 으로 차트 인터랙션 방해 안 함). */}
+        {vpRows.length > 0 && (
+          <svg
+            className="pointer-events-none absolute inset-0"
+            width="100%"
+            height="100%"
+            style={{ overflow: "visible" }}
+          >
+            {vpRows.map((row, i) => {
+              const height = Math.max(1, row.yBottom - row.yTop);
+              // 차트 우측 끝에서 안쪽으로 max 22% 폭의 막대.
+              const widthPct = (row.widthPct / 100) * 22;
+              return (
+                <g key={i}>
+                  <rect
+                    x={`${100 - widthPct - 6}%`}
+                    y={row.yTop}
+                    width={`${widthPct}%`}
+                    height={height}
+                    fill={row.color}
+                  />
+                  {row.label && (
+                    <text
+                      x="98%"
+                      y={(row.yTop + row.yBottom) / 2 + 3}
+                      textAnchor="end"
+                      fontFamily="Share Tech Mono"
+                      fontSize="9"
+                      fill="#ff2ea0"
+                    >
+                      {row.label}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        )}
+      </div>
+      {/* 범례 — 라인 매핑 한눈에 */}
+      <div className="flex flex-wrap items-center gap-3 px-1 pt-1 border-t border-border/20">
+        <LegendDot color={COLOR.vwap} label="VWAP" />
+        <LegendDot color={COLOR.ema9} label="EMA(9)" />
+        <LegendDot color={COLOR.band1} label="±1σ" dashed />
+        <LegendDot color={COLOR.band2} label="±2σ" dashed />
+        <LegendDot color={COLOR.band3} label="±3σ" dashed />
+        <LegendDot color={COLOR.candleUp} label="UP" />
+        <LegendDot color={COLOR.candleDown} label="DOWN" />
+        <LegendDot color={COLOR.vpPoc} label="POC" />
+        <LegendDot color={COLOR.vpHvn} label="HVN" />
+      </div>
+    </div>
+  );
+}
+
+function LegendDot({
+  color,
+  label,
+  dashed,
+}: {
+  color: string;
+  label: string;
+  dashed?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div
+        className="w-4 h-0.5"
+        style={
+          dashed
+            ? { borderTop: `1px dashed ${color}` }
+            : { backgroundColor: color }
+        }
+      />
+      <span className="font-mono text-[9px] text-muted-foreground">{label}</span>
     </div>
   );
 }
