@@ -118,7 +118,7 @@ function VwapCandleChart({ detail }: { detail: VwapDetailLite }) {
   const data = useMemo(() => {
     return candles.map((c: CandleLite, i: number) => ({
       idx: i,
-      ts: c.timestamp,
+      ts: c.openTime,
       open: c.open,
       high: c.high,
       low: c.low,

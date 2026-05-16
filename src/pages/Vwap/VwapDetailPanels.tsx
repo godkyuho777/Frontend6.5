@@ -84,12 +84,19 @@ export interface MultiTfAlignment {
 }
 
 export interface CandleLite {
-  timestamp: number;
+  /**
+   * 백엔드 `Candle.openTime` (epoch ms) 와 1:1 매칭.
+   * (`tradelab-backend/src/shared/types.ts:34`) — 이전엔 `timestamp` 였으나
+   * 백엔드 응답 필드명과 불일치해 차트 X 축이 NaN → "Invalid Date" 로 깨졌음.
+   */
+  openTime: number;
   open: number;
   high: number;
   low: number;
   close: number;
   volume: number;
+  /** 백엔드 `Candle.closeTime` — 시각화에 직접 쓰진 않지만 forward-compatible. */
+  closeTime?: number;
 }
 
 export interface VwapDetailLite {
@@ -343,7 +350,7 @@ export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
     };
 
     const candleData = detail.candles.map((c) => ({
-      time: Math.floor(c.timestamp / 1000) as never,
+      time: Math.floor(c.openTime / 1000) as never,
       open: c.open,
       high: c.high,
       low: c.low,
@@ -362,7 +369,7 @@ export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
     });
     volumeSeries.setData(
       detail.candles.map((c) => ({
-        time: Math.floor(c.timestamp / 1000) as never,
+        time: Math.floor(c.openTime / 1000) as never,
         value: c.volume,
         color: c.close >= c.open ? "rgba(0,240,255,0.4)" : "rgba(255,78,130,0.4)",
       }))
@@ -379,7 +386,7 @@ export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
     });
     vwapLine.setData(
       detail.candles.map((c, i) => ({
-        time: Math.floor(c.timestamp / 1000) as never,
+        time: Math.floor(c.openTime / 1000) as never,
         value: series.vwap[i],
       }))
     );
@@ -395,7 +402,7 @@ export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
     });
     emaLine.setData(
       detail.candles.map((c, i) => ({
-        time: Math.floor(c.timestamp / 1000) as never,
+        time: Math.floor(c.openTime / 1000) as never,
         value: series.ema9[i],
       }))
     );
@@ -426,7 +433,7 @@ export function VwapChartPanel({ detail }: { detail: VwapDetailLite }) {
       });
       line.setData(
         detail.candles.map((c, i) => ({
-          time: Math.floor(c.timestamp / 1000) as never,
+          time: Math.floor(c.openTime / 1000) as never,
           value: series.bands[cfg.key][i],
         }))
       );
