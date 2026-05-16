@@ -434,6 +434,8 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         unit: "%",
         digits: 2,
         positiveIsGood: true,
+        // 백엔드 layer 는 fraction (0.0034 = 0.34%) → ×100 으로 % 환산
+        formatValue: v => `${(v * 100).toFixed(2)}%`,
       },
       {
         label: "Net Liquidity 30d",
@@ -442,6 +444,8 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         unit: "%",
         digits: 2,
         positiveIsGood: true,
+        // 백엔드 layer 는 fraction (0.0034 = 0.34%) → ×100 으로 % 환산
+        formatValue: v => `${(v * 100).toFixed(2)}%`,
       },
     ],
   },
@@ -684,6 +688,8 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         digits: 2,
         positiveIsGood: false,
         primary: true,
+        // 백엔드 layer 는 fraction (-0.00857 = -0.86%) → ×100 으로 % 환산
+        formatValue: v => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%`,
       },
       {
         label: "VIX Level",
@@ -831,6 +837,8 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         unit: "%",
         digits: 2,
         positiveIsGood: true,
+        // 백엔드 layer 는 fraction (0.0034 = 0.34%) → ×100 으로 % 환산
+        formatValue: v => `${(v * 100).toFixed(2)}%`,
       },
     ],
   },
