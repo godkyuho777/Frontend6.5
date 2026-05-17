@@ -22,7 +22,8 @@
  * (자본 보호) 와 별개로 사용자 학습 / UX 실험용.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,20 +44,23 @@ import {
   type SimTicker,
 } from "@/lib/bybit-simulator";
 import {
-  getLocalAccount,
-  getLocalPositions,
-  getLocalTransactions,
-  computeLocalEquity,
   localOpenPosition,
   localClosePosition,
   localResetAccount,
   localMarkToMarket,
-  getLocalOrders,
+  getLocalPositions,
   addLocalOrder,
   updateLocalOrder,
   cancelLocalOrder,
   type SimOrder,
 } from "@/lib/sim-local-store";
+import {
+  useLocalAccountSync,
+  useLocalEquitySync,
+  useLocalPositionsSync,
+  useLocalOrdersSync,
+  useLocalTransactionsSync,
+} from "@/hooks/useSimLocalStore";
 import {
   Wallet,
   TrendingUp,
@@ -136,10 +140,6 @@ export default function Simulator() {
 
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput] = useState("");
-
-  /** Local store revision counter — increment to force re-read after mutation */
-  const [localRev, setLocalRev] = useState(0);
-  const bumpLocal = () => setLocalRev((r) => r + 1);
 
   // ── tRPC (only when registered) ───────────────────────────
   const trpcEnabled = !!simUser?.id;
@@ -240,60 +240,33 @@ export default function Simulator() {
   const useLocalMode: boolean = !!simUser?.id && !!isBackendUnavailable;
 
   // ── Derived (backend OR local store) ─────────────────────
-  // 의존성: useLocalMode + localRev → mutation 후 자동 refresh
-  // localRev 를 명시적으로 useMemo dep 에 포함시켜야 bumpLocal() 호출이 실제
-  // 재계산을 유발한다 (`void localRev;` 만으로는 React 가 의존성을 추적하지 못함).
-  const localAccount = useMemo(
-    () =>
-      simUser?.id && useLocalMode ? getLocalAccount(simUser.id) : null,
-    [simUser?.id, useLocalMode, localRev],
-  );
-  const localEquity = useMemo(
-    () =>
-      simUser?.id && useLocalMode ? computeLocalEquity(simUser.id) : null,
-    [simUser?.id, useLocalMode, localRev],
-  );
-  const localOpenPositions = useMemo(
-    () =>
-      simUser?.id && useLocalMode
-        ? getLocalPositions(simUser.id, { includeClosed: false })
-        : [],
-    [simUser?.id, useLocalMode, localRev],
-  );
-  const localAllPositions = useMemo(
-    () =>
-      simUser?.id && useLocalMode && bottomTab === "order-history"
-        ? getLocalPositions(simUser.id, { includeClosed: true, limit: 100 })
-        : [],
-    [simUser?.id, useLocalMode, bottomTab, localRev],
-  );
-  const localTxs = useMemo(
-    () =>
-      simUser?.id && useLocalMode && bottomTab === "trade-history"
-        ? getLocalTransactions(simUser.id, 100)
-        : [],
-    [simUser?.id, useLocalMode, bottomTab, localRev],
-  );
+  //
+  // useSyncExternalStore 기반 hook 으로 외부 store 의 변경을 동기적으로
+  // 수신. 기존 localRev / useMemo 패턴은 ticker 갱신과 mutation 사이의
+  // race condition 으로 Position 카드 깜빡거림을 유발했다 — emit-based
+  // subscription 으로 완전 제거.
+  //
+  // 호출 자체는 useLocalMode 와 무관하게 항상 수행 (Hook 규칙 — 조건부
+  // 호출 금지). 백엔드 모드일 땐 결과를 사용하지 않을 뿐 비용 없음.
+  const localAccount = useLocalAccountSync(simUser?.id);
+  const localEquity = useLocalEquitySync(simUser?.id);
+  const localOpenPositions = useLocalPositionsSync(simUser?.id, "open");
+  const localClosedPositions = useLocalPositionsSync(simUser?.id, "closed");
+  const localTxs = useLocalTransactionsSync(simUser?.id, 100);
   /** Pending limit orders — 항상 가져와 Open Orders 탭 카운트 표시 + 트리거 검사 */
-  const localPendingOrders = useMemo<SimOrder[]>(
-    () =>
-      simUser?.id && useLocalMode
-        ? getLocalOrders(simUser.id, "pending")
-        : [],
-    [simUser?.id, useLocalMode, localRev],
-  );
+  const localPendingOrders = useLocalOrdersSync(simUser?.id, "pending");
 
   const account = useLocalMode
     ? localAccount
       ? {
           cash: localAccount.cash,
-          equity: localEquity?.equity ?? localAccount.cash,
+          equity: localEquity.equity || localAccount.cash,
           realizedPnl: localAccount.realizedPnl,
           totalCommission: localAccount.totalCommission,
           totalFunding: localAccount.totalFunding,
           liquidationCount: localAccount.liquidationCount,
-          openPositions: localEquity?.openCount ?? 0,
-          unrealizedPnl: localEquity?.unrealizedPnl ?? 0,
+          openPositions: localEquity.openCount,
+          unrealizedPnl: localEquity.unrealizedPnl,
           available: false as const,
         }
       : null
@@ -301,7 +274,7 @@ export default function Simulator() {
 
   const positions = useLocalMode ? localOpenPositions : (positionsQuery.data ?? []);
   const closedPositions = useLocalMode
-    ? localAllPositions.filter((p) => p.status !== "open")
+    ? localClosedPositions
     : (allPositionsQuery.data ?? []).filter((p: any) => p.status !== "open");
   const transactions = useLocalMode ? localTxs : (transactionsQuery.data ?? []);
 
@@ -318,12 +291,45 @@ export default function Simulator() {
   const isAffordable =
     cashAvailable >= totalCost && qty > 0 && effectivePrice > 0;
 
-  /** Local 모드에서 ticker 갱신 시 해당 심볼의 open 포지션을 mark-to-market. */
+  /**
+   * Local 모드에서 ticker 갱신 시:
+   *   1. 해당 심볼의 open 포지션을 mark-to-market
+   *   2. 청산가 도달한 포지션을 강제청산 (liquidation reason)
+   *
+   * `localMarkToMarket` 와 `localClosePosition` 모두 내부에서 emitSimChange()
+   * 호출하므로 별도 setState 트리거 불필요.
+   */
   useEffect(() => {
     if (!useLocalMode || !simUser?.id || !ticker) return;
+
+    // 1) Mark-to-market
     const prices = new Map<string, number>([[ticker.symbol, ticker.lastPrice]]);
-    const { updated } = localMarkToMarket(simUser.id, prices);
-    if (updated > 0) bumpLocal();
+    localMarkToMarket(simUser.id, prices);
+
+    // 2) 청산 검사
+    const openPositions = getLocalPositions(simUser.id, { includeClosed: false });
+    for (const pos of openPositions) {
+      if (pos.symbol !== ticker.symbol) continue;
+      if (!pos.liqPrice || pos.liqPrice <= 0) continue;
+      const mark = ticker.lastPrice;
+      const hit =
+        pos.side === "long" ? mark <= pos.liqPrice : mark >= pos.liqPrice;
+      if (!hit) continue;
+      const result = localClosePosition({
+        simUserId: simUser.id,
+        positionId: pos.id,
+        exitPrice: pos.liqPrice,
+        reason: "liquidation",
+      });
+      if (!result.error) {
+        toast.error(
+          `${pos.symbol} ${pos.side.toUpperCase()} 강제청산`,
+          {
+            description: `청산가 $${pos.liqPrice.toFixed(2)} 도달 · 마진 $${pos.margin.toFixed(2)} 전손`,
+          },
+        );
+      }
+    }
   }, [useLocalMode, simUser?.id, ticker]);
 
   /**
@@ -343,10 +349,10 @@ export default function Simulator() {
    */
   useEffect(() => {
     if (!useLocalMode || !simUser?.id || !ticker) return;
-    const orders = getLocalOrders(simUser.id, "pending");
-    if (orders.length === 0) return;
-    let triggered = 0;
-    for (const order of orders) {
+    // localPendingOrders 는 useLocalOrdersSync 가 항상 최신을 보장하므로
+    // 별도 read 불필요. 단, 본 effect 는 ticker 변경 시에만 트리거되어야
+    // 하므로 의존성에서 localPendingOrders 는 제외 (무한 루프 방지).
+    for (const order of localPendingOrders) {
       if (order.type !== "limit") continue;
       if (!order.limitPrice || order.limitPrice <= 0) continue;
       if (order.symbol !== ticker.symbol) continue;
@@ -374,11 +380,9 @@ export default function Simulator() {
         filledAt: Date.now(),
         filledPrice: order.limitPrice,
       });
-      triggered++;
     }
-    if (triggered > 0) bumpLocal();
-    // localRev 는 의도적으로 의존성에서 제외 — 위 mark-to-market useEffect 가
-    // 갱신할 때 무한루프 방지.
+    // localPendingOrders 가 dep 에 빠진 건 의도적 (위 mark-to-market 과
+    // 무한 루프 방지). 다음 ticker 갱신에서 자연스럽게 재실행됨.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useLocalMode, simUser?.id, ticker]);
 
@@ -414,7 +418,6 @@ export default function Simulator() {
             marginMode,
           });
           setQtyText("");
-          bumpLocal();
           return;
         }
         // Market 주문 — 기존 흐름 (즉시 position 생성).
@@ -429,7 +432,6 @@ export default function Simulator() {
         });
         if (result.error) setLocalError(result.error);
         else setQtyText("");
-        bumpLocal();
         return;
       }
 
@@ -463,7 +465,6 @@ export default function Simulator() {
     if (!simUser?.id) return;
     if (!useLocalMode) return;
     cancelLocalOrder(simUser.id, orderId);
-    bumpLocal();
   };
 
   const handleClose = (positionId: number) => {
@@ -477,7 +478,6 @@ export default function Simulator() {
         reason: "manual",
       });
       if (result.error) setLocalError(result.error);
-      bumpLocal();
       return;
     }
     closeMutation.mutate({ simUserId: simUser.id, positionId });
@@ -494,7 +494,6 @@ export default function Simulator() {
     if (useLocalMode) {
       localResetAccount(simUser.id);
       setLocalError(null);
-      bumpLocal();
       return;
     }
     resetMutation.mutate({ simUserId: simUser.id });
@@ -506,7 +505,6 @@ export default function Simulator() {
       if (ticker) {
         localMarkToMarket(simUser.id, new Map([[ticker.symbol, ticker.lastPrice]]));
       }
-      bumpLocal();
       return;
     }
     refreshMutation.mutate({ simUserId: simUser.id });
@@ -1337,9 +1335,10 @@ function PositionsTable({
             <th className="text-right px-2 py-1.5">Qty</th>
             <th className="text-right px-2 py-1.5">Entry</th>
             <th className="text-right px-2 py-1.5">{showClosed ? "Exit" : "Mark"}</th>
+            <th className="text-right px-2 py-1.5">Liq Price</th>
             <th className="text-right px-2 py-1.5">P&L</th>
             <th className="text-right px-2 py-1.5">P&L %</th>
-            <th className="text-left px-2 py-1.5">Time</th>
+            <th className="text-left px-2 py-1.5">{showClosed ? "Reason" : "Time"}</th>
             {!showClosed && <th className="px-2 py-1.5"></th>}
           </tr>
         </thead>
@@ -1353,6 +1352,37 @@ function PositionsTable({
               ? (p.closedPnl ?? 0)
               : dir * (mark - p.entryPrice) * p.quantity * p.leverage;
             const pnlPct = p.margin > 0 ? (pnl / p.margin) * 100 : 0;
+
+            // Liq price: 신규 필드 우선, 없으면 legacy liquidationPrice fallback.
+            const liqPrice: number | null =
+              typeof p.liqPrice === "number" && p.liqPrice > 0
+                ? p.liqPrice
+                : typeof p.liquidationPrice === "number" && p.liquidationPrice > 0
+                  ? p.liquidationPrice
+                  : null;
+
+            // 청산까지 거리 (%). 양수 = 안전 여유. open 일 때만 계산.
+            let liqDistancePct: number | null = null;
+            if (!showClosed && liqPrice != null && mark > 0) {
+              liqDistancePct =
+                p.side === "long"
+                  ? ((mark - liqPrice) / mark) * 100
+                  : ((liqPrice - mark) / mark) * 100;
+            }
+            // 색상 단계: <1% 위험 (red), 1~5% 경고 (yellow), >5% 정상 (muted).
+            const liqColor = showClosed
+              ? "text-muted-foreground"
+              : liqDistancePct == null
+                ? "text-muted-foreground"
+                : liqDistancePct < 1
+                  ? "text-neon-red"
+                  : liqDistancePct < 5
+                    ? "text-neon-yellow"
+                    : "text-muted-foreground";
+
+            const isLiquidated =
+              p.status === "liquidated" || p.closedReason === "liquidation";
+
             return (
               <tr
                 key={p.id}
@@ -1388,6 +1418,15 @@ function PositionsTable({
                 <td className="px-2 py-1.5 text-right text-foreground">
                   ${formatPrice(mark)}
                 </td>
+                <td className={cn("px-2 py-1.5 text-right", liqColor)}>
+                  {liqPrice != null ? `$${formatPrice(liqPrice)}` : "—"}
+                  {liqDistancePct != null && !showClosed && (
+                    <span className="block text-[9px] opacity-70">
+                      {liqDistancePct >= 0 ? "" : ""}
+                      {liqDistancePct.toFixed(2)}% 여유
+                    </span>
+                  )}
+                </td>
                 <td
                   className={cn(
                     "px-2 py-1.5 text-right font-bold",
@@ -1407,14 +1446,22 @@ function PositionsTable({
                   {pnlPct.toFixed(2)}%
                 </td>
                 <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
-                  {new Date(
-                    showClosed ? p.closedAt ?? p.openedAt : p.openedAt,
-                  ).toLocaleString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {showClosed ? (
+                    isLiquidated ? (
+                      <Badge className="font-mono text-[9px] uppercase bg-neon-red/15 text-neon-red border-neon-red/40">
+                        강제청산
+                      </Badge>
+                    ) : (
+                      <span>수동 종료</span>
+                    )
+                  ) : (
+                    new Date(p.openedAt).toLocaleString("ko-KR", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  )}
                 </td>
                 {!showClosed && (
                   <td className="px-2 py-1.5 text-right">
