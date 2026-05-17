@@ -23,6 +23,7 @@ import {
   Megaphone,
   Minus,
   Plus,
+  Radar,
   Ruler,
   Settings2,
   Sparkles,
@@ -110,6 +111,7 @@ const workspaceItems: MenuItem[] = [
   { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
   { icon: Wallet, label: "Investment Simulator 💰", path: "/simulator" },
   { icon: Database, label: "Onchain data", path: "/onchain" },
+  { icon: Radar, label: "Sector Pulse ✨", path: "/sectors" },
 ];
 
 const accountItems: MenuItem[] = [

@@ -24,6 +24,7 @@ import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Simulator from "./pages/Simulator";
 import Onchain from "./pages/Onchain";
+import SectorPulse from "./pages/SectorPulse";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
 import CalibrationAdmin from "./pages/admin/Calibration";
@@ -131,6 +132,8 @@ function ProShell() {
         <Route path={"/backtest"} component={Backtest} />
         <Route path={"/simulator"} component={Simulator} />
         <Route path={"/onchain"} component={Onchain} />
+        {/* Sector Pulse — 12 섹터 24h % 변동 + drill-down (디스커버리). */}
+        <Route path={"/sectors"} component={SectorPulse} />
         <Route path={"/charter"} component={Charter} />
         <Route path={"/admin/health"} component={HealthCheck} />
         <Route path={"/admin/calibration"} component={CalibrationAdmin} />
