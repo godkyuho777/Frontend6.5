@@ -66,7 +66,33 @@ export function useLocalAccountSync(
  *   - "open": status === "open" 만
  *   - "closed": status !== "open" 만 (closed + liquidated 포함)
  *   - "all": 전부
+ *
+ * 🚨 React #185 fix (2026-05-19): 본 hook 의 getSnapshot 은 반드시 stable
+ * reference 를 반환해야 한다 (useSyncExternalStore 가 동일 render 내에서
+ * 여러 번 호출하며 Object.is 비교로 안정성 검증).
+ *
+ * 과거: `filter === "closed"` 에서 `all.filter(...)` 를 매 호출마다 새
+ * Array 로 만들어 → unstable snapshot → React 가 무한 loop 감지 → 프로덕션
+ * minified build 에서 #185 (Maximum update depth) 발생.
+ *
+ * 수정: filter 가 "all" 이 아니면 결과 array 의 (id, status, currentPrice)
+ * tuple 을 key 로 캐싱. 같은 raw 데이터에 대해 같은 array 를 반환.
  */
+const _filteredPositionsCache = new Map<
+  string,
+  { signature: string; result: LocalSimPosition[] }
+>();
+
+function buildPositionSignature(positions: LocalSimPosition[]): string {
+  // 가격 / 상태 / 청산가 변화를 모두 포착하는 fingerprint.
+  return positions
+    .map(
+      (p) =>
+        `${p.id}:${p.status}:${p.currentPrice ?? 0}:${p.closedPnl ?? 0}`,
+    )
+    .join("|");
+}
+
 export function useLocalPositionsSync(
   userId: string | null | undefined,
   filter: "open" | "closed" | "all" = "open",
@@ -76,11 +102,23 @@ export function useLocalPositionsSync(
     () => {
       if (!userId) return EMPTY_POSITIONS as LocalSimPosition[];
       if (filter === "open") {
+        // getLocalPositions 자체가 캐시된 stable reference 반환.
         return getLocalPositions(userId, { includeClosed: false });
       }
       const all = getLocalPositions(userId, { includeClosed: true, limit: 200 });
       if (filter === "all") return all;
-      return all.filter((p) => p.status !== "open");
+
+      // "closed" 분기 — .filter() 가 매번 새 array 를 만들어 #185 유발.
+      // (userId|filter) 별로 signature 비교 캐시.
+      const cacheKey = `${userId}|${filter}`;
+      const signature = buildPositionSignature(all);
+      const cached = _filteredPositionsCache.get(cacheKey);
+      if (cached && cached.signature === signature) {
+        return cached.result;
+      }
+      const filtered = all.filter((p) => p.status !== "open");
+      _filteredPositionsCache.set(cacheKey, { signature, result: filtered });
+      return filtered;
     },
     () => EMPTY_POSITIONS as LocalSimPosition[],
   );
