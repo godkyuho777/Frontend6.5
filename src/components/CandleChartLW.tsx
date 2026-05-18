@@ -118,8 +118,14 @@ export function CandleChartLW({
         chartRef.current = null;
       }
 
+      // container.clientWidth 가 0 인 순간이면 (mobile / 늦게 mount 되는 부모)
+      // 차트가 0×0 으로 생성되어 canvas 가 보이지 않는다. 최소 1px 로
+      // fallback 한 후, 아래의 ResizeObserver 가 실제 width 가 들어오는
+      // 즉시 applyOptions 로 갱신한다.
+      const initialWidth = container.clientWidth || 1;
+
       const chart = createChart(container, {
-        width: container.clientWidth,
+        width: initialWidth,
         height,
         layout: {
           background: { type: ColorType.Solid, color: "transparent" },
@@ -181,16 +187,47 @@ export function CandleChartLW({
       setupCompleteRef.current = true;
       lastFirstTimeRef.current = null;
 
-      // 컨테이너 리사이즈 핸들러
+      // 컨테이너 리사이즈 핸들러 (window resize 만 잡음 — 부모 컨테이너의
+      // 비동기 layout 변화는 별도 ResizeObserver 로 처리).
       const onResize = () => {
         if (containerRef.current && chartRef.current) {
-          chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
+          const w = containerRef.current.clientWidth;
+          if (w > 0) {
+            chartRef.current.applyOptions({ width: w });
+          }
         }
       };
       window.addEventListener("resize", onResize);
 
+      // ResizeObserver — container 의 실제 width 변화를 추적.
+      // 초기 mount 시 container.clientWidth=0 인 케이스 (mobile / late
+      // hydration / parent flex 가 늦게 settle) 를 정확히 잡아준다.
+      let didFirstFit = false;
+      const resizeObs = new ResizeObserver((entries) => {
+        if (!chartRef.current) return;
+        const entry = entries[0];
+        if (!entry) return;
+        const w = Math.floor(entry.contentRect.width);
+        if (w > 0) {
+          try {
+            chartRef.current.applyOptions({ width: w });
+            // 첫 non-zero width 가 들어왔을 때 한 번 fitContent (캔들이
+            // 이미 setData 된 상태 대비). 이후 fitContent 는 호출 X →
+            // 사용자 zoom 보존.
+            if (!didFirstFit) {
+              didFirstFit = true;
+              chartRef.current.timeScale().fitContent();
+            }
+          } catch {
+            // ignore
+          }
+        }
+      });
+      resizeObs.observe(container);
+
       // cleanup 은 별도 useEffect 의 unmount 에서 처리 (아래)
       (chart as any).__onResize = onResize;
+      (chart as any).__resizeObs = resizeObs;
     })();
 
     return () => {
@@ -199,6 +236,14 @@ export function CandleChartLW({
       if (chart) {
         const onResize = (chart as any).__onResize;
         if (onResize) window.removeEventListener("resize", onResize);
+        const resizeObs = (chart as any).__resizeObs as ResizeObserver | undefined;
+        if (resizeObs) {
+          try {
+            resizeObs.disconnect();
+          } catch {
+            // ignore
+          }
+        }
         try {
           chart.remove();
         } catch {
