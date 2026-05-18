@@ -240,7 +240,20 @@ function getRawStorage(key: string): string {
 
 // ─── Account ───────────────────────────────────────────────
 
-export function getLocalAccount(simUserId: string): LocalSimAccount {
+/**
+ * **PURE READ** — localStorage 에 영속된 계정을 반환.  없으면 `null`.
+ *
+ * 🚨 React #185 무한 루프 fix (2026-05-18):
+ *   본 함수는 useSyncExternalStore 의 getSnapshot 으로 호출되므로 절대
+ *   mutation (saveJson / appendTransactionInternal / emitSimChange) 을
+ *   수행해서는 안 된다. 신규 계정 생성은 `ensureLocalAccount()` 로 분리.
+ *
+ *   과거 본 함수는 raw === "" 일 때 fresh 계정을 만들면서 storage 를
+ *   쓰고 transaction 을 append → emit 없이 끝났지만 raw 가 변하면서
+ *   다음 getSnapshot 호출 시 또 다른 결과를 반환할 수 있어 production
+ *   minified React (#185 Maximum update depth) 가 무한 루프로 감지.
+ */
+export function getLocalAccount(simUserId: string): LocalSimAccount | null {
   const key = storageKey(simUserId, "account");
   const raw = getRawStorage(key);
   const cached = _accountCache.get(simUserId);
@@ -253,7 +266,23 @@ export function getLocalAccount(simUserId: string): LocalSimAccount {
     _accountCache.set(simUserId, { rawKey: raw, result: existing });
     return existing;
   }
-  // 신규 — $200k 입금 + transaction 기록
+  // 🟢 더 이상 fresh 생성 X — null 반환.  명시적 mutation 은 ensureLocalAccount.
+  return null;
+}
+
+/**
+ * 신규 계정 생성 (없으면).  명시적 mutation — 절대 getSnapshot 안에서
+ * 호출 X.  호출 위치:
+ *   - `useSimUser.register` 완료 직후 (Simulator.tsx onRegister 핸들러)
+ *   - `localResetAccount` 의 fresh 재발급
+ *   - 그 외 explicit user action
+ *
+ * 기존 계정 있으면 그대로 반환 (idempotent).
+ */
+export function ensureLocalAccount(simUserId: string): LocalSimAccount {
+  const existing = getLocalAccount(simUserId);
+  if (existing) return existing;
+
   const fresh: LocalSimAccount = {
     cash: INITIAL_CASH,
     realizedPnl: 0,
@@ -262,6 +291,7 @@ export function getLocalAccount(simUserId: string): LocalSimAccount {
     liquidationCount: 0,
     available: false,
   };
+  const key = storageKey(simUserId, "account");
   saveJson(key, fresh);
   appendTransactionInternal(simUserId, {
     positionId: null,
@@ -273,6 +303,7 @@ export function getLocalAccount(simUserId: string): LocalSimAccount {
   });
   const newRaw = getRawStorage(key);
   _accountCache.set(simUserId, { rawKey: newRaw, result: fresh });
+  emitSimChange();
   return fresh;
 }
 
@@ -342,8 +373,8 @@ export function getLocalTransactions(
 /**
  * Internal — caller 가 emitSimChange 책임을 진다 (배치 가능하도록).
  *
- * getLocalAccount 가 fresh 계정 만들면서 호출하는 경로는 emit 하지 않음
- * (초기 mount 시 단순 read 흐름이므로 알릴 listener 가 아직 없음).
+ * 모든 호출 사이트는 명시적 mutation 경로 (ensureLocalAccount /
+ * localOpenPosition / localClosePosition).  getSnapshot 안에서 절대 호출 X.
  */
 function appendTransactionInternal(
   simUserId: string,
@@ -370,10 +401,12 @@ export function computeLocalEquity(
   equity: number;
   openCount: number;
 } {
+  // PURE READ — 계정 없으면 zero equity 로 graceful fallback (Welcome 화면 단계).
   const acc = getLocalAccount(simUserId);
   const positions = getLocalPositions(simUserId, { includeClosed: false });
+  const cash = acc?.cash ?? 0;
   // 캐시 — account.cash + 모든 open position 의 id|currentPrice 조합을 key 로.
-  const equityKey = `${simUserId}|${acc.cash}|${positions
+  const equityKey = `${simUserId}|${cash}|${positions
     .map((p) => `${p.id}:${p.currentPrice ?? 0}`)
     .join(",")}`;
   const cached = _equityCache.get(simUserId);
@@ -389,7 +422,7 @@ export function computeLocalEquity(
   }
   const result = {
     unrealizedPnl,
-    equity: acc.cash + unrealizedPnl,
+    equity: cash + unrealizedPnl,
     openCount: positions.length,
   };
   _equityCache.set(simUserId, { rawKey: equityKey, result });
@@ -458,7 +491,8 @@ export function localOpenPosition(input: LocalOpenInput): LocalOpenResult {
   const commission = positionValue * COMMISSION_RATE * effLeverage;
   const totalCost = margin + commission;
 
-  const acc = getLocalAccount(simUserId);
+  // 명시적 mutation 경로 — 계정 없으면 신규 생성 (idempotent).
+  const acc = ensureLocalAccount(simUserId);
   if (acc.cash < totalCost) {
     return {
       error: `잔액 부족: 필요 $${totalCost.toFixed(2)} > 현재 $${acc.cash.toFixed(2)}`,
@@ -586,7 +620,9 @@ export function localClosePosition(input: LocalCloseInput): LocalCloseResult {
   }
   setLocalPositions(simUserId, positions);
 
-  const acc = getLocalAccount(simUserId);
+  // close 시 계정이 없을 일은 없지만 (open 했어야 close 가능) 방어적으로
+  // ensureLocalAccount 로 폴백.
+  const acc = ensureLocalAccount(simUserId);
   const newCash = acc.cash + finalCashDelta;
   setLocalAccount(simUserId, {
     ...acc,
@@ -640,9 +676,10 @@ export function localResetAccount(simUserId: string): void {
   } catch {
     // ignore
   }
-  // 즉시 fresh 계정 생성 (deposit transaction 포함)
-  getLocalAccount(simUserId);
-  emitSimChange();
+  // 캐시 즉시 무효화 — 다음 read 가 새 raw 를 보도록.
+  invalidateAllCaches();
+  // 즉시 fresh 계정 생성 (deposit transaction 포함 + emit).
+  ensureLocalAccount(simUserId);
 }
 
 // ─── Orders (pending limit orders) ─────────────────────────

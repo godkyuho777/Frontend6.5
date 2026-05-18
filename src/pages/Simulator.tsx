@@ -52,6 +52,7 @@ import {
   addLocalOrder,
   updateLocalOrder,
   cancelLocalOrder,
+  ensureLocalAccount,
   type SimOrder,
 } from "@/lib/sim-local-store";
 import {
@@ -238,6 +239,16 @@ export default function Simulator() {
     accountQuery.isError ||
     (accountQuery.data && accountQuery.data.available === false);
   const useLocalMode: boolean = !!simUser?.id && !!isBackendUnavailable;
+
+  // 🚨 React #185 fix (2026-05-18): 기존 simUser 이지만 sim.account.* 키만
+  // 누락된 edge case (브라우저 캐시 부분 삭제 등) 를 위해, local mode 진입
+  // 직후 account 가 null 이면 명시적으로 materialize.  본 effect 는 mutation
+  // 으로 emitSimChange 를 발화해 다음 render 에서 정상 cash 가 보이도록 한다.
+  useEffect(() => {
+    if (useLocalMode && simUser?.id) {
+      ensureLocalAccount(simUser.id);
+    }
+  }, [useLocalMode, simUser?.id]);
 
   // ── Derived (backend OR local store) ─────────────────────
   //
@@ -559,8 +570,24 @@ export default function Simulator() {
   }
 
   // ── Onboarding flow ──────────────────────────────────────
+  //
+  // 🚨 React #185 fix (2026-05-18): register 성공 직후 ensureLocalAccount
+  // 를 호출해 local 모드의 계정을 명시적으로 materialize.  과거에는
+  // getLocalAccount 가 getSnapshot 안에서 fresh 를 만들면서 production
+  // 빌드에서 무한 update loop (#185) 가 발생.  이제 mutation 은 명시적 경로.
+  //
+  // 백엔드 모드 (Railway DB 활성) 에서는 local account 가 materialize 되어도
+  // 사용되지 않음 — useLocalMode 가 false 이므로 무해.
   if (needsRegistration) {
-    return <SimulatorWelcome onRegister={register} />;
+    return (
+      <SimulatorWelcome
+        onRegister={(nickname) => {
+          const result = register(nickname);
+          if (result) ensureLocalAccount(result.id);
+          return result;
+        }}
+      />
+    );
   }
 
   // ── Render simulator ─────────────────────────────────────
