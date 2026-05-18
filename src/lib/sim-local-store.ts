@@ -682,6 +682,39 @@ export function localResetAccount(simUserId: string): void {
   ensureLocalAccount(simUserId);
 }
 
+/**
+ * 🗑 **NUKE** — 모든 시뮬레이터 데이터를 완전 삭제.
+ *
+ * 삭제 대상:
+ *   - `tradelab.sim.*` 전체 (모든 simUserId 의 account / positions / transactions / orders)
+ *   - `tradelab.simUser` (현재 닉네임 + UUID)
+ *
+ * Welcome 화면 reset 링크 + ErrorBoundary 의 recovery 액션에서 사용.
+ *
+ * 호출 후:
+ *   - 모든 캐시 invalidate
+ *   - emitSimChange 로 listener 알림 (현재 마운트된 hook 들이 빈 결과로 복귀)
+ *   - useSimUser 가 다음 mount 에서 needsRegistration=true 로 복귀
+ *
+ * 주의: 본 함수는 페이지 reload 를 트리거하지 않는다. 호출자가 필요 시
+ * `window.location.reload()` 를 직접 호출.
+ */
+export function nukeAllSimData(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const keys = Object.keys(window.localStorage);
+    for (const k of keys) {
+      if (k.startsWith("tradelab.sim.") || k === "tradelab.simUser") {
+        window.localStorage.removeItem(k);
+      }
+    }
+  } catch {
+    // private mode / quota — ignore
+  }
+  invalidateAllCaches();
+  emitSimChange();
+}
+
 // ─── Orders (pending limit orders) ─────────────────────────
 
 /** crypto.randomUUID polyfill (구형 브라우저 대비) */

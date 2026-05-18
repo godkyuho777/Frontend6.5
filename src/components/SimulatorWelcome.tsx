@@ -15,8 +15,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Wallet, Sparkles, ChevronRight, TrendingUp, Shield, Wand2 } from "lucide-react";
+import {
+  Wallet,
+  Sparkles,
+  ChevronRight,
+  TrendingUp,
+  Shield,
+  Wand2,
+  Trash2,
+} from "lucide-react";
 import type { SimUser } from "@/hooks/useSimUser";
+import { nukeAllSimData } from "@/lib/sim-local-store";
 
 const ADJECTIVES = [
   "Cyber", "Quantum", "Crypto", "Nebula", "Lunar", "Solar", "Pixel",
@@ -41,6 +50,22 @@ interface Props {
 export function SimulatorWelcome({ onRegister }: Props) {
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const handleNuke = () => {
+    if (
+      !window.confirm(
+        "정말 모든 시뮬레이터 데이터를 삭제하시겠습니까?\n\n" +
+          "- 모든 닉네임 · UUID · 포지션 · 거래 내역이 영구 삭제됩니다.\n" +
+          "- 본 브라우저에서만 적용 (다른 브라우저 / 기기는 영향 X).\n" +
+          "- 삭제 후 자동 reload 됩니다.",
+      )
+    ) {
+      return;
+    }
+    nukeAllSimData();
+    // 사용자 시각적 확신을 위해 reload — fresh load 후 Welcome 화면 그대로 노출.
+    window.location.reload();
+  };
 
   const handleStart = () => {
     setError(null);
@@ -173,6 +198,27 @@ export function SimulatorWelcome({ onRegister }: Props) {
             <RuleLine>BBDX 시그널 시스템과 완전 분리</RuleLine>
             <RuleLine>닉네임 + 익명 UUID 만 저장</RuleLine>
             <RuleLine>다른 사용자에게 공유되지 않음</RuleLine>
+          </div>
+
+          {/* Reset / nuke — 기존 시뮬레이터 데이터 완전 삭제 */}
+          <div className="mt-4 pt-3 border-t border-border/20 flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleNuke}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                "border border-neon-red/30 bg-neon-red/5 text-neon-red",
+                "hover:bg-neon-red/15 hover:border-neon-red/60",
+                "font-mono text-[10px] uppercase tracking-wider transition-colors",
+              )}
+              title="모든 시뮬레이터 데이터를 영구 삭제"
+            >
+              <Trash2 className="h-3 w-3" />
+              기존 시뮬레이터 데이터 모두 삭제 (리셋)
+            </button>
+            <p className="font-mono text-[9px] text-muted-foreground/70">
+              · 닉네임 · UUID · 포지션 · 거래 내역 전부 삭제 · 본 브라우저 한정
+            </p>
           </div>
         </div>
 
