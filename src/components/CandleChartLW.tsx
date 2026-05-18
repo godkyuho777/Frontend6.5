@@ -81,6 +81,11 @@ export function CandleChartLW({
   const priceLinesRef = useRef<any[]>([]);
   const currentPriceLineRef = useRef<any>(null);
 
+  /** 이전 ticker 가격 (Effect 7 의 ease-out 보간 출발점). null = 첫 진입. */
+  const prevTickPriceRef = useRef<number | null>(null);
+  /** rAF id (Effect 7 의 보간 애니메이션 핸들). cleanup 에서 cancel. */
+  const animRafRef = useRef<number | null>(null);
+
   /** 마지막으로 그린 캔들의 첫 timestamp — symbol/timeframe 전환 감지용. */
   const lastFirstTimeRef = useRef<number | null>(null);
   /** 차트가 초기 생성되었는지 (lightweight-charts dynamic import 가 비동기). */
