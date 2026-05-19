@@ -158,3 +158,32 @@ export function computeCashReturned(
 ): number {
   return Math.max(0, marginUsed + netPnL);
 }
+
+/**
+ * Slippage rate — Market 진입 시 사용자에게 불리한 방향으로 적용되는 비율.
+ *
+ * 0.1% — 대형 거래소 (Bybit / Binance) 의 평균 market spread 와 비슷.
+ * INVESTMENT_SIMULATOR_AUDIT.md Phase 3 #9 기본값.
+ */
+export const SLIPPAGE_PCT = 0.001;
+
+/**
+ * Market 진입 가격에 slippage 적용 (LIMIT 주문에는 적용 X).
+ *
+ *   LONG : 매수 → 시장이 사는 사람 불리하게 → 체결가 ↑
+ *   SHORT: 매도 → 시장이 파는 사람 불리하게 → 체결가 ↓
+ *
+ * 예시 (BTC LONG, mark $80,000, slippage 0.1%):
+ *   actualEntry = 80000 × (1 + 0.001) = $80,080
+ *
+ * Phase 3 #9: 실거래 정확도 향상. PnL 자동으로 영향 받음 (entryPrice 가 적용 후 값).
+ */
+export function applySlippage(
+  price: number,
+  side: "long" | "short",
+  rate: number = SLIPPAGE_PCT,
+): number {
+  if (price <= 0) return price;
+  const direction = side === "long" ? 1 : -1;
+  return price * (1 + rate * direction);
+}

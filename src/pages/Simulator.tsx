@@ -67,6 +67,8 @@ import {
   computeMarginRatio,
   getMarginRatioColor,
   DEFAULT_MAINTENANCE_MARGIN_RATE,
+  applySlippage,
+  SLIPPAGE_PCT,
 } from "@/lib/sim-pnl";
 import {
   useLocalAccountSync,
@@ -496,6 +498,7 @@ export default function Simulator() {
         if (orderType === "limit") {
           // Limit 주문: 즉시 체결하지 않고 pending order 로 저장.
           // ticker 갱신 시 트리거 useEffect 가 limitPrice 검사 후 자동 체결.
+          // ※ Slippage 미적용 — 사용자가 정한 가격에 체결.
           if (!effectivePrice || effectivePrice <= 0) {
             setLocalError("Limit price 입력 필요");
             return;
@@ -514,18 +517,33 @@ export default function Simulator() {
           setQtyText("");
           return;
         }
-        // Market 주문 — 기존 흐름 (즉시 position 생성).
+        // Market 주문 — slippage 적용 (Phase 3 #9, AUDIT.md).
+        // LONG : entry × (1 + 0.1%) — 사용자 손해 방향 (체결가 ↑)
+        // SHORT: entry × (1 - 0.1%) — 사용자 손해 방향 (체결가 ↓)
+        // PnL 은 entryPrice 가 적용 후 값이므로 자동 반영.
+        const slippedEntry = applySlippage(effectivePrice, forSide);
         const result = localOpenPosition({
           simUserId: simUser.id,
           symbol,
           productType,
           side: forSide,
           leverage: productType === "spot" ? 1 : leverage,
-          entryPrice: effectivePrice,
+          entryPrice: slippedEntry,
           quantity: qty,
         });
-        if (result.error) setLocalError(result.error);
-        else setQtyText("");
+        if (result.error) {
+          setLocalError(result.error);
+        } else {
+          setQtyText("");
+          toast.success(
+            `Market ${forSide.toUpperCase()} ${symbol} 체결`,
+            {
+              description: `Entry $${slippedEntry.toFixed(2)} (slippage ${
+                forSide === "long" ? "+" : "-"
+              }${(SLIPPAGE_PCT * 100).toFixed(2)}%)`,
+            },
+          );
+        }
         return;
       }
 
@@ -1205,6 +1223,24 @@ export default function Simulator() {
             <span className="text-right text-foreground">{formatUSD(margin)}</span>
             <span className="text-muted-foreground">Fee (0.01%)</span>
             <span className="text-right text-neon-yellow">{formatUSD(commission)}</span>
+            {/* Phase 3 #9: Market 진입 시 slippage 미리보기 — LONG/SHORT 모두 손해 방향. */}
+            {orderType === "market" && effectivePrice > 0 && (
+              <>
+                <span
+                  className="text-muted-foreground"
+                  title={`Market 진입 시 ${(SLIPPAGE_PCT * 100).toFixed(2)}% 슬리피지가 사용자 손해 방향으로 적용됩니다`}
+                >
+                  Est. Entry ({side === "long" ? "Buy" : "Sell"})
+                </span>
+                <span className="text-right text-amber-300/80">
+                  ${formatPrice(applySlippage(effectivePrice, side))}
+                  <span className="ml-1 opacity-70">
+                    ({side === "long" ? "+" : "-"}
+                    {(SLIPPAGE_PCT * 100).toFixed(2)}%)
+                  </span>
+                </span>
+              </>
+            )}
             <span className="text-muted-foreground">Total Cost</span>
             <span
               className={cn(
