@@ -167,6 +167,179 @@ export function computeCashReturned(
  */
 export const SLIPPAGE_PCT = 0.001;
 
+// ─── Simulator Stats (Phase 4 #16 일부) ────────────────────
+//
+// 사용자가 자신의 시뮬레이터 트레이딩 실적을 한눈에 볼 수 있는 핵심 메트릭.
+// 백테스트 결과 (/backtest 페이지) 와 비교를 위한 첫 단계 — 본 모듈은
+// closed positions 에서 winRate / avgWin / avgLoss / Expectancy / MaxDD 만 계산.
+//
+// 한계:
+//   - 백테스트 데이터 fetch X (별도 세션). UI 안내만 "정확한 비교는 /backtest 페이지에서".
+//   - MaxDD 는 closed 포지션 시퀀스만 사용 (실시간 unrealized 변동은 미반영).
+//   - Sharpe 는 본 단계에서 제외 (return 분산 계산 복잡성 + 짧은 sample 신뢰성 낮음).
+
+/**
+ * Simulator 실적 통계 (closed positions 만 집계).
+ *
+ * 모든 metric 은 가상 자본 단위 (USD).  비율 metric (winRate, totalPnlPct,
+ * maxDrawdownPct) 은 0~1 또는 음수 가능 (예: -0.25 = -25%).
+ */
+export interface SimulatorStats {
+  /** 청산 포함 모든 closed position 수 */
+  totalTrades: number;
+  /** closedPnl > 0 인 포지션 수 */
+  wins: number;
+  /** closedPnl < 0 인 포지션 수 (강제청산 포함) */
+  losses: number;
+  /** wins / totalTrades. totalTrades=0 면 0. */
+  winRate: number;
+  /** 승리 거래의 평균 PnL (USD). 없으면 0. */
+  avgWin: number;
+  /** 패배 거래의 평균 PnL (USD, negative). 없으면 0. */
+  avgLoss: number;
+  /**
+   * 기대값 — 거래당 평균 손익 예상.
+   *   expectancy = winRate × avgWin + (1 - winRate) × avgLoss
+   * 양수면 long-run 에서 이익.
+   */
+  expectancy: number;
+  /** 최대 누적 손실 폭 (USD, 양수). closed PnL 시퀀스의 peak-to-trough. */
+  maxDrawdown: number;
+  /** maxDrawdown / peakEquity (peak 시점 자본 대비). 0~1. */
+  maxDrawdownPct: number;
+  /** 모든 closedPnl 의 합 (USD). */
+  totalPnl: number;
+  /** totalPnl / initialCash. initial=200_000 기준. */
+  totalPnlPct: number;
+}
+
+/**
+ * 빈 stats — closed positions 가 없거나 simUserId 없을 때 반환.
+ */
+export function emptySimulatorStats(): SimulatorStats {
+  return {
+    totalTrades: 0,
+    wins: 0,
+    losses: 0,
+    winRate: 0,
+    avgWin: 0,
+    avgLoss: 0,
+    expectancy: 0,
+    maxDrawdown: 0,
+    maxDrawdownPct: 0,
+    totalPnl: 0,
+    totalPnlPct: 0,
+  };
+}
+
+/**
+ * Closed positions 의 시퀀스에서 maximum drawdown 계산.
+ *
+ * 알고리즘:
+ *   1. closedAt 오름차순 정렬
+ *   2. running equity (initial + cumulative PnL) 추적
+ *   3. peak (지금까지 최댓값) 갱신
+ *   4. (peak - currentEquity) 의 최댓값 = maxDrawdown
+ *
+ * 한계: 실시간 unrealized 변동은 반영 X (Phase 4 후속에서 transaction 시계열 활용).
+ *
+ * @param closedPnls  closedAt 시간순으로 배열한 PnL 값들
+ * @param initialCash  시작 자본 ($200,000)
+ */
+export function computeMaxDrawdown(
+  closedPnls: number[],
+  initialCash: number,
+): { maxDrawdown: number; maxDrawdownPct: number } {
+  if (closedPnls.length === 0) {
+    return { maxDrawdown: 0, maxDrawdownPct: 0 };
+  }
+  let equity = initialCash;
+  let peak = initialCash;
+  let maxDD = 0;
+  let maxDDPct = 0;
+  for (const pnl of closedPnls) {
+    equity += pnl;
+    if (equity > peak) {
+      peak = equity;
+    }
+    const dd = peak - equity;
+    if (dd > maxDD) {
+      maxDD = dd;
+      maxDDPct = peak > 0 ? dd / peak : 0;
+    }
+  }
+  return { maxDrawdown: maxDD, maxDrawdownPct: maxDDPct };
+}
+
+/**
+ * Closed positions 에서 SimulatorStats 집계.
+ *
+ * 입력은 LocalSimPosition[] 의 closed 만 필터한 array. 본 함수는 store 와
+ * 무관한 순수 함수 — UI / 테스트에서 가벼운 입력으로 호출 가능.
+ *
+ * closedAt 은 `string | Date | null` 모두 허용 — 로컬 store (string ISO) 와
+ * tRPC 백엔드 (superjson 으로 Date 직렬화) 양쪽 입력에 동일하게 작동.
+ *
+ * @param closedPositions  status !== "open" 인 포지션 (closedPnl 필요)
+ * @param initialCash  시작 자본 ($200,000)
+ */
+export function computeSimulatorStats(
+  closedPositions: Array<{
+    closedPnl: number | null;
+    closedAt: string | Date | null;
+  }>,
+  initialCash: number,
+): SimulatorStats {
+  if (closedPositions.length === 0) return emptySimulatorStats();
+
+  // closedAt 순서대로 정렬 — null 은 0 ms 로 (정렬 안정성 보장).
+  const toMs = (d: string | Date | null | undefined): number => {
+    if (!d) return 0;
+    if (d instanceof Date) return d.getTime();
+    return new Date(d).getTime();
+  };
+  const sorted = [...closedPositions]
+    .filter((p) => typeof p.closedPnl === "number")
+    .sort((a, b) => toMs(a.closedAt) - toMs(b.closedAt));
+
+  const closedPnls = sorted.map((p) => p.closedPnl ?? 0);
+  const wins = closedPnls.filter((v) => v > 0);
+  const losses = closedPnls.filter((v) => v < 0);
+
+  const totalTrades = closedPnls.length;
+  const winCount = wins.length;
+  const lossCount = losses.length;
+  const winRate = totalTrades > 0 ? winCount / totalTrades : 0;
+
+  const avgWin =
+    winCount > 0 ? wins.reduce((s, v) => s + v, 0) / winCount : 0;
+  const avgLoss =
+    lossCount > 0 ? losses.reduce((s, v) => s + v, 0) / lossCount : 0;
+  const expectancy = winRate * avgWin + (1 - winRate) * avgLoss;
+
+  const totalPnl = closedPnls.reduce((s, v) => s + v, 0);
+  const totalPnlPct = initialCash > 0 ? totalPnl / initialCash : 0;
+
+  const { maxDrawdown, maxDrawdownPct } = computeMaxDrawdown(
+    closedPnls,
+    initialCash,
+  );
+
+  return {
+    totalTrades,
+    wins: winCount,
+    losses: lossCount,
+    winRate,
+    avgWin,
+    avgLoss,
+    expectancy,
+    maxDrawdown,
+    maxDrawdownPct,
+    totalPnl,
+    totalPnlPct,
+  };
+}
+
 /**
  * Market 진입 가격에 slippage 적용 (LIMIT 주문에는 적용 X).
  *
