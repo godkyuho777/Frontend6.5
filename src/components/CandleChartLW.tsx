@@ -31,6 +31,34 @@ export interface ChartBBPoint {
   lower: number;
 }
 
+/**
+ * Simulator Phase 2 #6 — 차트에 표시할 사용자 포지션 (open position).
+ *
+ * 진입가는 side 별 색상 (long=green, short=red) 실선,
+ * 청산가는 빨강 점선 (있을 때만).
+ */
+export interface ChartPositionLine {
+  id: string | number;
+  side: "long" | "short";
+  entryPrice: number;
+  liqPrice?: number | null;
+  /** Position 라벨 (예: "L 0.125") */
+  label?: string;
+}
+
+/**
+ * Simulator Phase 2 #6 — 차트에 표시할 pending limit 주문.
+ *
+ * 보라 점선으로 limitPrice 표시 (side 무관 — 사용자 의도 가시화 목적).
+ */
+export interface ChartOrderLine {
+  id: string;
+  side: "long" | "short";
+  limitPrice: number;
+  /** Order 라벨 (예: "Limit L 0.125") */
+  label?: string;
+}
+
 interface CandleChartLWProps {
   candles: Candle[];
   currentPrice: number;
@@ -44,6 +72,15 @@ interface CandleChartLWProps {
   windowSize?: number;
   /** show the floating legend row under the chart (default true) */
   showLegend?: boolean;
+  /**
+   * Simulator Phase 2 #6 — open 포지션의 진입가 + 청산가 priceLine overlay.
+   * 미지정 시 어떤 overlay 도 그리지 않음 (다른 페이지 호환).
+   */
+  positionLines?: ChartPositionLine[];
+  /**
+   * Simulator Phase 2 #6 — pending limit 주문의 limitPrice priceLine overlay.
+   */
+  orderLines?: ChartOrderLine[];
 }
 
 const FIB_COLORS: Record<number, string> = {
@@ -65,6 +102,8 @@ export function CandleChartLW({
   height = 500,
   windowSize,
   showLegend = true,
+  positionLines,
+  orderLines,
 }: CandleChartLWProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +119,11 @@ export function CandleChartLW({
   /** 가격 라인 핸들 (Fib + Current). priceLine 은 candleSeries.createPriceLine 으로 생성하고 removePriceLine 으로 제거. */
   const priceLinesRef = useRef<any[]>([]);
   const currentPriceLineRef = useRef<any>(null);
+  /**
+   * Simulator Phase 2 #6 — 사용자 포지션 / pending order priceLine 핸들.
+   * positionLines / orderLines props 변경 시 일괄 remove + recreate.
+   */
+  const simPriceLinesRef = useRef<any[]>([]);
 
   /** 이전 ticker 가격 (Effect 7 의 ease-out 보간 출발점). null = 첫 진입. */
   const prevTickPriceRef = useRef<number | null>(null);
@@ -264,6 +308,7 @@ export function CandleChartLW({
       overlaysRef.current = [];
       priceLinesRef.current = [];
       currentPriceLineRef.current = null;
+      simPriceLinesRef.current = [];
       setupCompleteRef.current = false;
     };
   }, [height]);
@@ -579,6 +624,81 @@ export function CandleChartLW({
       title: "Current",
     });
   }, [currentPrice]);
+
+  // ── 7. Simulator open 포지션 + pending limit 주문 priceLine overlay ──
+  //
+  // Phase 2 #6 (INVESTMENT_SIMULATOR_AUDIT.md):
+  //   - 진입가: side 별 색상 실선 (long=green, short=red).
+  //   - 청산가: 빨강 점선 (있을 때만, Phase 2 #6 청산 위험 가시화).
+  //   - Limit order: 보라 점선 (LONG=#a78bfa, SHORT=#c084fc 살짝 차이).
+  //
+  // positionLines / orderLines props 변경 시 일괄 제거 후 재생성. removeSeries
+  // 가 아닌 removePriceLine 을 사용하므로 zoom/pan 상태에 영향 X.
+  useEffect(() => {
+    if (!setupCompleteRef.current) return;
+    const candleSeries = candleSeriesRef.current;
+    const mod = lwModuleRef.current;
+    if (!candleSeries || !mod) return;
+    const { LineStyle } = mod;
+
+    // 기존 simulator priceLines 모두 제거
+    simPriceLinesRef.current.forEach((line) => {
+      try {
+        candleSeries.removePriceLine(line);
+      } catch {
+        // ignore
+      }
+    });
+    simPriceLinesRef.current = [];
+
+    // Open 포지션의 진입가 + 청산가
+    if (positionLines && positionLines.length > 0) {
+      for (const pos of positionLines) {
+        if (!pos.entryPrice || pos.entryPrice <= 0) continue;
+        const isLong = pos.side === "long";
+        // 진입가 — side 별 색상 실선
+        const entryLine = candleSeries.createPriceLine({
+          price: pos.entryPrice,
+          color: isLong ? "#00e676" : "#ff1744",
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: pos.label ?? `${isLong ? "L" : "S"} Entry`,
+        });
+        simPriceLinesRef.current.push(entryLine);
+
+        // 청산가 — 빨강 점선 (있을 때만)
+        if (pos.liqPrice != null && pos.liqPrice > 0) {
+          const liqLine = candleSeries.createPriceLine({
+            price: pos.liqPrice,
+            color: "#dc2626",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `${isLong ? "L" : "S"} Liq`,
+          });
+          simPriceLinesRef.current.push(liqLine);
+        }
+      }
+    }
+
+    // Pending limit 주문 — 보라 점선
+    if (orderLines && orderLines.length > 0) {
+      for (const order of orderLines) {
+        if (!order.limitPrice || order.limitPrice <= 0) continue;
+        const isLong = order.side === "long";
+        const orderLine = candleSeries.createPriceLine({
+          price: order.limitPrice,
+          color: isLong ? "#a78bfa" : "#c084fc",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: order.label ?? `${isLong ? "L" : "S"} Limit`,
+        });
+        simPriceLinesRef.current.push(orderLine);
+      }
+    }
+  }, [positionLines, orderLines]);
 
   return (
     <div className="relative">

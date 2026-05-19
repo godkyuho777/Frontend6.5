@@ -22,14 +22,18 @@
  * (자본 보호) 와 별개로 사용자 학습 / UX 실험용.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CandleChartLW } from "@/components/CandleChartLW";
+import {
+  CandleChartLW,
+  type ChartPositionLine,
+  type ChartOrderLine,
+} from "@/components/CandleChartLW";
 import { SimulatorWelcome } from "@/components/SimulatorWelcome";
 import { useSimUser } from "@/hooks/useSimUser";
 import {
@@ -303,6 +307,52 @@ export default function Simulator() {
   const transactions = useLocalMode ? localTxs : (transactionsQuery.data ?? []);
 
   const currentPrice = ticker?.lastPrice ?? 0;
+
+  /**
+   * Phase 2 #6 — 현재 차트 심볼의 open 포지션 + pending limit 주문 priceLine 입력.
+   *
+   * 같은 심볼만 필터해 차트에 overlay (다른 심볼 포지션이 BTC 차트에 보이면 혼란).
+   * useMemo 로 reference stability 보장 — positions / orders / symbol 이 안 변하면
+   * 같은 array 를 재사용해 CandleChartLW 의 useEffect 가 불필요하게 재실행되지 않음.
+   */
+  const chartPositionLines = useMemo<ChartPositionLine[]>(() => {
+    return positions
+      .filter((p: any) => p.symbol === symbol && p.status === "open")
+      .map((p: any) => {
+        const liq =
+          typeof p.liqPrice === "number" && p.liqPrice > 0
+            ? p.liqPrice
+            : typeof p.liquidationPrice === "number" && p.liquidationPrice > 0
+              ? p.liquidationPrice
+              : null;
+        return {
+          id: p.id,
+          side: p.side as "long" | "short",
+          entryPrice: p.entryPrice,
+          liqPrice: liq,
+          label: `${p.side === "long" ? "L" : "S"} ${formatQty(p.quantity)}`,
+        };
+      });
+  }, [positions, symbol]);
+
+  const chartOrderLines = useMemo<ChartOrderLine[]>(() => {
+    if (!useLocalMode) return [];
+    return localPendingOrders
+      .filter(
+        (o) =>
+          o.symbol === symbol &&
+          o.status === "pending" &&
+          o.type === "limit" &&
+          typeof o.limitPrice === "number" &&
+          o.limitPrice > 0,
+      )
+      .map((o) => ({
+        id: o.id,
+        side: o.side,
+        limitPrice: o.limitPrice as number,
+        label: `${o.side === "long" ? "L" : "S"} ${formatQty(o.qty)} Limit`,
+      }));
+  }, [localPendingOrders, symbol, useLocalMode]);
 
   const qty = parseFloat(qtyText) || 0;
   const price = parseFloat(priceText) || 0;
@@ -937,6 +987,8 @@ export default function Simulator() {
                 currentPrice={currentPrice}
                 height={420}
                 showLegend={false}
+                positionLines={chartPositionLines}
+                orderLines={chartOrderLines}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground font-mono">
