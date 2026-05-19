@@ -1204,6 +1204,14 @@ export default function Simulator() {
               positions={positions}
               onClose={handleClose}
               isClosing={closeMutation.isPending}
+              totalCapital={
+                (account?.cash ?? 0) +
+                positions.reduce(
+                  (s: number, p: any) =>
+                    s + (typeof p.margin === "number" ? p.margin : 0),
+                  0,
+                )
+              }
             />
           )}
           {bottomTab === "open-orders" && (
@@ -1220,6 +1228,14 @@ export default function Simulator() {
               onClose={handleClose}
               isClosing={false}
               showClosed
+              totalCapital={
+                (account?.cash ?? 0) +
+                positions.reduce(
+                  (s: number, p: any) =>
+                    s + (typeof p.margin === "number" ? p.margin : 0),
+                  0,
+                )
+              }
             />
           )}
           {bottomTab === "trade-history" && (
@@ -1458,11 +1474,18 @@ function PositionsTable({
   onClose,
   isClosing,
   showClosed = false,
+  totalCapital = 0,
 }: {
   positions: any[];
   onClose: (id: number) => void;
   isClosing: boolean;
   showClosed?: boolean;
+  /**
+   * Phase 2 #1: Margin 컬럼의 "자본 대비 비율" 표시에 사용.
+   *   총 자본 = account.cash + 모든 open position 의 margin 합산.
+   * 0 이면 비율 표시는 생략 (closed 포지션 탭 등에서 자본 추정 불가 시 graceful).
+   */
+  totalCapital?: number;
 }) {
   if (positions.length === 0) {
     return (
@@ -1481,6 +1504,12 @@ function PositionsTable({
             <th className="text-left px-2 py-1.5">Type</th>
             <th className="text-right px-2 py-1.5">Lev</th>
             <th className="text-right px-2 py-1.5">Qty</th>
+            <th
+              className="text-right px-2 py-1.5"
+              title="Position 에 묶인 Margin (자본 대비 비율)"
+            >
+              Margin
+            </th>
             <th className="text-right px-2 py-1.5">Entry</th>
             <th className="text-right px-2 py-1.5">{showClosed ? "Exit" : "Mark"}</th>
             <th className="text-right px-2 py-1.5">Liq Price</th>
@@ -1588,6 +1617,22 @@ function PositionsTable({
                 </td>
                 <td className="px-2 py-1.5 text-right text-foreground">
                   {formatQty(p.quantity)}
+                </td>
+                {/* Phase 2 #1: Margin 사용량 + 자본 대비 비율. */}
+                <td
+                  className="px-2 py-1.5 text-right text-muted-foreground"
+                  title={`Margin: ${formatUSD(p.margin ?? 0)}${
+                    totalCapital > 0
+                      ? ` · 자본 대비 ${((p.margin / totalCapital) * 100).toFixed(1)}%`
+                      : ""
+                  }`}
+                >
+                  {formatUSD(p.margin ?? 0)}
+                  {totalCapital > 0 && p.margin > 0 && (
+                    <span className="block text-[9px] opacity-70">
+                      {((p.margin / totalCapital) * 100).toFixed(1)}%
+                    </span>
+                  )}
                 </td>
                 <td className="px-2 py-1.5 text-right text-foreground">
                   ${formatPrice(p.entryPrice)}
