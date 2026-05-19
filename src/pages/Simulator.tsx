@@ -22,9 +22,10 @@
  * (자본 보호) 와 별개로 사용자 학습 / UX 실험용.
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useThrottledValue } from "@/hooks/useThrottledValue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -366,21 +367,40 @@ export default function Simulator() {
     cashAvailable >= totalCost && qty > 0 && effectivePrice > 0;
 
   /**
-   * Local 모드에서 ticker 갱신 시:
-   *   1. 해당 심볼의 open 포지션을 mark-to-market
-   *   2. 청산가 도달한 포지션을 강제청산 (liquidation reason)
+   * Phase 3 #3 (2026-05-20): ticker 250ms throttle — 분봉 버벅거림 최적화.
    *
-   * `localMarkToMarket` 와 `localClosePosition` 모두 내부에서 emitSimChange()
-   * 호출하므로 별도 setState 트리거 불필요.
+   * ticker 자체는 3 초마다 polling 이므로 자주 갱신되지 않지만, 단일 fetch
+   * 안에서 같은 reference 가 setState 될 때 React 가 새 reference 로 인식해
+   * 매번 mark-to-market useEffect 가 실행됐다. 250ms throttle 로 한 묶음에 한
+   * 번만 처리하도록 만들어 re-render 비용 절감.
+   *
+   * 청산 검사는 unthrottled (즉시) 분리 — 가격이 청산가 닿는 정확한 순간을
+   * 놓치면 사용자 손해.
+   */
+  const throttledTicker = useThrottledValue(ticker, 250);
+
+  /**
+   * Local 모드 — Mark-to-market (250ms throttle 적용).
+   *
+   * `localMarkToMarket` 은 내부에서 emitSimChange() 호출하므로 별도 setState
+   * 트리거 불필요. 250ms 묶음으로 호출되어 chart re-render 비용을 줄인다.
+   */
+  useEffect(() => {
+    if (!useLocalMode || !simUser?.id || !throttledTicker) return;
+    const prices = new Map<string, number>([
+      [throttledTicker.symbol, throttledTicker.lastPrice],
+    ]);
+    localMarkToMarket(simUser.id, prices);
+  }, [useLocalMode, simUser?.id, throttledTicker]);
+
+  /**
+   * Local 모드 — 강제청산 검사 (unthrottled = 즉시).
+   *
+   * 청산가 닿는 순간을 절대 놓치면 안 되므로 throttle 적용 X.
+   * 단, ticker 폴링은 3 초 주기이므로 실제 검사 빈도는 충분히 낮다.
    */
   useEffect(() => {
     if (!useLocalMode || !simUser?.id || !ticker) return;
-
-    // 1) Mark-to-market
-    const prices = new Map<string, number>([[ticker.symbol, ticker.lastPrice]]);
-    localMarkToMarket(simUser.id, prices);
-
-    // 2) 청산 검사
     const openPositions = getLocalPositions(simUser.id, { includeClosed: false });
     for (const pos of openPositions) {
       if (pos.symbol !== ticker.symbol) continue;
@@ -1530,6 +1550,242 @@ function RecentTradesPanel({
   );
 }
 
+/**
+ * Phase 3 #3 (2026-05-20): PositionRow 분리 + React.memo.
+ *
+ * ticker tick 마다 positions array 가 새 reference 가 되어도, 개별 row 의
+ * 입력 props (id / qty / currentPrice / closedPnl 등) 가 같으면 row 자체는
+ * re-render skip. 차트 + tabs + 전체 페이지의 re-render 비용 절감.
+ *
+ * memo eq fn: 비교는 row 가 의존하는 모든 필드를 명시. shallow ref equality
+ * 가 깨져도 (parent 가 새 객체 spread) 값이 같으면 skip.
+ */
+interface PositionRowProps {
+  p: any;
+  showClosed: boolean;
+  totalCapital: number;
+  isClosing: boolean;
+  onClose: (id: number) => void;
+}
+
+const PositionRow = memo(
+  function PositionRow({
+    p,
+    showClosed,
+    totalCapital,
+    isClosing,
+    onClose,
+  }: PositionRowProps) {
+    const mark = showClosed
+      ? (p.closedPrice ?? p.entryPrice)
+      : (p.currentPrice ?? p.entryPrice);
+    // ✅ PnL 정확화 (AUDIT.md §1.4): leverage 곱하기 제거.
+    // open 포지션: 실시간 mark price 로 unrealized PnL 계산.
+    // closed 포지션: 저장된 closedPnl 그대로 사용 (백워드 호환).
+    const pnl = showClosed
+      ? (p.closedPnl ?? 0)
+      : computeUnrealizedPnL(p.side, p.quantity, p.entryPrice, mark);
+    // ROE = pnl / margin (×100 to percent).
+    const pnlPct = p.margin > 0 ? (pnl / p.margin) * 100 : 0;
+    // Margin Ratio — open 일 때만 계산.
+    const mmr =
+      typeof p.maintenanceMarginRate === "number" && p.maintenanceMarginRate > 0
+        ? p.maintenanceMarginRate
+        : DEFAULT_MAINTENANCE_MARGIN_RATE;
+    const marginRatio =
+      !showClosed && p.margin > 0
+        ? computeMarginRatio(
+            p.side,
+            p.quantity,
+            p.entryPrice,
+            mark,
+            p.margin,
+            mmr,
+          )
+        : null;
+    const marginRatioColor =
+      marginRatio != null ? getMarginRatioColor(marginRatio) : "";
+
+    // Liq price: 신규 필드 우선, 없으면 legacy liquidationPrice fallback.
+    const liqPrice: number | null =
+      typeof p.liqPrice === "number" && p.liqPrice > 0
+        ? p.liqPrice
+        : typeof p.liquidationPrice === "number" && p.liquidationPrice > 0
+          ? p.liquidationPrice
+          : null;
+
+    // 청산까지 거리 (%). 양수 = 안전 여유. open 일 때만 계산.
+    let liqDistancePct: number | null = null;
+    if (!showClosed && liqPrice != null && mark > 0) {
+      liqDistancePct =
+        p.side === "long"
+          ? ((mark - liqPrice) / mark) * 100
+          : ((liqPrice - mark) / mark) * 100;
+    }
+    // 색상 단계: <1% 위험 (red), 1~5% 경고 (yellow), >5% 정상 (muted).
+    const liqColor = showClosed
+      ? "text-muted-foreground"
+      : liqDistancePct == null
+        ? "text-muted-foreground"
+        : liqDistancePct < 1
+          ? "text-neon-red"
+          : liqDistancePct < 5
+            ? "text-neon-yellow"
+            : "text-muted-foreground";
+
+    const isLiquidated =
+      p.status === "liquidated" || p.closedReason === "liquidation";
+
+    return (
+      <tr className="border-b border-border/10 font-mono text-[11px] hover:bg-muted/10">
+        <td className="px-2 py-1.5 text-foreground font-semibold">
+          {p.symbol.replace("USDT", "")}
+        </td>
+        <td className="px-2 py-1.5">
+          <Badge
+            className={cn(
+              "font-mono text-[9px] uppercase",
+              p.side === "long"
+                ? "bg-neon-green/15 text-neon-green border-neon-green/40"
+                : "bg-neon-red/15 text-neon-red border-neon-red/40",
+            )}
+          >
+            {p.side}
+          </Badge>
+        </td>
+        <td className="px-2 py-1.5 text-muted-foreground uppercase">
+          {p.productType}
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          {p.leverage}×
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          {formatQty(p.quantity)}
+        </td>
+        {/* Phase 2 #1: Margin 사용량 + 자본 대비 비율. */}
+        <td
+          className="px-2 py-1.5 text-right text-muted-foreground"
+          title={`Margin: ${formatUSD(p.margin ?? 0)}${
+            totalCapital > 0
+              ? ` · 자본 대비 ${((p.margin / totalCapital) * 100).toFixed(1)}%`
+              : ""
+          }`}
+        >
+          {formatUSD(p.margin ?? 0)}
+          {totalCapital > 0 && p.margin > 0 && (
+            <span className="block text-[9px] opacity-70">
+              {((p.margin / totalCapital) * 100).toFixed(1)}%
+            </span>
+          )}
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          ${formatPrice(p.entryPrice)}
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          ${formatPrice(mark)}
+        </td>
+        <td className={cn("px-2 py-1.5 text-right", liqColor)}>
+          {liqPrice != null ? `$${formatPrice(liqPrice)}` : "—"}
+          {liqDistancePct != null && !showClosed && (
+            <span className="block text-[9px] opacity-70">
+              {liqDistancePct >= 0 ? "" : ""}
+              {liqDistancePct.toFixed(2)}% 여유
+            </span>
+          )}
+        </td>
+        <td
+          className={cn(
+            "px-2 py-1.5 text-right font-bold",
+            pnl >= 0 ? "text-neon-green" : "text-neon-red",
+          )}
+        >
+          {pnl >= 0 ? "+" : ""}
+          {formatUSD(pnl)}
+        </td>
+        <td
+          className={cn(
+            "px-2 py-1.5 text-right",
+            pnl >= 0 ? "text-neon-green/80" : "text-neon-red/80",
+          )}
+        >
+          {pnlPct >= 0 ? "+" : ""}
+          {pnlPct.toFixed(2)}%
+        </td>
+        {!showClosed && (
+          <td
+            className={cn(
+              "px-2 py-1.5 text-right font-mono",
+              marginRatioColor,
+            )}
+            title={
+              marginRatio != null
+                ? `Margin Ratio ${(marginRatio * 100).toFixed(1)}% (maintenance / current margin). 1.0 = 청산 임계.`
+                : undefined
+            }
+          >
+            {marginRatio == null || !isFinite(marginRatio)
+              ? "—"
+              : `${(marginRatio * 100).toFixed(1)}%`}
+          </td>
+        )}
+        <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
+          {showClosed ? (
+            isLiquidated ? (
+              <Badge className="font-mono text-[9px] uppercase bg-neon-red/15 text-neon-red border-neon-red/40">
+                강제청산
+              </Badge>
+            ) : (
+              <span>수동 종료</span>
+            )
+          ) : (
+            new Date(p.openedAt).toLocaleString("ko-KR", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          )}
+        </td>
+        {!showClosed && (
+          <td className="px-2 py-1.5 text-right">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onClose(p.id)}
+              disabled={isClosing}
+              className="h-6 px-2 font-mono text-[10px]"
+            >
+              {isClosing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                "Close"
+              )}
+            </Button>
+          </td>
+        )}
+      </tr>
+    );
+  },
+  (prev, next) => {
+    // 핵심 의존 필드만 비교 — 같으면 re-render skip.
+    return (
+      prev.p.id === next.p.id &&
+      prev.p.quantity === next.p.quantity &&
+      prev.p.entryPrice === next.p.entryPrice &&
+      prev.p.currentPrice === next.p.currentPrice &&
+      prev.p.closedPrice === next.p.closedPrice &&
+      prev.p.closedPnl === next.p.closedPnl &&
+      prev.p.status === next.p.status &&
+      prev.p.margin === next.p.margin &&
+      prev.p.liqPrice === next.p.liqPrice &&
+      prev.showClosed === next.showClosed &&
+      prev.totalCapital === next.totalCapital &&
+      prev.isClosing === next.isClosing &&
+      prev.onClose === next.onClose
+    );
+  },
+);
+
 function PositionsTable({
   positions,
   onClose,
@@ -1589,205 +1845,124 @@ function PositionsTable({
           </tr>
         </thead>
         <tbody>
-          {positions.map((p: any) => {
-            const mark = showClosed
-              ? (p.closedPrice ?? p.entryPrice)
-              : (p.currentPrice ?? p.entryPrice);
-            // ✅ PnL 정확화 (AUDIT.md §1.4): leverage 곱하기 제거.
-            // open 포지션: 실시간 mark price 로 unrealized PnL 계산.
-            // closed 포지션: 저장된 closedPnl 그대로 사용 (백워드 호환).
-            const pnl = showClosed
-              ? (p.closedPnl ?? 0)
-              : computeUnrealizedPnL(p.side, p.quantity, p.entryPrice, mark);
-            // ROE = pnl / margin (×100 to percent).
-            const pnlPct = p.margin > 0 ? (pnl / p.margin) * 100 : 0;
-            // Margin Ratio — open 일 때만 계산.
-            const mmr =
-              typeof p.maintenanceMarginRate === "number" && p.maintenanceMarginRate > 0
-                ? p.maintenanceMarginRate
-                : DEFAULT_MAINTENANCE_MARGIN_RATE;
-            const marginRatio =
-              !showClosed && p.margin > 0
-                ? computeMarginRatio(
-                    p.side,
-                    p.quantity,
-                    p.entryPrice,
-                    mark,
-                    p.margin,
-                    mmr,
-                  )
-                : null;
-            const marginRatioColor =
-              marginRatio != null ? getMarginRatioColor(marginRatio) : "";
-
-            // Liq price: 신규 필드 우선, 없으면 legacy liquidationPrice fallback.
-            const liqPrice: number | null =
-              typeof p.liqPrice === "number" && p.liqPrice > 0
-                ? p.liqPrice
-                : typeof p.liquidationPrice === "number" && p.liquidationPrice > 0
-                  ? p.liquidationPrice
-                  : null;
-
-            // 청산까지 거리 (%). 양수 = 안전 여유. open 일 때만 계산.
-            let liqDistancePct: number | null = null;
-            if (!showClosed && liqPrice != null && mark > 0) {
-              liqDistancePct =
-                p.side === "long"
-                  ? ((mark - liqPrice) / mark) * 100
-                  : ((liqPrice - mark) / mark) * 100;
-            }
-            // 색상 단계: <1% 위험 (red), 1~5% 경고 (yellow), >5% 정상 (muted).
-            const liqColor = showClosed
-              ? "text-muted-foreground"
-              : liqDistancePct == null
-                ? "text-muted-foreground"
-                : liqDistancePct < 1
-                  ? "text-neon-red"
-                  : liqDistancePct < 5
-                    ? "text-neon-yellow"
-                    : "text-muted-foreground";
-
-            const isLiquidated =
-              p.status === "liquidated" || p.closedReason === "liquidation";
-
-            return (
-              <tr
-                key={p.id}
-                className="border-b border-border/10 font-mono text-[11px] hover:bg-muted/10"
-              >
-                <td className="px-2 py-1.5 text-foreground font-semibold">
-                  {p.symbol.replace("USDT", "")}
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge
-                    className={cn(
-                      "font-mono text-[9px] uppercase",
-                      p.side === "long"
-                        ? "bg-neon-green/15 text-neon-green border-neon-green/40"
-                        : "bg-neon-red/15 text-neon-red border-neon-red/40",
-                    )}
-                  >
-                    {p.side}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5 text-muted-foreground uppercase">
-                  {p.productType}
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  {p.leverage}×
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  {formatQty(p.quantity)}
-                </td>
-                {/* Phase 2 #1: Margin 사용량 + 자본 대비 비율. */}
-                <td
-                  className="px-2 py-1.5 text-right text-muted-foreground"
-                  title={`Margin: ${formatUSD(p.margin ?? 0)}${
-                    totalCapital > 0
-                      ? ` · 자본 대비 ${((p.margin / totalCapital) * 100).toFixed(1)}%`
-                      : ""
-                  }`}
-                >
-                  {formatUSD(p.margin ?? 0)}
-                  {totalCapital > 0 && p.margin > 0 && (
-                    <span className="block text-[9px] opacity-70">
-                      {((p.margin / totalCapital) * 100).toFixed(1)}%
-                    </span>
-                  )}
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  ${formatPrice(p.entryPrice)}
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  ${formatPrice(mark)}
-                </td>
-                <td className={cn("px-2 py-1.5 text-right", liqColor)}>
-                  {liqPrice != null ? `$${formatPrice(liqPrice)}` : "—"}
-                  {liqDistancePct != null && !showClosed && (
-                    <span className="block text-[9px] opacity-70">
-                      {liqDistancePct >= 0 ? "" : ""}
-                      {liqDistancePct.toFixed(2)}% 여유
-                    </span>
-                  )}
-                </td>
-                <td
-                  className={cn(
-                    "px-2 py-1.5 text-right font-bold",
-                    pnl >= 0 ? "text-neon-green" : "text-neon-red",
-                  )}
-                >
-                  {pnl >= 0 ? "+" : ""}
-                  {formatUSD(pnl)}
-                </td>
-                <td
-                  className={cn(
-                    "px-2 py-1.5 text-right",
-                    pnl >= 0 ? "text-neon-green/80" : "text-neon-red/80",
-                  )}
-                >
-                  {pnlPct >= 0 ? "+" : ""}
-                  {pnlPct.toFixed(2)}%
-                </td>
-                {!showClosed && (
-                  <td
-                    className={cn(
-                      "px-2 py-1.5 text-right font-mono",
-                      marginRatioColor,
-                    )}
-                    title={
-                      marginRatio != null
-                        ? `Margin Ratio ${(marginRatio * 100).toFixed(1)}% (maintenance / current margin). 1.0 = 청산 임계.`
-                        : undefined
-                    }
-                  >
-                    {marginRatio == null || !isFinite(marginRatio)
-                      ? "—"
-                      : `${(marginRatio * 100).toFixed(1)}%`}
-                  </td>
-                )}
-                <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
-                  {showClosed ? (
-                    isLiquidated ? (
-                      <Badge className="font-mono text-[9px] uppercase bg-neon-red/15 text-neon-red border-neon-red/40">
-                        강제청산
-                      </Badge>
-                    ) : (
-                      <span>수동 종료</span>
-                    )
-                  ) : (
-                    new Date(p.openedAt).toLocaleString("ko-KR", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  )}
-                </td>
-                {!showClosed && (
-                  <td className="px-2 py-1.5 text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onClose(p.id)}
-                      disabled={isClosing}
-                      className="h-6 px-2 font-mono text-[10px]"
-                    >
-                      {isClosing ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        "Close"
-                      )}
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
+          {positions.map((p: any) => (
+            <PositionRow
+              key={p.id}
+              p={p}
+              showClosed={showClosed}
+              totalCapital={totalCapital}
+              isClosing={isClosing}
+              onClose={onClose}
+            />
+          ))}
         </tbody>
       </table>
     </div>
   );
 }
+
+/**
+ * Phase 3 #3 (2026-05-20): OrderRow 분리 + React.memo.
+ *
+ * OpenOrdersTable 의 row 도 ticker 변경에 영향받지만, distance 외에는 정적.
+ * tickerSymbol 과 lastPrice 만 의존 필드로 비교해 불필요한 re-render skip.
+ */
+interface OrderRowProps {
+  o: SimOrder;
+  /** ticker 가 해당 row 의 symbol 과 매칭될 때만 mark price 사용. */
+  mark: number | null;
+  onCancel: (id: string) => void;
+}
+
+const OrderRow = memo(
+  function OrderRow({ o, mark, onCancel }: OrderRowProps) {
+    const distancePct =
+      mark != null && o.limitPrice && o.limitPrice > 0
+        ? ((o.limitPrice - mark) / mark) * 100
+        : null;
+    // LONG limit: limit 이 mark 보다 낮을 때 정상 (체결 대기 = 가격 하락 기대)
+    // SHORT limit: limit 이 mark 보다 높을 때 정상 (체결 대기 = 가격 상승 기대)
+    return (
+      <tr className="border-b border-border/10 font-mono text-[11px] hover:bg-muted/10">
+        <td className="px-2 py-1.5 text-foreground font-semibold">
+          {o.symbol.replace("USDT", "")}
+        </td>
+        <td className="px-2 py-1.5">
+          <Badge
+            className={cn(
+              "font-mono text-[9px] uppercase",
+              o.side === "long"
+                ? "bg-neon-green/15 text-neon-green border-neon-green/40"
+                : "bg-neon-red/15 text-neon-red border-neon-red/40",
+            )}
+          >
+            {o.side}
+          </Badge>
+        </td>
+        <td className="px-2 py-1.5">
+          <Badge className="font-mono text-[9px] uppercase bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40">
+            {o.type}
+          </Badge>
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          {o.leverage}×
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          {formatQty(o.qty)}
+        </td>
+        <td className="px-2 py-1.5 text-right text-neon-cyan">
+          {o.limitPrice ? `$${formatPrice(o.limitPrice)}` : "—"}
+        </td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          {mark != null ? `$${formatPrice(mark)}` : "—"}
+        </td>
+        <td
+          className={cn(
+            "px-2 py-1.5 text-right",
+            distancePct == null
+              ? "text-muted-foreground"
+              : Math.abs(distancePct) < 0.5
+                ? "text-neon-yellow"
+                : "text-muted-foreground",
+          )}
+        >
+          {distancePct != null
+            ? `${distancePct >= 0 ? "+" : ""}${distancePct.toFixed(2)}%`
+            : "—"}
+        </td>
+        <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
+          {new Date(o.createdAt).toLocaleString("ko-KR", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </td>
+        <td className="px-2 py-1.5 text-right">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onCancel(o.id)}
+            className="h-6 px-2 font-mono text-[10px] text-neon-red hover:bg-neon-red/10"
+            title="주문 취소"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </td>
+      </tr>
+    );
+  },
+  (prev, next) => {
+    return (
+      prev.o.id === next.o.id &&
+      prev.o.status === next.o.status &&
+      prev.o.limitPrice === next.o.limitPrice &&
+      prev.o.qty === next.o.qty &&
+      prev.mark === next.mark &&
+      prev.onCancel === next.onCancel
+    );
+  },
+);
 
 function OpenOrdersTable({
   orders,
@@ -1838,83 +2013,13 @@ function OpenOrdersTable({
             const isTickerSymbol =
               ticker?.symbol === o.symbol && ticker.lastPrice > 0;
             const mark = isTickerSymbol ? ticker!.lastPrice : null;
-            const distancePct =
-              mark != null && o.limitPrice && o.limitPrice > 0
-                ? ((o.limitPrice - mark) / mark) * 100
-                : null;
-            // LONG limit: limit 이 mark 보다 낮을 때 정상 (체결 대기 = 가격 하락 기대)
-            // SHORT limit: limit 이 mark 보다 높을 때 정상 (체결 대기 = 가격 상승 기대)
             return (
-              <tr
+              <OrderRow
                 key={o.id}
-                className="border-b border-border/10 font-mono text-[11px] hover:bg-muted/10"
-              >
-                <td className="px-2 py-1.5 text-foreground font-semibold">
-                  {o.symbol.replace("USDT", "")}
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge
-                    className={cn(
-                      "font-mono text-[9px] uppercase",
-                      o.side === "long"
-                        ? "bg-neon-green/15 text-neon-green border-neon-green/40"
-                        : "bg-neon-red/15 text-neon-red border-neon-red/40",
-                    )}
-                  >
-                    {o.side}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge className="font-mono text-[9px] uppercase bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40">
-                    {o.type}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  {o.leverage}×
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  {formatQty(o.qty)}
-                </td>
-                <td className="px-2 py-1.5 text-right text-neon-cyan">
-                  {o.limitPrice ? `$${formatPrice(o.limitPrice)}` : "—"}
-                </td>
-                <td className="px-2 py-1.5 text-right text-foreground">
-                  {mark != null ? `$${formatPrice(mark)}` : "—"}
-                </td>
-                <td
-                  className={cn(
-                    "px-2 py-1.5 text-right",
-                    distancePct == null
-                      ? "text-muted-foreground"
-                      : Math.abs(distancePct) < 0.5
-                        ? "text-neon-yellow"
-                        : "text-muted-foreground",
-                  )}
-                >
-                  {distancePct != null
-                    ? `${distancePct >= 0 ? "+" : ""}${distancePct.toFixed(2)}%`
-                    : "—"}
-                </td>
-                <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
-                  {new Date(o.createdAt).toLocaleString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </td>
-                <td className="px-2 py-1.5 text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onCancel(o.id)}
-                    className="h-6 px-2 font-mono text-[10px] text-neon-red hover:bg-neon-red/10"
-                    title="주문 취소"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </td>
-              </tr>
+                o={o}
+                mark={mark}
+                onCancel={onCancel}
+              />
             );
           })}
         </tbody>
@@ -1922,6 +2027,74 @@ function OpenOrdersTable({
     </div>
   );
 }
+
+/**
+ * Phase 3 #3 (2026-05-20): TransactionRow 분리 + React.memo.
+ *
+ * 거래내역은 immutable (id 가 unique 하고 한번 생성되면 변경 X) 이므로,
+ * 같은 id → 같은 결과. memo 가 거의 모든 row 의 re-render 를 제거.
+ */
+interface TransactionRowProps {
+  tx: any;
+}
+
+const TransactionRow = memo(
+  function TransactionRow({ tx }: TransactionRowProps) {
+    return (
+      <tr className="border-b border-border/10 font-mono text-[11px]">
+        <td className="px-2 py-1.5 text-muted-foreground text-[10px] whitespace-nowrap">
+          {new Date(tx.ts).toLocaleString("ko-KR", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </td>
+        <td className="px-2 py-1.5">
+          <Badge
+            className={cn(
+              "font-mono text-[9px] uppercase",
+              tx.type === "open" &&
+                "bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40",
+              tx.type === "close" &&
+                "bg-neon-green/15 text-neon-green border-neon-green/40",
+              tx.type === "commission" &&
+                "bg-neon-yellow/15 text-neon-yellow border-neon-yellow/40",
+              tx.type === "funding" &&
+                "bg-orange-500/15 text-orange-400 border-orange-500/40",
+              tx.type === "deposit" &&
+                "bg-neon-pink/15 text-neon-pink border-neon-pink/40",
+              tx.type === "liquidation" &&
+                "bg-neon-red/15 text-neon-red border-neon-red/40",
+            )}
+          >
+            {tx.type}
+          </Badge>
+        </td>
+        <td className="px-2 py-1.5 text-foreground">{tx.symbol ?? "—"}</td>
+        <td className="px-2 py-1.5 text-right text-foreground">
+          {tx.price ? `$${formatPrice(tx.price)}` : "—"}
+        </td>
+        <td
+          className={cn(
+            "px-2 py-1.5 text-right",
+            tx.amount >= 0 ? "text-neon-green" : "text-neon-red",
+          )}
+        >
+          {tx.amount >= 0 ? "+" : ""}
+          {formatUSD(tx.amount)}
+        </td>
+        <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
+          {tx.note}
+        </td>
+      </tr>
+    );
+  },
+  (prev, next) =>
+    prev.tx.id === next.tx.id &&
+    prev.tx.amount === next.tx.amount &&
+    prev.tx.note === next.tx.note,
+);
 
 function TradeHistoryTable({ transactions }: { transactions: any[] }) {
   if (transactions.length === 0) {
@@ -1946,56 +2119,7 @@ function TradeHistoryTable({ transactions }: { transactions: any[] }) {
         </thead>
         <tbody>
           {transactions.map((tx: any) => (
-            <tr
-              key={tx.id}
-              className="border-b border-border/10 font-mono text-[11px]"
-            >
-              <td className="px-2 py-1.5 text-muted-foreground text-[10px] whitespace-nowrap">
-                {new Date(tx.ts).toLocaleString("ko-KR", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </td>
-              <td className="px-2 py-1.5">
-                <Badge
-                  className={cn(
-                    "font-mono text-[9px] uppercase",
-                    tx.type === "open" &&
-                      "bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40",
-                    tx.type === "close" &&
-                      "bg-neon-green/15 text-neon-green border-neon-green/40",
-                    tx.type === "commission" &&
-                      "bg-neon-yellow/15 text-neon-yellow border-neon-yellow/40",
-                    tx.type === "funding" &&
-                      "bg-orange-500/15 text-orange-400 border-orange-500/40",
-                    tx.type === "deposit" &&
-                      "bg-neon-pink/15 text-neon-pink border-neon-pink/40",
-                    tx.type === "liquidation" &&
-                      "bg-neon-red/15 text-neon-red border-neon-red/40",
-                  )}
-                >
-                  {tx.type}
-                </Badge>
-              </td>
-              <td className="px-2 py-1.5 text-foreground">{tx.symbol ?? "—"}</td>
-              <td className="px-2 py-1.5 text-right text-foreground">
-                {tx.price ? `$${formatPrice(tx.price)}` : "—"}
-              </td>
-              <td
-                className={cn(
-                  "px-2 py-1.5 text-right",
-                  tx.amount >= 0 ? "text-neon-green" : "text-neon-red",
-                )}
-              >
-                {tx.amount >= 0 ? "+" : ""}
-                {formatUSD(tx.amount)}
-              </td>
-              <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
-                {tx.note}
-              </td>
-            </tr>
+            <TransactionRow key={tx.id} tx={tx} />
           ))}
         </tbody>
       </table>
