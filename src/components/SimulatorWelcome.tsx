@@ -11,7 +11,7 @@
  *   - 로그인 불요 / 회원가입 없음 — 헌장: 시뮬레이터는 실제 자본 영향 X.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,15 @@ import {
   Shield,
   Wand2,
   Trash2,
+  Download,
+  Upload,
 } from "lucide-react";
 import type { SimUser } from "@/hooks/useSimUser";
-import { nukeAllSimData } from "@/lib/sim-local-store";
+import {
+  nukeAllSimData,
+  exportSimData,
+  importSimData,
+} from "@/lib/sim-local-store";
 
 const ADJECTIVES = [
   "Cyber", "Quantum", "Crypto", "Nebula", "Lunar", "Solar", "Pixel",
@@ -50,6 +56,7 @@ interface Props {
 export function SimulatorWelcome({ onRegister }: Props) {
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleNuke = () => {
     if (
@@ -65,6 +72,80 @@ export function SimulatorWelcome({ onRegister }: Props) {
     nukeAllSimData();
     // 사용자 시각적 확신을 위해 reload — fresh load 후 Welcome 화면 그대로 노출.
     window.location.reload();
+  };
+
+  /**
+   * Export — 현재 localStorage 의 sim 데이터를 JSON 파일로 다운로드.
+   *
+   * 신규 사용자는 export 할 데이터가 없을 수도 있어 (version+data 만 있는 빈 객체)
+   * 미리 확인 후 빈 데이터면 안내만 띄운다.  AUDIT.md §2.4 (local-only 적응).
+   */
+  const handleExport = () => {
+    const json = exportSimData();
+    try {
+      const parsed = JSON.parse(json) as { data?: Record<string, string> };
+      const keyCount = parsed.data ? Object.keys(parsed.data).length : 0;
+      if (keyCount === 0) {
+        window.alert("내보낼 시뮬레이터 데이터가 없습니다.");
+        return;
+      }
+    } catch {
+      // 검증 실패해도 export 자체는 진행
+    }
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    a.href = url;
+    a.download = `tradelab-simulator-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  /**
+   * Import — 사용자가 선택한 JSON 파일을 읽어 localStorage 를 복원.
+   *
+   * 정책: REPLACE — 기존 sim 데이터 모두 삭제 후 백업 파일로 덮어쓴다.
+   * 확인 dialog 후 진행, 복원 성공 시 reload (simUser hook 이 mount 시 한 번만
+   * 읽으므로 새 닉네임이 즉시 반영되려면 reload 필요).
+   */
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 같은 파일 재선택 가능하도록 reset
+    if (!file) return;
+    if (
+      !window.confirm(
+        "현재 시뮬레이터 데이터를 백업 파일로 덮어쓰시겠습니까?\n\n" +
+          "- 기존 닉네임 · UUID · 포지션 · 거래 내역이 모두 교체됩니다.\n" +
+          "- 본 브라우저에서만 적용.\n" +
+          "- 복원 후 페이지가 자동 reload 됩니다.",
+      )
+    ) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === "string" ? reader.result : "";
+      const result = importSimData(text);
+      if (!result.ok) {
+        window.alert(`복원 실패: ${result.error ?? "올바른 백업 파일이 아닙니다."}`);
+        return;
+      }
+      window.alert(
+        `복원 완료 (${result.restored ?? 0}개 항목). 페이지를 새로고침합니다.`,
+      );
+      window.location.reload();
+    };
+    reader.onerror = () => {
+      window.alert("파일 읽기 실패");
+    };
+    reader.readAsText(file);
   };
 
   const handleStart = () => {
@@ -200,24 +281,66 @@ export function SimulatorWelcome({ onRegister }: Props) {
             <RuleLine>다른 사용자에게 공유되지 않음</RuleLine>
           </div>
 
-          {/* Reset / nuke — 기존 시뮬레이터 데이터 완전 삭제 */}
-          <div className="mt-4 pt-3 border-t border-border/20 flex flex-col items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleNuke}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
-                "border border-neon-red/30 bg-neon-red/5 text-neon-red",
-                "hover:bg-neon-red/15 hover:border-neon-red/60",
-                "font-mono text-[10px] uppercase tracking-wider transition-colors",
-              )}
-              title="모든 시뮬레이터 데이터를 영구 삭제"
-            >
-              <Trash2 className="h-3 w-3" />
-              기존 시뮬레이터 데이터 모두 삭제 (리셋)
-            </button>
-            <p className="font-mono text-[9px] text-muted-foreground/70">
-              · 닉네임 · UUID · 포지션 · 거래 내역 전부 삭제 · 본 브라우저 한정
+          {/* Backup / Restore + Reset / Nuke */}
+          <div className="mt-4 pt-3 border-t border-border/20 flex flex-col items-center gap-2">
+            {/* Hidden file input — handleImportClick 가 클릭 트리거 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportFile}
+              className="hidden"
+            />
+
+            {/* Export / Import — 백업 · 복구 (AUDIT.md §2.4) */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExport}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                  "border border-neon-cyan/30 bg-neon-cyan/5 text-neon-cyan",
+                  "hover:bg-neon-cyan/15 hover:border-neon-cyan/60",
+                  "font-mono text-[10px] uppercase tracking-wider transition-colors",
+                )}
+                title="현재 시뮬레이터 데이터를 JSON 백업 파일로 다운로드"
+              >
+                <Download className="h-3 w-3" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={handleImportClick}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                  "border border-neon-green/30 bg-neon-green/5 text-neon-green",
+                  "hover:bg-neon-green/15 hover:border-neon-green/60",
+                  "font-mono text-[10px] uppercase tracking-wider transition-colors",
+                )}
+                title="JSON 백업 파일에서 시뮬레이터 데이터를 복원"
+              >
+                <Upload className="h-3 w-3" />
+                Import
+              </button>
+              <button
+                type="button"
+                onClick={handleNuke}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                  "border border-neon-red/30 bg-neon-red/5 text-neon-red",
+                  "hover:bg-neon-red/15 hover:border-neon-red/60",
+                  "font-mono text-[10px] uppercase tracking-wider transition-colors",
+                )}
+                title="모든 시뮬레이터 데이터를 영구 삭제"
+              >
+                <Trash2 className="h-3 w-3" />
+                Reset
+              </button>
+            </div>
+            <p className="font-mono text-[9px] text-muted-foreground/70 text-center">
+              · Export: 현재 데이터를 JSON 으로 다운로드 · Import: 백업 파일로 복원 · Reset: 모두 삭제
+              <br />
+              · 닉네임 · UUID · 포지션 · 거래 내역 전부 본 브라우저 한정
             </p>
           </div>
         </div>

@@ -21,20 +21,15 @@
  *     양쪽 모두 수신.
  *
  * PnL 정확화 (2026-05-19, AUDIT.md §1.4):
- *   - `computeUnrealizedPnL` 등 순수 PnL 함수를 `sim-pnl.ts` 로 분리.
+ *   - `computeUnrealizedPnL` / `computeCashReturned` 등을 `sim-pnl.ts` 로 분리.
  *   - PnL 공식에서 잘못된 `× leverage` 제거 (Bybit Perp 표준 일치).
- *     `pnl = size × Δprice` — leverage 는 margin 에 반영되어 ROE 에서만 효과.
- *
- * Cash 음수 차단 (2026-05-19, AUDIT.md §1.7):
- *   - Close 시 cash 환원에 `cashReturned = max(0, margin + netPnL)` clamp.
- *   - 손실이 margin 을 초과해도 (예: gap-down) account.cash 음수 진입 X.
- *   - Defense-in-depth: 누적 acc.cash 가 음수에 도달하면 0 으로 강제 보정.
+ *   - Close 시 cash 환원에 `Math.max(0, ...)` clamp 적용 (음수 차단).
  */
 
 import {
   computeUnrealizedPnL,
-  computeNetPnL,
   computeCashReturned,
+  computeNetPnL,
 } from "./sim-pnl";
 
 const INITIAL_CASH = 200_000;
@@ -852,4 +847,137 @@ export function cancelLocalOrder(
     status: "cancelled",
     cancelledAt: Date.now(),
   });
+}
+
+// ─── Export / Import (백업 / 복구) ─────────────────────────
+//
+// localStorage 는 사용자가 브라우저 캐시 / 시크릿 모드 / 다른 기기 전환 시
+// 휘발된다. 백엔드 DB 가 없는 local-only 모드에서 사용자가 자기 데이터를
+// 보호할 수 있도록 JSON export / import 를 제공.
+//
+// 보안: 시뮬레이터 데이터는 가짜 자산이므로 평문 export 무방.
+// 단, 사용자가 export 한 JSON 파일을 SNS 등 공개 채널에 올리면 nickname 노출.
+
+/**
+ * 모든 `tradelab.sim.*` 키 + `tradelab.simUser` 를 JSON 으로 직렬화.
+ *
+ * 반환 형식:
+ * ```json
+ * {
+ *   "version": 1,
+ *   "exportedAt": "2026-05-19T12:34:56.789Z",
+ *   "data": {
+ *     "tradelab.sim.account.<uuid>": "{...}",
+ *     "tradelab.sim.positions.<uuid>": "[...]",
+ *     "tradelab.simUser": "{...}",
+ *     ...
+ *   }
+ * }
+ * ```
+ *
+ * AUDIT.md §2.4 (local-only 적응 — S3 대신 사용자 파일 다운로드).
+ */
+export function exportSimData(): string {
+  const data: Record<string, string> = {};
+  if (typeof window === "undefined") {
+    return JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {},
+    });
+  }
+  try {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith("tradelab.sim.") || key === "tradelab.simUser") {
+        const value = window.localStorage.getItem(key);
+        if (value != null) data[key] = value;
+      }
+    }
+  } catch {
+    // private mode / quota — 빈 export 반환
+  }
+  return JSON.stringify(
+    {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data,
+    },
+    null,
+    2,
+  );
+}
+
+export interface ImportResult {
+  ok: boolean;
+  error?: string;
+  /** 복원된 key 개수 (성공 시). */
+  restored?: number;
+}
+
+/**
+ * `exportSimData` 가 만든 JSON 을 받아 localStorage 를 복원.
+ *
+ * 정책:
+ *   - **REPLACE** — 기존 `tradelab.sim.*` / `tradelab.simUser` 를 모두 삭제 후
+ *     import 데이터로 덮어쓴다 (merge 가 아님).
+ *   - 다른 key (Tradelab 외 앱) 는 건드리지 않는다.
+ *   - version === 1 만 허용.
+ *
+ * 호출 후 자동으로 emitSimChange 발화 — 현재 마운트된 hook 들이 새 데이터로
+ * 즉시 갱신.  단, simUser hook 은 mount 시 한 번만 읽으므로 (정책 결정),
+ * import 후 페이지 reload 권장.
+ */
+export function importSimData(json: string): ImportResult {
+  if (typeof window === "undefined") {
+    return { ok: false, error: "브라우저 환경이 아닙니다" };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (err) {
+    return { ok: false, error: `JSON parse 실패: ${(err as Error).message}` };
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("version" in parsed) ||
+    !("data" in parsed)
+  ) {
+    return { ok: false, error: "잘못된 export 파일 형식" };
+  }
+  const obj = parsed as { version: unknown; data: unknown };
+  if (obj.version !== 1) {
+    return { ok: false, error: `지원되지 않는 버전: ${String(obj.version)}` };
+  }
+  if (typeof obj.data !== "object" || obj.data === null) {
+    return { ok: false, error: "data 필드 누락" };
+  }
+  try {
+    // 1. 기존 sim 데이터 모두 제거
+    const existingKeys = Object.keys(window.localStorage);
+    for (const k of existingKeys) {
+      if (k.startsWith("tradelab.sim.") || k === "tradelab.simUser") {
+        window.localStorage.removeItem(k);
+      }
+    }
+    // 2. import 데이터 복원
+    let restored = 0;
+    for (const [key, value] of Object.entries(
+      obj.data as Record<string, unknown>,
+    )) {
+      if (
+        typeof value !== "string" ||
+        !(key.startsWith("tradelab.sim.") || key === "tradelab.simUser")
+      ) {
+        continue;
+      }
+      window.localStorage.setItem(key, value);
+      restored++;
+    }
+    invalidateAllCaches();
+    emitSimChange();
+    return { ok: true, restored };
+  } catch (err) {
+    return { ok: false, error: `복원 실패: ${(err as Error).message}` };
+  }
 }

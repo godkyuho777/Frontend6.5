@@ -22,7 +22,7 @@
  * (자본 보호) 와 별개로 사용자 학습 / UX 실험용.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,8 @@ import {
   updateLocalOrder,
   cancelLocalOrder,
   ensureLocalAccount,
+  exportSimData,
+  importSimData,
   type SimOrder,
 } from "@/lib/sim-local-store";
 import {
@@ -82,6 +84,8 @@ import {
   LogOut,
   Trash2,
   ClipboardList,
+  Download,
+  Upload,
 } from "lucide-react";
 import type { Candle } from "@shared/types";
 
@@ -147,6 +151,9 @@ export default function Simulator() {
 
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput] = useState("");
+
+  // Export / Import (백업 · 복구) — hidden file input + ref.
+  const importFileInputRef = useRef<HTMLInputElement>(null);
 
   // ── tRPC (only when registered) ───────────────────────────
   const trpcEnabled = !!simUser?.id;
@@ -538,6 +545,86 @@ export default function Simulator() {
   };
 
   /**
+   * Export — 현재 localStorage 의 sim 데이터를 JSON 파일로 다운로드.
+   *
+   * AUDIT.md §2.4 (local-only 적응 — S3 audit log 대신 사용자 파일 백업).
+   * 로컬 모드뿐 아니라 백엔드 모드에서도 사용 가능 (localStorage cache 백업용).
+   */
+  const handleExport = useCallback(() => {
+    const json = exportSimData();
+    try {
+      const parsed = JSON.parse(json) as { data?: Record<string, string> };
+      const keyCount = parsed.data ? Object.keys(parsed.data).length : 0;
+      if (keyCount === 0) {
+        toast.warning("내보낼 시뮬레이터 데이터가 없습니다.");
+        return;
+      }
+    } catch {
+      // 검증 실패해도 export 자체는 진행
+    }
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    a.href = url;
+    a.download = `tradelab-simulator-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("백업 다운로드 완료");
+  }, []);
+
+  /** Import 버튼 → 숨겨진 file input 클릭 트리거. */
+  const handleImportClick = useCallback(() => {
+    importFileInputRef.current?.click();
+  }, []);
+
+  /**
+   * 사용자가 JSON 파일을 선택하면 → 확인 dialog → localStorage 복원 → reload.
+   *
+   * 복원 후 simUser hook 이 mount 시점 값을 캐싱하므로 reload 가 필요.
+   */
+  const handleImportFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // 같은 파일 재선택 가능하도록 reset
+      if (!file) return;
+      if (
+        !window.confirm(
+          "현재 시뮬레이터 데이터를 백업 파일로 덮어쓰시겠습니까?\n\n" +
+            "- 기존 닉네임 · UUID · 포지션 · 거래 내역이 모두 교체됩니다.\n" +
+            "- 본 브라우저에서만 적용.\n" +
+            "- 복원 후 페이지가 자동 reload 됩니다.",
+        )
+      ) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = typeof reader.result === "string" ? reader.result : "";
+        const result = importSimData(text);
+        if (!result.ok) {
+          toast.error(
+            `복원 실패: ${result.error ?? "올바른 백업 파일이 아닙니다."}`,
+          );
+          return;
+        }
+        toast.success(
+          `복원 완료 (${result.restored ?? 0}개 항목) — 새로고침합니다.`,
+        );
+        // 짧은 지연 후 reload — toast 가 시각적으로 인지될 시간 확보.
+        setTimeout(() => window.location.reload(), 600);
+      };
+      reader.onerror = () => {
+        toast.error("파일 읽기 실패");
+      };
+      reader.readAsText(file);
+    },
+    [],
+  );
+
+  /**
    * 사용자가 %  버튼을 누르면 (가용 현금 × pct%) 를 totalCost (= margin +
    * commission) 로 환산해 maxQty 를 계산.
    *
@@ -746,7 +833,15 @@ export default function Simulator() {
           label="Positions"
           value={`${account?.openPositions ?? 0}`}
         />
-        <div className="flex gap-2 justify-end items-center col-span-3 sm:col-span-1">
+        <div className="flex gap-1.5 justify-end items-center col-span-3 sm:col-span-1 flex-wrap">
+          {/* Hidden file input — handleImportClick 가 클릭 트리거 */}
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFile}
+            className="hidden"
+          />
           <Button
             size="sm"
             variant="outline"
@@ -760,6 +855,26 @@ export default function Simulator() {
               <RefreshCw className="h-3 w-3 mr-1" />
             )}
             Mark
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExport}
+            className="font-mono text-[10px] h-7 text-neon-cyan hover:bg-neon-cyan/10"
+            title="현재 시뮬레이터 데이터를 JSON 백업 파일로 다운로드"
+          >
+            <Download className="h-3 w-3 mr-1" />
+            Export
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleImportClick}
+            className="font-mono text-[10px] h-7 text-neon-green hover:bg-neon-green/10"
+            title="JSON 백업 파일에서 시뮬레이터 데이터를 복원"
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Import
           </Button>
           <Button
             size="sm"
