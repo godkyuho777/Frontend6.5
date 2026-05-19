@@ -36,6 +36,42 @@ const INITIAL_CASH = 200_000;
 const COMMISSION_RATE = 0.0001; // 0.01%
 const DEFAULT_MAINTENANCE_MARGIN_RATE = 0.005; // 0.5% (Bybit isolated 기본)
 
+/**
+ * Sanity threshold — 초기 자본 ($200K) 의 100 배 (= $20M).
+ *
+ * 2026-05-19 이전 빌드에서 PnL 공식이 `× leverage` 로 잘못 곱해져 cash 가
+ * 비정상적으로 부풀어진 사용자 데이터가 발견됨 (사용자 보고: $4.05T).
+ * 본 임계 이상이면 잔존 corrupted 데이터로 간주하고 UI 경고 + Reset 권장.
+ *
+ * 자동 마이그레이션은 의도적으로 수행하지 않음 — 잘못된 추정 마이그레이션이
+ * 더 큰 혼란을 유발할 수 있어 사용자 수동 Reset (또는 Export 후 Reset) 만 허용.
+ */
+const INITIAL_CASH_SANITY_THRESHOLD = INITIAL_CASH * 100; // $20,000,000
+
+export { INITIAL_CASH, INITIAL_CASH_SANITY_THRESHOLD };
+
+/**
+ * 계정 자본이 sanity threshold 를 초과하는지 검사.
+ *
+ * 검사 대상:
+ *   - cash > $20M
+ *   - realizedPnl > $20M
+ *
+ * 둘 중 하나라도 초과면 true.  로컬 모드 Simulator mount 시 한 번 호출되어
+ * UI 경고 배너 + Reset 권장 표시.
+ *
+ * Pure read — localStorage 변경 X.
+ */
+export function isAccountAbnormallyLarge(
+  account: Pick<LocalSimAccount, "cash" | "realizedPnl"> | null,
+): boolean {
+  if (!account) return false;
+  return (
+    account.cash > INITIAL_CASH_SANITY_THRESHOLD ||
+    account.realizedPnl > INITIAL_CASH_SANITY_THRESHOLD
+  );
+}
+
 function storageKey(
   simUserId: string,
   kind: "account" | "positions" | "transactions" | "orders",
