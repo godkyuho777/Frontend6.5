@@ -62,6 +62,9 @@ import {
   importSimData,
   buildIdempotencyToken,
   checkAndRecordIdempotency,
+  isAccountAbnormallyLarge,
+  INITIAL_CASH,
+  INITIAL_CASH_SANITY_THRESHOLD,
   type SimOrder,
 } from "@/lib/sim-local-store";
 import {
@@ -71,6 +74,7 @@ import {
   DEFAULT_MAINTENANCE_MARGIN_RATE,
   applySlippage,
   SLIPPAGE_PCT,
+  computeSimulatorStats,
 } from "@/lib/sim-pnl";
 import {
   useLocalAccountSync,
@@ -95,6 +99,8 @@ import {
   ClipboardList,
   Download,
   Upload,
+  AlertTriangle,
+  BarChart3,
 } from "lucide-react";
 import type { Candle } from "@shared/types";
 
@@ -312,6 +318,41 @@ export default function Simulator() {
   const transactions = useLocalMode ? localTxs : (transactionsQuery.data ?? []);
 
   const currentPrice = ticker?.lastPrice ?? 0;
+
+  // ── Sanity Guard (Phase 4): 비정상 자본 감지 ──────────────
+  //
+  // 2026-05-19 이전 PnL fix 이전 빌드에서 `× leverage` 이중계산으로 cash 가
+  // 비정상 수치 ($4.05T 등) 로 부풀어진 잔존 데이터를 탐지.
+  // Local 모드에서만 의미 있음 (백엔드 모드는 DB 가 정상화된 상태).
+  // toast 는 마운트 직후 한 번만 — sanityGuardShown ref 로 중복 차단.
+  const sanityGuardShown = useRef(false);
+  const isAbnormalCapital = useLocalMode && isAccountAbnormallyLarge(localAccount);
+  useEffect(() => {
+    if (!isAbnormalCapital) return;
+    if (sanityGuardShown.current) return;
+    sanityGuardShown.current = true;
+    const cashStr = (localAccount?.cash ?? 0).toLocaleString("en-US", {
+      maximumFractionDigits: 0,
+    });
+    toast.warning(`비정상 자본 감지: $${cashStr}`, {
+      description:
+        "이전 PnL 버그(leverage 이중계산)의 잔존 데이터일 수 있습니다. " +
+        "Export 로 백업한 뒤 Reset 을 권장합니다.",
+      duration: 10_000,
+    });
+  }, [isAbnormalCapital, localAccount?.cash]);
+
+  // ── Simulator Stats (Phase 4 #16 일부) ──────────────────────
+  //
+  // closed positions 에서 winRate/avgWin/avgLoss/Expectancy/MaxDD 집계.
+  // 백테스트 결과와의 직접 비교는 별도 세션 — 본 카드는 시뮬레이터 자체 stats 만.
+  //
+  // useMemo 로 closedPositions reference 가 안 변하면 같은 결과 재사용 →
+  // 불필요한 재집계 비용 없음.
+  const simulatorStats = useMemo(
+    () => computeSimulatorStats(closedPositions, INITIAL_CASH),
+    [closedPositions],
+  );
 
   /**
    * Phase 2 #6 — 현재 차트 심볼의 open 포지션 + pending limit 주문 priceLine 입력.
@@ -1036,6 +1077,116 @@ export default function Simulator() {
             로컬 모드 (LOCAL MODE) — 백엔드 DB 비활성. 포지션 / 거래내역이 이
             브라우저에만 저장됩니다. 브라우저 캐시 삭제 시 사라집니다.
           </span>
+        </div>
+      )}
+
+      {/* 🚨 Sanity Guard — 비정상 자본 감지 (Phase 4) */}
+      {isAbnormalCapital && (
+        <div className="rounded-md border-2 border-neon-red/60 bg-neon-red/10 px-3 py-2 font-mono text-[11px] flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-start gap-2 flex-1">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0 text-neon-red mt-0.5" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-neon-red font-bold uppercase tracking-wide">
+                비정상 자본 감지 — Sanity Guard
+              </span>
+              <span className="text-foreground/90">
+                현재 자본이 $
+                {INITIAL_CASH_SANITY_THRESHOLD.toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}{" "}
+                을 초과합니다. 이전 PnL 버그(leverage 이중계산)의 잔존
+                데이터일 가능성이 높습니다.
+              </span>
+              <span className="text-muted-foreground text-[10px]">
+                권장: Export 로 백업 → Reset. 새 거래부터는 정확한 PnL 공식
+                (Bybit Perp 표준) 이 적용됩니다.
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-1.5 sm:flex-shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExport}
+              className="font-mono text-[10px] h-7 text-neon-cyan hover:bg-neon-cyan/10"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Export
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleReset}
+              className="font-mono text-[10px] h-7 text-neon-red hover:bg-neon-red/20 border-neon-red/60"
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset Now
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 📊 Simulator Stats (Phase 4 #16 일부) — closed trades 가 있을 때만 노출 */}
+      {simulatorStats.totalTrades > 0 && (
+        <div className="rounded-md border border-neon-cyan/30 bg-card/40 px-3 py-2 flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-[10px] font-mono">
+            <BarChart3 className="h-3.5 w-3.5 text-neon-cyan" />
+            <span className="font-display font-bold text-foreground uppercase tracking-wide">
+              Simulator Stats
+            </span>
+            <span className="text-muted-foreground">
+              · {simulatorStats.totalTrades} closed trade
+              {simulatorStats.totalTrades === 1 ? "" : "s"}
+            </span>
+            <span className="ml-auto text-muted-foreground hidden md:inline">
+              정확한 백테스트 비교는 <code className="text-neon-cyan">/backtest</code>{" "}
+              페이지
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-3 gap-y-1.5">
+            <KV
+              label="Win Rate"
+              value={`${(simulatorStats.winRate * 100).toFixed(1)}%`}
+              color={
+                simulatorStats.winRate >= 0.5
+                  ? "text-neon-green"
+                  : "text-neon-red"
+              }
+            />
+            <KV
+              label={`Avg Win (${simulatorStats.wins})`}
+              value={formatUSD(simulatorStats.avgWin)}
+              color="text-neon-green"
+            />
+            <KV
+              label={`Avg Loss (${simulatorStats.losses})`}
+              value={formatUSD(simulatorStats.avgLoss)}
+              color="text-neon-red"
+            />
+            <KV
+              label="Expectancy / trade"
+              value={formatUSD(simulatorStats.expectancy)}
+              color={
+                simulatorStats.expectancy >= 0
+                  ? "text-neon-green"
+                  : "text-neon-red"
+              }
+            />
+            <KV
+              label={`Max DD (${(simulatorStats.maxDrawdownPct * 100).toFixed(1)}%)`}
+              value={formatUSD(-simulatorStats.maxDrawdown)}
+              color="text-neon-red"
+            />
+            <KV
+              label={`Total PnL (${(simulatorStats.totalPnlPct * 100).toFixed(1)}%)`}
+              value={formatUSD(simulatorStats.totalPnl)}
+              color={
+                simulatorStats.totalPnl >= 0
+                  ? "text-neon-green"
+                  : "text-neon-red"
+              }
+            />
+          </div>
         </div>
       )}
 
