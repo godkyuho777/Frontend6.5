@@ -56,6 +56,12 @@ import {
   type SimOrder,
 } from "@/lib/sim-local-store";
 import {
+  computeUnrealizedPnL,
+  computeMarginRatio,
+  getMarginRatioColor,
+  DEFAULT_MAINTENANCE_MARGIN_RATE,
+} from "@/lib/sim-pnl";
+import {
   useLocalAccountSync,
   useLocalEquitySync,
   useLocalPositionsSync,
@@ -1365,20 +1371,49 @@ function PositionsTable({
             <th className="text-right px-2 py-1.5">Liq Price</th>
             <th className="text-right px-2 py-1.5">P&L</th>
             <th className="text-right px-2 py-1.5">P&L %</th>
+            {!showClosed && (
+              <th
+                className="text-right px-2 py-1.5"
+                title="Margin Ratio — 청산 임박도 (maintenance / current margin). 1.0 = 청산 임계."
+              >
+                MR
+              </th>
+            )}
             <th className="text-left px-2 py-1.5">{showClosed ? "Reason" : "Time"}</th>
             {!showClosed && <th className="px-2 py-1.5"></th>}
           </tr>
         </thead>
         <tbody>
           {positions.map((p: any) => {
-            const dir = p.side === "long" ? 1 : -1;
             const mark = showClosed
               ? (p.closedPrice ?? p.entryPrice)
               : (p.currentPrice ?? p.entryPrice);
+            // ✅ PnL 정확화 (AUDIT.md §1.4): leverage 곱하기 제거.
+            // open 포지션: 실시간 mark price 로 unrealized PnL 계산.
+            // closed 포지션: 저장된 closedPnl 그대로 사용 (백워드 호환).
             const pnl = showClosed
               ? (p.closedPnl ?? 0)
-              : dir * (mark - p.entryPrice) * p.quantity * p.leverage;
+              : computeUnrealizedPnL(p.side, p.quantity, p.entryPrice, mark);
+            // ROE = pnl / margin (×100 to percent).
             const pnlPct = p.margin > 0 ? (pnl / p.margin) * 100 : 0;
+            // Margin Ratio — open 일 때만 계산.
+            const mmr =
+              typeof p.maintenanceMarginRate === "number" && p.maintenanceMarginRate > 0
+                ? p.maintenanceMarginRate
+                : DEFAULT_MAINTENANCE_MARGIN_RATE;
+            const marginRatio =
+              !showClosed && p.margin > 0
+                ? computeMarginRatio(
+                    p.side,
+                    p.quantity,
+                    p.entryPrice,
+                    mark,
+                    p.margin,
+                    mmr,
+                  )
+                : null;
+            const marginRatioColor =
+              marginRatio != null ? getMarginRatioColor(marginRatio) : "";
 
             // Liq price: 신규 필드 우선, 없으면 legacy liquidationPrice fallback.
             const liqPrice: number | null =
@@ -1472,6 +1507,23 @@ function PositionsTable({
                   {pnlPct >= 0 ? "+" : ""}
                   {pnlPct.toFixed(2)}%
                 </td>
+                {!showClosed && (
+                  <td
+                    className={cn(
+                      "px-2 py-1.5 text-right font-mono",
+                      marginRatioColor,
+                    )}
+                    title={
+                      marginRatio != null
+                        ? `Margin Ratio ${(marginRatio * 100).toFixed(1)}% (maintenance / current margin). 1.0 = 청산 임계.`
+                        : undefined
+                    }
+                  >
+                    {marginRatio == null || !isFinite(marginRatio)
+                      ? "—"
+                      : `${(marginRatio * 100).toFixed(1)}%`}
+                  </td>
+                )}
                 <td className="px-2 py-1.5 text-muted-foreground text-[10px]">
                   {showClosed ? (
                     isLiquidated ? (

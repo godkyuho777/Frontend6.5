@@ -19,7 +19,14 @@
  *     stability 보장 (snapshot 비교 false-positive 방지).
  *   - subscribeSimChange 는 같은 탭의 emitter + 다른 탭의 storage 이벤트
  *     양쪽 모두 수신.
+ *
+ * PnL 정확화 (2026-05-19, AUDIT.md §1.4):
+ *   - `computeUnrealizedPnL` 등 순수 PnL 함수를 `sim-pnl.ts` 로 분리.
+ *   - PnL 공식에서 잘못된 `× leverage` 제거 (Bybit Perp 표준 일치).
+ *     `pnl = size × Δprice` — leverage 는 margin 에 반영되어 ROE 에서만 효과.
  */
+
+import { computeUnrealizedPnL } from "./sim-pnl";
 
 const INITIAL_CASH = 200_000;
 const COMMISSION_RATE = 0.0001; // 0.01%
@@ -414,11 +421,19 @@ export function computeLocalEquity(
     return cached.result;
   }
 
+  // ✅ PnL 정확화 (AUDIT.md §1.4): leverage 제거 — quantity × 가격차이만.
+  // Bybit Perp 표준: pnl = size × (mark - entry) (LONG) / size × (entry - mark) (SHORT).
+  // Leverage 는 margin 에 반영되므로 ROE 에서만 효과가 보이고, dollar PnL 에는
+  // 영향을 주지 않는다.
   let unrealizedPnl = 0;
   for (const p of positions) {
     if (p.currentPrice == null) continue;
-    const dir = p.side === "long" ? 1 : -1;
-    unrealizedPnl += dir * (p.currentPrice - p.entryPrice) * p.quantity * p.leverage;
+    unrealizedPnl += computeUnrealizedPnL(
+      p.side,
+      p.quantity,
+      p.entryPrice,
+      p.currentPrice,
+    );
   }
   const result = {
     unrealizedPnl,
@@ -596,8 +611,16 @@ export function localClosePosition(input: LocalCloseInput): LocalCloseResult {
   const target = positions.find((p) => p.id === positionId && p.status === "open");
   if (!target) return { error: "Position not found" };
 
-  const dir = target.side === "long" ? 1 : -1;
-  const pnlRaw = dir * (exitPrice - target.entryPrice) * target.quantity * target.leverage;
+  // ✅ PnL 정확화 (AUDIT.md §1.4): leverage 제거 (Bybit Perp 표준).
+  //   pnl = size × (exit - entry) (LONG) / size × (entry - exit) (SHORT)
+  // Commission 은 기존 식 (positionValue × rate × leverage) 유지 — 본 fix
+  // 는 PnL 만 다룬다. 수수료 정확화는 별도 PR.
+  const pnlRaw = computeUnrealizedPnL(
+    target.side,
+    target.quantity,
+    target.entryPrice,
+    exitPrice,
+  );
   const positionValue = exitPrice * target.quantity;
   const exitCommission = positionValue * COMMISSION_RATE * target.leverage;
   const netReturn = target.margin + pnlRaw - exitCommission - target.accruedFunding;
