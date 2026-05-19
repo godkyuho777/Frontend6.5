@@ -1295,6 +1295,15 @@ export default function Simulator() {
           )}
         </div>
       </div>
+
+      {/* Phase 2 #13: footer 면책 라벨 — 거래 화면에서도 가상 거래임을 상시 명시. */}
+      <div className="mt-1 flex items-center justify-center gap-1.5 px-2 py-1 font-mono text-[9px] text-amber-300/70">
+        <AlertCircle className="h-3 w-3 text-amber-400/70" />
+        <span>
+          가상 거래입니다 · 실제 자금 없음 · 한국 가상자산법: 투자 자문 아님 ·
+          데이터는 본 브라우저 localStorage 한정
+        </span>
+      </div>
     </div>
   );
 }

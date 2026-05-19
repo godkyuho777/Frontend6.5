@@ -25,6 +25,7 @@ import {
   Trash2,
   Download,
   Upload,
+  AlertTriangle,
 } from "lucide-react";
 import type { SimUser } from "@/hooks/useSimUser";
 import {
@@ -189,6 +190,40 @@ export function SimulatorWelcome({ onRegister }: Props) {
               <p className="font-mono text-xs text-muted-foreground">
                 닉네임을 입력하고 가상 자금 $200,000 USD 를 받아 모의 거래를 시작하세요.
               </p>
+            </div>
+          </div>
+
+          {/* Phase 2 #13: 면책 안내 — 가상자산법 / 모의거래 명시.
+              사용자가 닉네임 입력 전에 명확히 인지하도록 카드 상단 배치. */}
+          <div
+            className={cn(
+              "mt-3 mb-1 rounded-md border p-3",
+              "border-amber-500/40 bg-amber-500/10",
+            )}
+            role="note"
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex flex-col gap-1">
+                <p className="font-display font-bold text-xs text-amber-300 uppercase tracking-wider">
+                  Investment Simulator 사용 안내
+                </p>
+                <ul className="font-mono text-[10px] text-amber-200/90 leading-relaxed space-y-0.5 list-disc pl-4">
+                  <li>본 서비스는 <strong>가상 자본을 사용한 모의 거래</strong> 입니다. 실제 자금은 거래되지 않습니다.</li>
+                  <li>
+                    체결 / PnL 은 가상이며 실거래 결과와 차이 가능 (slippage,
+                    latency, 수수료 모델 차이).
+                  </li>
+                  <li>
+                    한국 가상자산법: 본 시뮬레이션은 투자 자문이 아니며, 어떠한
+                    수익도 보장하지 않습니다.
+                  </li>
+                  <li>
+                    데이터는 본 브라우저의 <strong>localStorage</strong> 에만
+                    저장되며 서버로 전송되지 않습니다.
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
