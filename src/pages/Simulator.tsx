@@ -60,6 +60,8 @@ import {
   ensureLocalAccount,
   exportSimData,
   importSimData,
+  buildIdempotencyToken,
+  checkAndRecordIdempotency,
   type SimOrder,
 } from "@/lib/sim-local-store";
 import {
@@ -485,79 +487,123 @@ export default function Simulator() {
   /** 로컬 모드에서 mutation 결과 errors 표시용 */
   const [localError, setLocalError] = useState<string | null>(null);
 
+  /**
+   * Phase 3 #11: Submit lock — 진입 버튼 빠르게 연속 클릭으로 인한 중복 진입 방지.
+   *
+   * 다중 방어선:
+   *   1) submitting state — 진행 중인 비동기 동안 버튼 disabled.
+   *   2) Idempotency token — localStorage 에 최근 5초 token 기록, 같은 키
+   *      (symbol+side+qty+price) 의 token 이 5초 이내면 거부.
+   *
+   * 디바운스 (시간 기반) 는 사용자가 빠르게 scale-in 하는 경우와 충돌 가능 →
+   * 적용 안 함. 정확히 "같은 가격에 같은 수량" 만 차단.
+   */
+  const [submitting, setSubmitting] = useState(false);
+
   // ── Handlers ──────────────────────────────────────────────
   const submitOrder = useCallback(
     (forSide: "long" | "short") => {
       if (!simUser?.id) return;
       if (productType === "spot" && forSide === "short") return;
       if (qty <= 0 || effectivePrice <= 0) return;
+      // Phase 3 #11: Submit lock — 진행 중이면 즉시 무시.
+      // 본 가드는 (lock 설정 사이 동시 클릭) race condition 까지는 완전 차단 X.
+      // → 그 다음 idempotency token 검사가 race 도 차단.
+      if (submitting) return;
       setSide(forSide);
       setLocalError(null);
 
-      if (useLocalMode) {
-        if (orderType === "limit") {
-          // Limit 주문: 즉시 체결하지 않고 pending order 로 저장.
-          // ticker 갱신 시 트리거 useEffect 가 limitPrice 검사 후 자동 체결.
-          // ※ Slippage 미적용 — 사용자가 정한 가격에 체결.
-          if (!effectivePrice || effectivePrice <= 0) {
-            setLocalError("Limit price 입력 필요");
+      // Phase 3 #11: Idempotency token — 같은 의도 (symbol/side/qty/price/leverage/orderType)
+      // 가 5초 윈도우 안에 재호출되면 거부. localStorage 기반이므로 다중 탭에서도 작동.
+      const effLeverage = productType === "spot" ? 1 : leverage;
+      const idemToken = buildIdempotencyToken({
+        symbol,
+        side: forSide,
+        qty,
+        entryPrice: effectivePrice,
+        leverage: effLeverage,
+        orderType,
+      });
+      const { duplicate } = checkAndRecordIdempotency(simUser.id, idemToken);
+      if (duplicate) {
+        toast.warning("중복 주문 차단", {
+          description: "같은 조건의 주문이 5초 이내 이미 제출되었습니다.",
+        });
+        return;
+      }
+
+      setSubmitting(true);
+      // try/finally 로 lock 해제 보장 — 예외 / 동기 return 모두 안전.
+      try {
+        if (useLocalMode) {
+          if (orderType === "limit") {
+            // Limit 주문: 즉시 체결하지 않고 pending order 로 저장.
+            // ticker 갱신 시 트리거 useEffect 가 limitPrice 검사 후 자동 체결.
+            // ※ Slippage 미적용 — 사용자가 정한 가격에 체결.
+            if (!effectivePrice || effectivePrice <= 0) {
+              setLocalError("Limit price 입력 필요");
+              return;
+            }
+            addLocalOrder({
+              simUserId: simUser.id,
+              symbol,
+              productType,
+              side: forSide,
+              type: "limit",
+              qty,
+              limitPrice: effectivePrice,
+              leverage: effLeverage,
+              marginMode,
+            });
+            setQtyText("");
             return;
           }
-          addLocalOrder({
+          // Market 주문 — slippage 적용 (Phase 3 #9, AUDIT.md).
+          // LONG : entry × (1 + 0.1%) — 사용자 손해 방향 (체결가 ↑)
+          // SHORT: entry × (1 - 0.1%) — 사용자 손해 방향 (체결가 ↓)
+          // PnL 은 entryPrice 가 적용 후 값이므로 자동 반영.
+          const slippedEntry = applySlippage(effectivePrice, forSide);
+          const result = localOpenPosition({
             simUserId: simUser.id,
             symbol,
             productType,
             side: forSide,
-            type: "limit",
-            qty,
-            limitPrice: effectivePrice,
-            leverage: productType === "spot" ? 1 : leverage,
-            marginMode,
+            leverage: effLeverage,
+            entryPrice: slippedEntry,
+            quantity: qty,
           });
-          setQtyText("");
+          if (result.error) {
+            setLocalError(result.error);
+          } else {
+            setQtyText("");
+            toast.success(
+              `Market ${forSide.toUpperCase()} ${symbol} 체결`,
+              {
+                description: `Entry $${slippedEntry.toFixed(2)} (slippage ${
+                  forSide === "long" ? "+" : "-"
+                }${(SLIPPAGE_PCT * 100).toFixed(2)}%)`,
+              },
+            );
+          }
           return;
         }
-        // Market 주문 — slippage 적용 (Phase 3 #9, AUDIT.md).
-        // LONG : entry × (1 + 0.1%) — 사용자 손해 방향 (체결가 ↑)
-        // SHORT: entry × (1 - 0.1%) — 사용자 손해 방향 (체결가 ↓)
-        // PnL 은 entryPrice 가 적용 후 값이므로 자동 반영.
-        const slippedEntry = applySlippage(effectivePrice, forSide);
-        const result = localOpenPosition({
+
+        openMutation.mutate({
           simUserId: simUser.id,
           symbol,
           productType,
           side: forSide,
-          leverage: productType === "spot" ? 1 : leverage,
-          entryPrice: slippedEntry,
+          leverage: effLeverage,
           quantity: qty,
+          entryPrice: orderType === "market" ? undefined : effectivePrice,
+          orderType,
+          marginMode,
         });
-        if (result.error) {
-          setLocalError(result.error);
-        } else {
-          setQtyText("");
-          toast.success(
-            `Market ${forSide.toUpperCase()} ${symbol} 체결`,
-            {
-              description: `Entry $${slippedEntry.toFixed(2)} (slippage ${
-                forSide === "long" ? "+" : "-"
-              }${(SLIPPAGE_PCT * 100).toFixed(2)}%)`,
-            },
-          );
-        }
-        return;
+      } finally {
+        // 동기 path 끝에서 즉시 해제 — 백엔드 모드의 비동기 mutation 은 자체
+        // openMutation.isPending state 로 별도 disabled 처리 (기존 UI 유지).
+        setSubmitting(false);
       }
-
-      openMutation.mutate({
-        simUserId: simUser.id,
-        symbol,
-        productType,
-        side: forSide,
-        leverage: productType === "spot" ? 1 : leverage,
-        quantity: qty,
-        entryPrice: orderType === "market" ? undefined : effectivePrice,
-        orderType,
-        marginMode,
-      });
     },
     [
       simUser?.id,
@@ -570,6 +616,7 @@ export default function Simulator() {
       orderType,
       effectivePrice,
       marginMode,
+      submitting,
     ],
   );
 
@@ -1172,17 +1219,18 @@ export default function Simulator() {
           </div>
 
           {/* Buy/Sell — ALWAYS HIGH UP (Bybit style) */}
+          {/* Phase 3 #11: submitting state 까지 disabled 조건에 포함 — 연속 클릭 차단. */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Button
               onClick={() => submitOrder("long")}
-              disabled={!isAffordable || openMutation.isPending}
+              disabled={!isAffordable || openMutation.isPending || submitting}
               className={cn(
                 "h-10 font-display font-bold uppercase text-sm",
                 "bg-neon-green hover:bg-neon-green/80 text-background",
-                (!isAffordable || openMutation.isPending) && "opacity-60",
+                (!isAffordable || openMutation.isPending || submitting) && "opacity-60",
               )}
             >
-              {openMutation.isPending && side === "long" ? (
+              {(openMutation.isPending || submitting) && side === "long" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
@@ -1196,15 +1244,16 @@ export default function Simulator() {
               disabled={
                 productType === "spot" ||
                 openMutation.isPending ||
+                submitting ||
                 !isAffordable
               }
               className={cn(
                 "h-10 font-display font-bold uppercase text-sm",
                 "bg-neon-red hover:bg-neon-red/80 text-background",
-                (productType === "spot" || !isAffordable) && "opacity-60",
+                (productType === "spot" || !isAffordable || submitting) && "opacity-60",
               )}
             >
-              {openMutation.isPending && side === "short" ? (
+              {(openMutation.isPending || submitting) && side === "short" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>

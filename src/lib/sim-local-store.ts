@@ -933,6 +933,82 @@ export function cancelLocalOrder(
   });
 }
 
+// ─── Idempotency (Phase 3 #11) ─────────────────────────────
+//
+// 진입 버튼 빠르게 연속 클릭 시 같은 (symbol, side, qty, price, leverage)
+// 의 진입을 5초 윈도우 동안 1회만 허용. submit lock (UI disabled) 과 함께
+// 다중 방어로 작동 — race condition (lock 설정 직전 동시 클릭) 도 차단.
+//
+// localStorage 키: tradelab.sim.recentTokens.<simUserId>
+// 값: [{ token: string, ts: number }, ...]  최대 5초 이내 항목만 유지.
+
+const RECENT_TOKENS_KEY_PREFIX = "tradelab.sim.recentTokens.";
+const IDEMPOTENCY_WINDOW_MS = 5_000;
+
+interface RecentToken {
+  token: string;
+  ts: number;
+}
+
+/**
+ * 진입 의도 고유 키 — 같은 의도면 같은 token.
+ *
+ * 의도 = (symbol, side, qty, entryPrice, leverage, orderType).
+ * Math.random 사용 X — 의도가 같으면 token 도 같아야 중복 차단 가능.
+ */
+export function buildIdempotencyToken(input: {
+  symbol: string;
+  side: "long" | "short";
+  qty: number;
+  entryPrice: number;
+  leverage: number;
+  orderType: "market" | "limit";
+}): string {
+  return [
+    input.symbol,
+    input.side,
+    input.qty.toFixed(8),
+    input.entryPrice.toFixed(2),
+    input.leverage,
+    input.orderType,
+  ].join("|");
+}
+
+/**
+ * 최근 윈도우 (기본 5초) 안에 동일 token 이 있는지 확인.
+ * 신규면 기록 후 false (= not duplicate) 반환, 동일하면 true 반환.
+ *
+ * Pure side-effect — 호출자가 결과 보고 진행 / 거부 결정.
+ */
+export function checkAndRecordIdempotency(
+  simUserId: string,
+  token: string,
+  windowMs: number = IDEMPOTENCY_WINDOW_MS,
+): { duplicate: boolean } {
+  if (typeof window === "undefined") return { duplicate: false };
+  const key = RECENT_TOKENS_KEY_PREFIX + simUserId;
+  const now = Date.now();
+  let tokens: RecentToken[] = [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw) tokens = JSON.parse(raw) as RecentToken[];
+  } catch {
+    tokens = [];
+  }
+  // 만료된 token 제거
+  const recent = tokens.filter((t) => now - t.ts < windowMs);
+  const duplicate = recent.some((t) => t.token === token);
+  if (!duplicate) {
+    recent.push({ token, ts: now });
+    try {
+      window.localStorage.setItem(key, JSON.stringify(recent));
+    } catch {
+      // quota / private mode — ignore
+    }
+  }
+  return { duplicate };
+}
+
 // ─── Export / Import (백업 / 복구) ─────────────────────────
 //
 // localStorage 는 사용자가 브라우저 캐시 / 시크릿 모드 / 다른 기기 전환 시
