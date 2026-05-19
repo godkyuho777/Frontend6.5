@@ -24,9 +24,18 @@
  *   - `computeUnrealizedPnL` 등 순수 PnL 함수를 `sim-pnl.ts` 로 분리.
  *   - PnL 공식에서 잘못된 `× leverage` 제거 (Bybit Perp 표준 일치).
  *     `pnl = size × Δprice` — leverage 는 margin 에 반영되어 ROE 에서만 효과.
+ *
+ * Cash 음수 차단 (2026-05-19, AUDIT.md §1.7):
+ *   - Close 시 cash 환원에 `cashReturned = max(0, margin + netPnL)` clamp.
+ *   - 손실이 margin 을 초과해도 (예: gap-down) account.cash 음수 진입 X.
+ *   - Defense-in-depth: 누적 acc.cash 가 음수에 도달하면 0 으로 강제 보정.
  */
 
-import { computeUnrealizedPnL } from "./sim-pnl";
+import {
+  computeUnrealizedPnL,
+  computeNetPnL,
+  computeCashReturned,
+} from "./sim-pnl";
 
 const INITIAL_CASH = 200_000;
 const COMMISSION_RATE = 0.0001; // 0.01%
@@ -623,18 +632,21 @@ export function localClosePosition(input: LocalCloseInput): LocalCloseResult {
   );
   const positionValue = exitPrice * target.quantity;
   const exitCommission = positionValue * COMMISSION_RATE * target.leverage;
-  const netReturn = target.margin + pnlRaw - exitCommission - target.accruedFunding;
+  const netPnl = computeNetPnL(pnlRaw, exitCommission, target.accruedFunding);
 
   const isLiquidation = reason === "liquidation";
-  // 강제청산: 사용자는 margin 을 모두 잃는다. netReturn 을 0 으로 고정 (마이너스
-  // 가능성 차단 — 헌장 R4 자본보호와 별개로 시뮬레이션 UX 안정).
-  const finalCashDelta = isLiquidation ? 0 : netReturn;
+  // ✅ Cash 음수 차단 (AUDIT.md §1.7): cashReturned = max(0, margin + netPnL).
+  // 강제청산은 명시적으로 0 환원 — margin 전손.
+  // 손실이 margin 을 초과해도 (예: gap-down) cash 음수 진입 X.
+  const cashReturned = isLiquidation
+    ? 0
+    : computeCashReturned(target.margin, netPnl);
 
   target.status = isLiquidation ? "liquidated" : "closed";
   target.closedAt = new Date().toISOString();
   target.closedPnl = isLiquidation
     ? -target.margin // 마진 전손
-    : pnlRaw - exitCommission - target.accruedFunding;
+    : netPnl;
   target.closedPrice = exitPrice;
   target.closedReason = reason;
   target.currentPrice = exitPrice;
@@ -646,7 +658,18 @@ export function localClosePosition(input: LocalCloseInput): LocalCloseResult {
   // close 시 계정이 없을 일은 없지만 (open 했어야 close 가능) 방어적으로
   // ensureLocalAccount 로 폴백.
   const acc = ensureLocalAccount(simUserId);
-  const newCash = acc.cash + finalCashDelta;
+  // 🛡 Defense-in-depth: computeCashReturned 가 음수를 차단해도, 누적 acc.cash
+  // 가 어떤 경로로든 음수에 도달하면 0 으로 강제 보정 + console.error.
+  let newCash = acc.cash + cashReturned;
+  if (newCash < 0) {
+    console.error("[sim] cash would go negative — clamping to 0", {
+      cash: acc.cash,
+      cashReturned,
+      margin: target.margin,
+      netPnl,
+    });
+    newCash = 0;
+  }
   setLocalAccount(simUserId, {
     ...acc,
     cash: newCash,
@@ -669,7 +692,7 @@ export function localClosePosition(input: LocalCloseInput): LocalCloseResult {
       positionId,
       type: "close",
       symbol: target.symbol,
-      amount: netReturn,
+      amount: cashReturned,
       price: exitPrice,
       note: `Close ${target.side.toUpperCase()} ${target.symbol} @ $${exitPrice.toFixed(2)} · PnL ${(target.closedPnl ?? 0).toFixed(2)}`,
     });

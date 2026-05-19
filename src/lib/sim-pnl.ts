@@ -122,3 +122,39 @@ export function getMarginRatioColor(ratio: number): string {
   if (ratio >= 0.5) return "text-neon-yellow";
   return "text-muted-foreground";
 }
+
+/**
+ * 손익에 거래 수수료 + 펀딩비를 반영한 순손익.
+ *
+ *   netPnL = unrealizedPnL - exitCommission - accruedFunding
+ *
+ * 본 함수는 close 시점에 호출 (open 시 commission 은 별도 차감).
+ *
+ * @param unrealizedPnL  exit price 기반 가격 손익
+ * @param exitCommission  exit 거래 수수료 (positive)
+ * @param accruedFunding  누적 펀딩비 (LONG 이 funding payer 일 때 positive)
+ */
+export function computeNetPnL(
+  unrealizedPnL: number,
+  exitCommission: number,
+  accruedFunding: number,
+): number {
+  return unrealizedPnL - exitCommission - accruedFunding;
+}
+
+/**
+ * Close 시 cash 환원량 (음수 차단).
+ *
+ *   cashReturned = max(0, marginUsed + netPnL)
+ *
+ * 손실이 margin 을 초과해도 cash 가 음수가 되지 않도록 clamp.
+ * (현실: Bybit 도 isolated 에서 margin 이상 잃지 않음 — auto-deleverage 발동).
+ *
+ * INVESTMENT_SIMULATOR_AUDIT.md §1.7 핵심 공식.
+ */
+export function computeCashReturned(
+  marginUsed: number,
+  netPnL: number,
+): number {
+  return Math.max(0, marginUsed + netPnL);
+}
