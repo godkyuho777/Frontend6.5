@@ -492,6 +492,23 @@ export interface LocalOpenResult {
   error?: string;
 }
 
+/**
+ * Open / Scale-in 포지션 (Bybit 표준 = 같은 (symbol, side, productType, leverage) 통합).
+ *
+ * Phase 2 #2 (INVESTMENT_SIMULATOR_AUDIT.md):
+ *   - 같은 심볼 · 같은 방향 · 같은 productType · 같은 leverage 의 open 포지션이
+ *     이미 있으면 → 평균 진입가로 통합 (scale-in / 추가매수).
+ *   - 다른 leverage 면 별도 포지션으로 분리 (사용자 의도 보호 — 1x 와 10x 를
+ *     섞으면 청산가 / 위험 프로파일이 완전히 달라짐).
+ *   - Hedge mode: LONG + SHORT 동시 보유는 지원 (다른 side 는 별도 포지션 유지).
+ *
+ * 통합 시:
+ *   - quantity 합산, entryPrice = 가중평균
+ *   - margin / accruedCommission 합산
+ *   - liqPrice 재계산 (새 entry 기반)
+ *   - 기존 position ID 유지 (audit trail 보존)
+ *   - Transaction 은 "open" + "commission" 그대로 기록 (positionId = 기존 ID).
+ */
 export function localOpenPosition(input: LocalOpenInput): LocalOpenResult {
   const { simUserId, symbol, productType, side, leverage, entryPrice, quantity } =
     input;
@@ -518,7 +535,78 @@ export function localOpenPosition(input: LocalOpenInput): LocalOpenResult {
     };
   }
 
-  // 청산가: Bybit isolated margin 스타일 (MMR 0.5%).
+  const positions = loadJson<LocalSimPosition[]>(
+    storageKey(simUserId, "positions"),
+    [],
+  );
+
+  // Phase 2 #2: 같은 (symbol, side, productType, leverage) open 포지션이 있으면 통합.
+  // leverage 가 다르면 별도 포지션 — 청산가 / 위험 프로파일이 다르므로.
+  const existing = positions.find(
+    (p) =>
+      p.status === "open" &&
+      p.symbol === symbol &&
+      p.side === side &&
+      p.productType === productType &&
+      p.leverage === effLeverage,
+  );
+
+  if (existing) {
+    // 통합 (scale-in): 가중평균 entry + qty / margin 합산.
+    const totalQty = existing.quantity + quantity;
+    const avgEntry =
+      (existing.entryPrice * existing.quantity + entryPrice * quantity) /
+      totalQty;
+
+    // 새 entry 기준 청산가 재계산 (MMR 0.5%).
+    const newLiqPrice = calcLiquidationPrice(
+      side,
+      avgEntry,
+      effLeverage,
+      DEFAULT_MAINTENANCE_MARGIN_RATE,
+    );
+
+    existing.quantity = totalQty;
+    existing.entryPrice = avgEntry;
+    existing.margin = existing.margin + margin;
+    existing.accruedCommission = existing.accruedCommission + commission;
+    existing.liquidationPrice = newLiqPrice;
+    existing.liqPrice = newLiqPrice;
+    // currentPrice 는 다음 markToMarket 사이클에서 자동 갱신 — 손대지 않음.
+
+    setLocalPositions(simUserId, positions);
+
+    // 차감
+    const newCash = acc.cash - totalCost;
+    setLocalAccount(simUserId, {
+      ...acc,
+      cash: newCash,
+      totalCommission: acc.totalCommission + commission,
+    });
+
+    // Transaction — scale-in 도 "open" 타입으로 기록 (note 에 통합 표시).
+    appendTransactionInternal(simUserId, {
+      positionId: existing.id,
+      type: "open",
+      symbol,
+      amount: -margin,
+      price: entryPrice,
+      note: `${side.toUpperCase()} ${symbol} +${quantity} @ $${entryPrice.toFixed(2)} (scale-in · 평균가 $${avgEntry.toFixed(2)} · 총 ${totalQty})`,
+    });
+    appendTransactionInternal(simUserId, {
+      positionId: existing.id,
+      type: "commission",
+      symbol,
+      amount: -commission,
+      price: entryPrice,
+      note: `Scale-in commission (0.01% × ${effLeverage}x)`,
+    });
+
+    emitSimChange();
+    return { position: existing, newCash };
+  }
+
+  // 신규 진입 — 기존 path.
   const liqPrice = calcLiquidationPrice(
     side,
     entryPrice,
@@ -526,10 +614,6 @@ export function localOpenPosition(input: LocalOpenInput): LocalOpenResult {
     DEFAULT_MAINTENANCE_MARGIN_RATE,
   );
 
-  const positions = loadJson<LocalSimPosition[]>(
-    storageKey(simUserId, "positions"),
-    [],
-  );
   const nextId = (positions.reduce((max, p) => Math.max(max, p.id), 0) || 0) + 1;
   const now = new Date().toISOString();
   const newPos: LocalSimPosition = {
