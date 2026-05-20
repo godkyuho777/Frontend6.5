@@ -2190,6 +2190,216 @@ const PositionRow = memo(
   },
 );
 
+/**
+ * #14 모바일 UX: 포지션을 카드 형태로 렌더링.
+ *
+ * 카드 구조 (모바일 < sm):
+ *   ┌────────────────────────────────────┐
+ *   │ BTC   [LONG]  10x  perp       Close│  ← Symbol/Side/Lev + Close 버튼
+ *   │ Entry $100  Mark $110              │  ← 가격
+ *   │ Qty 0.5     Margin $50 (12%)       │  ← 수량/마진
+ *   │ Liq $50 (5.3% 여유)                │  ← 청산
+ *   │ +$5.00 (+10.0%)  MR 25%            │  ← PnL/MR
+ *   └────────────────────────────────────┘
+ */
+const PositionCard = memo(
+  function PositionCard({
+    p,
+    showClosed,
+    totalCapital,
+    isClosing,
+    onClose,
+  }: PositionRowProps) {
+    const mark = showClosed
+      ? (p.closedPrice ?? p.entryPrice)
+      : (p.currentPrice ?? p.entryPrice);
+    const pnl = showClosed
+      ? (p.closedPnl ?? 0)
+      : computeUnrealizedPnL(p.side, p.quantity, p.entryPrice, mark);
+    const pnlPct = p.margin > 0 ? (pnl / p.margin) * 100 : 0;
+    const mmr =
+      typeof p.maintenanceMarginRate === "number" && p.maintenanceMarginRate > 0
+        ? p.maintenanceMarginRate
+        : DEFAULT_MAINTENANCE_MARGIN_RATE;
+    const marginRatio =
+      !showClosed && p.margin > 0
+        ? computeMarginRatio(p.side, p.quantity, p.entryPrice, mark, p.margin, mmr)
+        : null;
+    const marginRatioColor =
+      marginRatio != null ? getMarginRatioColor(marginRatio) : "";
+    const liqPrice: number | null =
+      typeof p.liqPrice === "number" && p.liqPrice > 0
+        ? p.liqPrice
+        : typeof p.liquidationPrice === "number" && p.liquidationPrice > 0
+          ? p.liquidationPrice
+          : null;
+    let liqDistancePct: number | null = null;
+    if (!showClosed && liqPrice != null && mark > 0) {
+      liqDistancePct =
+        p.side === "long"
+          ? ((mark - liqPrice) / mark) * 100
+          : ((liqPrice - mark) / mark) * 100;
+    }
+    const liqColor = showClosed
+      ? "text-muted-foreground"
+      : liqDistancePct == null
+        ? "text-muted-foreground"
+        : liqDistancePct < 1
+          ? "text-neon-red"
+          : liqDistancePct < 5
+            ? "text-neon-yellow"
+            : "text-muted-foreground";
+    const isLiquidated =
+      p.status === "liquidated" || p.closedReason === "liquidation";
+
+    return (
+      <div className="rounded-md border border-border/30 bg-card/60 p-2.5 flex flex-col gap-1.5 font-mono text-[11px]">
+        {/* Row 1 — Symbol + Side + Type + Lev + Close */}
+        <div className="flex items-center gap-2">
+          <span className="font-display font-bold text-sm text-foreground">
+            {p.symbol.replace("USDT", "")}
+          </span>
+          <Badge
+            className={cn(
+              "font-mono text-[9px] uppercase",
+              p.side === "long"
+                ? "bg-neon-green/15 text-neon-green border-neon-green/40"
+                : "bg-neon-red/15 text-neon-red border-neon-red/40",
+            )}
+          >
+            {p.side}
+          </Badge>
+          <span className="text-[10px] text-muted-foreground uppercase">
+            {p.productType} {p.leverage}×
+          </span>
+          {!showClosed && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onClose(p.id)}
+              disabled={isClosing}
+              className="ml-auto h-7 px-2.5 font-mono text-[10px]"
+            >
+              {isClosing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                "Close"
+              )}
+            </Button>
+          )}
+          {showClosed && isLiquidated && (
+            <Badge className="ml-auto font-mono text-[9px] uppercase bg-neon-red/15 text-neon-red border-neon-red/40">
+              강제청산
+            </Badge>
+          )}
+        </div>
+        {/* Row 2 — PnL prominent */}
+        <div className="flex items-baseline justify-between">
+          <span
+            className={cn(
+              "font-bold text-base",
+              pnl >= 0 ? "text-neon-green" : "text-neon-red",
+            )}
+          >
+            {pnl >= 0 ? "+" : ""}
+            {formatUSD(pnl)}
+          </span>
+          <span
+            className={cn(
+              "font-mono text-xs font-semibold",
+              pnl >= 0 ? "text-neon-green/80" : "text-neon-red/80",
+            )}
+          >
+            {pnlPct >= 0 ? "+" : ""}
+            {pnlPct.toFixed(2)}%
+          </span>
+        </div>
+        {/* Row 3 — 2-col grid: Entry / Mark + Qty / Margin */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Entry</span>
+            <span className="text-foreground">${formatPrice(p.entryPrice)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{showClosed ? "Exit" : "Mark"}</span>
+            <span className="text-foreground">${formatPrice(mark)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Qty</span>
+            <span className="text-foreground">{formatQty(p.quantity)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Margin</span>
+            <span className="text-foreground">
+              {formatUSD(p.margin ?? 0)}
+              {totalCapital > 0 && p.margin > 0 && (
+                <span className="opacity-70 ml-1">
+                  ({((p.margin / totalCapital) * 100).toFixed(1)}%)
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Liq</span>
+            <span className={liqColor}>
+              {liqPrice != null ? `$${formatPrice(liqPrice)}` : "—"}
+              {liqDistancePct != null && !showClosed && (
+                <span className="opacity-70 ml-1">
+                  ({liqDistancePct.toFixed(1)}%)
+                </span>
+              )}
+            </span>
+          </div>
+          {!showClosed && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">MR</span>
+              <span className={marginRatioColor}>
+                {marginRatio == null || !isFinite(marginRatio)
+                  ? "—"
+                  : `${(marginRatio * 100).toFixed(1)}%`}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between col-span-2">
+            <span className="text-muted-foreground">
+              {showClosed ? "Reason" : "Time"}
+            </span>
+            <span className="text-muted-foreground text-[10px]">
+              {showClosed
+                ? isLiquidated
+                  ? "강제청산"
+                  : "수동 종료"
+                : new Date(p.openedAt).toLocaleString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  },
+  (prev, next) => {
+    return (
+      prev.p.id === next.p.id &&
+      prev.p.quantity === next.p.quantity &&
+      prev.p.entryPrice === next.p.entryPrice &&
+      prev.p.currentPrice === next.p.currentPrice &&
+      prev.p.closedPrice === next.p.closedPrice &&
+      prev.p.closedPnl === next.p.closedPnl &&
+      prev.p.status === next.p.status &&
+      prev.p.margin === next.p.margin &&
+      prev.p.liqPrice === next.p.liqPrice &&
+      prev.showClosed === next.showClosed &&
+      prev.totalCapital === next.totalCapital &&
+      prev.isClosing === next.isClosing &&
+      prev.onClose === next.onClose
+    );
+  },
+);
+
 function PositionsTable({
   positions,
   onClose,
@@ -2216,7 +2426,21 @@ function PositionsTable({
     );
   }
   return (
-    <div className="overflow-x-auto">
+    <>
+    {/* #14 모바일 UX: < sm 에서 카드 변환 */}
+    <div className="flex flex-col gap-2 sm:hidden">
+      {positions.map((p: any) => (
+        <PositionCard
+          key={p.id}
+          p={p}
+          showClosed={showClosed}
+          totalCapital={totalCapital}
+          isClosing={isClosing}
+          onClose={onClose}
+        />
+      ))}
+    </div>
+    <div className="overflow-x-auto hidden sm:block">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border/20 font-mono text-[10px] text-muted-foreground uppercase">
@@ -2276,6 +2500,7 @@ function PositionsTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -2382,6 +2607,107 @@ const OrderRow = memo(
   },
 );
 
+/**
+ * #14 모바일 UX: pending limit 주문 카드 형태.
+ */
+const OrderCard = memo(
+  function OrderCard({ o, mark, onCancel }: OrderRowProps) {
+    const distancePct =
+      mark != null && o.limitPrice && o.limitPrice > 0
+        ? ((o.limitPrice - mark) / mark) * 100
+        : null;
+    return (
+      <div className="rounded-md border border-border/30 bg-card/60 p-2.5 flex flex-col gap-1.5 font-mono text-[11px]">
+        <div className="flex items-center gap-2">
+          <span className="font-display font-bold text-sm text-foreground">
+            {o.symbol.replace("USDT", "")}
+          </span>
+          <Badge
+            className={cn(
+              "font-mono text-[9px] uppercase",
+              o.side === "long"
+                ? "bg-neon-green/15 text-neon-green border-neon-green/40"
+                : "bg-neon-red/15 text-neon-red border-neon-red/40",
+            )}
+          >
+            {o.side}
+          </Badge>
+          <Badge className="font-mono text-[9px] uppercase bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40">
+            {o.type}
+          </Badge>
+          <span className="text-[10px] text-muted-foreground">
+            {o.leverage}×
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onCancel(o.id)}
+            className="ml-auto h-7 px-2.5 font-mono text-[10px] text-neon-red hover:bg-neon-red/10"
+            title="주문 취소"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Limit</span>
+            <span className="text-neon-cyan">
+              {o.limitPrice ? `$${formatPrice(o.limitPrice)}` : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Mark</span>
+            <span className="text-foreground">
+              {mark != null ? `$${formatPrice(mark)}` : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Qty</span>
+            <span className="text-foreground">{formatQty(o.qty)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Distance</span>
+            <span
+              className={cn(
+                distancePct == null
+                  ? "text-muted-foreground"
+                  : Math.abs(distancePct) < 0.5
+                    ? "text-neon-yellow"
+                    : "text-muted-foreground",
+              )}
+            >
+              {distancePct != null
+                ? `${distancePct >= 0 ? "+" : ""}${distancePct.toFixed(2)}%`
+                : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between col-span-2">
+            <span className="text-muted-foreground">Time</span>
+            <span className="text-muted-foreground">
+              {new Date(o.createdAt).toLocaleString("ko-KR", {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  },
+  (prev, next) => {
+    return (
+      prev.o.id === next.o.id &&
+      prev.o.status === next.o.status &&
+      prev.o.limitPrice === next.o.limitPrice &&
+      prev.o.qty === next.o.qty &&
+      prev.mark === next.mark &&
+      prev.onCancel === next.onCancel
+    );
+  },
+);
+
 function OpenOrdersTable({
   orders,
   ticker,
@@ -2410,7 +2736,19 @@ function OpenOrdersTable({
     );
   }
   return (
-    <div className="overflow-x-auto">
+    <>
+    {/* #14 모바일 UX: < sm 에서 카드 변환 */}
+    <div className="flex flex-col gap-2 sm:hidden">
+      {orders.map((o) => {
+        const isTickerSymbol =
+          ticker?.symbol === o.symbol && ticker.lastPrice > 0;
+        const mark = isTickerSymbol ? ticker!.lastPrice : null;
+        return (
+          <OrderCard key={o.id} o={o} mark={mark} onCancel={onCancel} />
+        );
+      })}
+    </div>
+    <div className="overflow-x-auto hidden sm:block">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border/20 font-mono text-[10px] text-muted-foreground uppercase">
@@ -2443,6 +2781,7 @@ function OpenOrdersTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -2514,6 +2853,69 @@ const TransactionRow = memo(
     prev.tx.note === next.tx.note,
 );
 
+/**
+ * #14 모바일 UX: 거래 내역 카드 형태.
+ */
+const TransactionCard = memo(
+  function TransactionCard({ tx }: TransactionRowProps) {
+    return (
+      <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col gap-1 font-mono text-[11px]">
+        <div className="flex items-center gap-2">
+          <Badge
+            className={cn(
+              "font-mono text-[9px] uppercase",
+              tx.type === "open" &&
+                "bg-neon-cyan/15 text-neon-cyan border-neon-cyan/40",
+              tx.type === "close" &&
+                "bg-neon-green/15 text-neon-green border-neon-green/40",
+              tx.type === "commission" &&
+                "bg-neon-yellow/15 text-neon-yellow border-neon-yellow/40",
+              tx.type === "funding" &&
+                "bg-orange-500/15 text-orange-400 border-orange-500/40",
+              tx.type === "deposit" &&
+                "bg-neon-pink/15 text-neon-pink border-neon-pink/40",
+              tx.type === "liquidation" &&
+                "bg-neon-red/15 text-neon-red border-neon-red/40",
+            )}
+          >
+            {tx.type}
+          </Badge>
+          <span className="text-foreground text-[10px]">{tx.symbol ?? "—"}</span>
+          <span
+            className={cn(
+              "ml-auto font-bold",
+              tx.amount >= 0 ? "text-neon-green" : "text-neon-red",
+            )}
+          >
+            {tx.amount >= 0 ? "+" : ""}
+            {formatUSD(tx.amount)}
+          </span>
+        </div>
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>
+            {new Date(tx.ts).toLocaleString("ko-KR", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+          <span>{tx.price ? `$${formatPrice(tx.price)}` : ""}</span>
+        </div>
+        {tx.note && (
+          <span className="text-[10px] text-muted-foreground/80 leading-tight">
+            {tx.note}
+          </span>
+        )}
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.tx.id === next.tx.id &&
+    prev.tx.amount === next.tx.amount &&
+    prev.tx.note === next.tx.note,
+);
+
 function TradeHistoryTable({ transactions }: { transactions: any[] }) {
   if (transactions.length === 0) {
     return (
@@ -2523,7 +2925,14 @@ function TradeHistoryTable({ transactions }: { transactions: any[] }) {
     );
   }
   return (
-    <div className="overflow-x-auto">
+    <>
+    {/* #14 모바일 UX: < sm 에서 카드 변환 */}
+    <div className="flex flex-col gap-1.5 sm:hidden">
+      {transactions.map((tx: any) => (
+        <TransactionCard key={tx.id} tx={tx} />
+      ))}
+    </div>
+    <div className="overflow-x-auto hidden sm:block">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border/20 font-mono text-[10px] text-muted-foreground uppercase">
@@ -2542,6 +2951,7 @@ function TradeHistoryTable({ transactions }: { transactions: any[] }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
