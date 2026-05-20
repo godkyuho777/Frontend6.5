@@ -943,19 +943,19 @@ export default function Simulator() {
   // ── Render simulator ─────────────────────────────────────
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex flex-col p-2 gap-2 text-xs">
+      <div className="flex flex-col p-1.5 sm:p-2 gap-1.5 sm:gap-2 text-xs">
         {/* Phase 4 #15: 신규 사용자 가이드 모달 + 다시 보기 진입점. */}
         <SimulatorOnboarding
           open={showOnboarding}
           onClose={handleCloseOnboarding}
         />
         {/* ── Top bar ──────────────────────────────────────── */}
-      <div className="rounded-md border border-border/30 bg-card/60 backdrop-blur-sm px-3 py-2 flex flex-wrap items-center gap-3">
+      <div className="rounded-md border border-border/30 bg-card/60 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 flex flex-wrap items-center gap-2 sm:gap-3">
         {/* Symbol picker */}
         <Input
           value={symbol}
           onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          className="font-display font-bold text-base h-8 w-32 sm:w-40"
+          className="font-display font-bold text-base h-9 sm:h-8 w-28 sm:w-40"
         />
 
         {/* Last + change */}
@@ -994,14 +994,14 @@ export default function Simulator() {
           />
         </div>
 
-        {/* Popular symbols */}
-        <div className="flex gap-1 flex-wrap">
+        {/* Popular symbols — 모바일에서 가로 스크롤로 차지 공간 최소화 */}
+        <div className="flex gap-1 overflow-x-auto sm:flex-wrap w-full sm:w-auto sm:order-none order-last -mx-2 sm:mx-0 px-2 sm:px-0 pb-0.5 sm:pb-0 scrollbar-none">
           {POPULAR_SYMBOLS.map((s) => (
             <button
               key={s}
               onClick={() => setSymbol(s)}
               className={cn(
-                "px-2 py-0.5 rounded-sm border text-[10px] font-mono transition-colors",
+                "px-2 py-1 sm:py-0.5 rounded-sm border text-[10px] font-mono transition-colors flex-shrink-0",
                 symbol === s
                   ? "border-neon-cyan text-neon-cyan bg-neon-cyan/10"
                   : "border-border/30 text-muted-foreground hover:border-neon-cyan/40",
@@ -1083,7 +1083,7 @@ export default function Simulator() {
       </div>
 
       {/* ── Account quick bar ────────────────────────────── */}
-      <div className="rounded-md border border-border/30 bg-card/40 px-3 py-2 grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-3 items-center">
+      <div className="rounded-md border border-border/30 bg-card/40 px-2 sm:px-3 py-2 grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3 items-center">
         <KV label="Cash" value={formatUSD(account?.cash ?? 0)} color="text-neon-cyan" />
         <KV
           label="Equity"
@@ -1104,7 +1104,7 @@ export default function Simulator() {
           label="Positions"
           value={`${account?.openPositions ?? 0}`}
         />
-        <div className="flex gap-1.5 justify-end items-center col-span-3 sm:col-span-1 flex-wrap">
+        <div className="flex gap-1 sm:gap-1.5 justify-end items-center col-span-2 sm:col-span-1 flex-wrap">
           {/* Hidden file input — handleImportClick 가 클릭 트리거 */}
           <input
             ref={importFileInputRef}
@@ -1303,18 +1303,21 @@ export default function Simulator() {
         />
       )}
 
-      {/* ── Main 3-column grid (md: 768px 부터) ─────────── */}
+      {/* ── Main 3-column grid (md: 768px 부터) ───────────
+           모바일: Chart → Trade Form → (Order Book + Recent Trades 가로)
+           Order form 을 chart 바로 아래로 끌어올려 모바일 사용자가 진입 form 까지
+           스크롤 거리를 최소화 (오더북/체결내역은 보조). */}
       <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] xl:grid-cols-[1fr_240px_280px] gap-2">
         {/* Left — Chart */}
-        <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col min-h-[420px]">
-          {/* Timeframe tabs */}
-          <div className="flex items-center gap-0.5 mb-2 flex-wrap">
+        <div className="rounded-md border border-border/30 bg-card/60 p-2 flex flex-col min-h-[340px] sm:min-h-[420px] order-1 md:order-none">
+          {/* Timeframe tabs — 모바일에서 가로 스크롤 */}
+          <div className="flex items-center gap-0.5 mb-2 overflow-x-auto sm:flex-wrap scrollbar-none">
             {SIM_TIMEFRAMES.map((tf) => (
               <button
                 key={tf.value}
                 onClick={() => setTimeframe(tf.value)}
                 className={cn(
-                  "px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase transition-colors",
+                  "px-2 py-1 sm:py-0.5 rounded-sm font-mono text-[10px] uppercase transition-colors flex-shrink-0",
                   timeframe === tf.value
                     ? "bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/40"
                     : "text-muted-foreground border border-transparent hover:bg-muted/30",
@@ -1323,18 +1326,18 @@ export default function Simulator() {
                 {tf.label}
               </button>
             ))}
-            <div className="ml-auto font-mono text-[10px] text-muted-foreground flex items-center gap-2">
+            <div className="ml-auto font-mono text-[10px] text-muted-foreground flex items-center gap-2 flex-shrink-0">
               {candlesLoading && <Loader2 className="h-3 w-3 animate-spin" />}
               <span className="hidden sm:inline">{symbol} · {candles.length}c</span>
             </div>
           </div>
-          {/* Chart */}
-          <div className="flex-1 min-h-[380px]">
+          {/* Chart — 모바일은 320px, 데스크탑은 420px */}
+          <div className="flex-1 min-h-[300px] sm:min-h-[380px]">
             {candles.length > 0 ? (
               <CandleChartLW
                 candles={candles}
                 currentPrice={currentPrice}
-                height={420}
+                height={typeof window !== "undefined" && window.innerWidth < 640 ? 320 : 420}
                 showLegend={false}
                 positionLines={chartPositionLines}
                 orderLines={chartOrderLines}
@@ -1347,14 +1350,16 @@ export default function Simulator() {
           </div>
         </div>
 
-        {/* Middle — Order Book stacked over Recent Trades */}
-        <div className="grid grid-rows-[1fr_1fr] gap-2 min-h-[420px] max-h-[480px]">
+        {/* Middle — Order Book stacked over Recent Trades
+            모바일: 가로 2-col 으로 변환 (수직 스크롤 절약) — order-3 */}
+        <div className="grid grid-cols-2 md:grid-cols-1 md:grid-rows-[1fr_1fr] gap-2 min-h-[260px] sm:min-h-[420px] md:max-h-[480px] order-3 md:order-none">
           <OrderBookPanel ob={orderBook} ticker={ticker} symbol={symbol} />
           <RecentTradesPanel trades={recentTrades} symbol={symbol} />
         </div>
 
-        {/* Right — Trade Form (xl shows separately; md/lg stacks under) */}
-        <div className="rounded-md border border-border/30 bg-card/60 p-3 flex flex-col gap-2 xl:col-span-1 md:col-span-2 xl:col-auto">
+        {/* Right — Trade Form (xl shows separately; md/lg stacks under)
+            모바일: chart 바로 아래 (order-2) — 사용자가 빠르게 주문 form 접근 */}
+        <div className="rounded-md border border-border/30 bg-card/60 p-2.5 sm:p-3 flex flex-col gap-2 xl:col-span-1 md:col-span-2 xl:col-auto order-2 md:order-none">
           {/* Product type tabs */}
           <div className="flex gap-1">
             {(["perp", "spot"] as const).map((t) => (
@@ -1600,7 +1605,7 @@ export default function Simulator() {
 
       {/* ── Bottom tabs ───────────────────────────────────── */}
       <div className="rounded-md border border-border/30 bg-card/60 flex flex-col">
-        <div className="flex gap-0 border-b border-border/30 px-2 overflow-x-auto">
+        <div className="flex gap-0 border-b border-border/30 px-1 sm:px-2 overflow-x-auto scrollbar-none">
           {(
             [
               { value: "positions", label: `Positions (${positions.length})` },
@@ -1618,7 +1623,7 @@ export default function Simulator() {
               key={t.value}
               onClick={() => setBottomTab(t.value)}
               className={cn(
-                "px-3 py-2 font-mono text-[11px] uppercase border-b-2 transition-colors whitespace-nowrap",
+                "px-2 sm:px-3 py-2 font-mono text-[10px] sm:text-[11px] uppercase border-b-2 transition-colors whitespace-nowrap flex-shrink-0",
                 bottomTab === t.value
                   ? "border-neon-cyan text-neon-cyan"
                   : "border-transparent text-muted-foreground hover:text-foreground",
@@ -1628,7 +1633,7 @@ export default function Simulator() {
             </button>
           ))}
         </div>
-        <div className="p-2 overflow-auto max-h-[280px]">
+        <div className="p-1.5 sm:p-2 overflow-auto max-h-[380px] sm:max-h-[280px]">
           {bottomTab === "positions" && (
             <PositionsTable
               positions={positions}
@@ -1675,11 +1680,11 @@ export default function Simulator() {
       </div>
 
       {/* Phase 2 #13: footer 면책 라벨 — 거래 화면에서도 가상 거래임을 상시 명시. */}
-      <div className="mt-1 flex items-center justify-center gap-1.5 px-2 py-1 font-mono text-[9px] text-amber-300/70">
-        <AlertCircle className="h-3 w-3 text-amber-400/70" />
-        <span>
-          가상 거래입니다 · 실제 자금 없음 · 한국 가상자산법: 투자 자문 아님 ·
-          데이터는 본 브라우저 localStorage 한정
+      <div className="mt-1 flex items-center justify-center gap-1.5 px-2 py-1 font-mono text-[9px] text-amber-300/70 text-center">
+        <AlertCircle className="h-3 w-3 text-amber-400/70 flex-shrink-0" />
+        <span className="leading-tight">
+          가상 거래입니다 · 실제 자금 없음 · 한국 가상자산법: 투자 자문 아님
+          <span className="hidden sm:inline"> · 데이터는 본 브라우저 localStorage 한정</span>
         </span>
       </div>
       </div>
