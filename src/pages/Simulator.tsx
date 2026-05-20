@@ -84,6 +84,10 @@ import {
   applySlippage,
   SLIPPAGE_PCT,
   computeSimulatorStats,
+  estimateUserAvgReturnPct,
+  BBDX_BASELINE,
+  MIN_TRADES_FOR_COMPARISON,
+  type SimulatorStats,
 } from "@/lib/sim-pnl";
 import {
   useLocalAccountSync,
@@ -389,6 +393,47 @@ export default function Simulator() {
     () => computeSimulatorStats(closedPositions, INITIAL_CASH),
     [closedPositions],
   );
+
+  /**
+   * Phase 4 #16: BBDX 시스템 baseline 과 사용자 stats 비교 데이터.
+   *
+   *   - 사용자 winRate vs BBDX winRate 차이 (퍼센트 포인트).
+   *   - 사용자 expectancy 를 ROE% 로 추정해 BBDX avgReturnPct 와 비교.
+   *   - 사용자 maxDrawdownPct (양수) 를 BBDX 의 |maxDrawdownPct| 와 비교.
+   *
+   * 표시 조건은 simulatorStats.totalTrades >= MIN_TRADES_FOR_COMPARISON.
+   * 미달 시 비교 카드는 안내 텍스트만 노출.
+   */
+  const comparison = useMemo(() => {
+    const userWinRatePct = simulatorStats.winRate * 100;
+    const baselineWinRatePct = BBDX_BASELINE.winRate * 100;
+    const winRateDiff = userWinRatePct - baselineWinRatePct;
+    const userAvgReturnPct = estimateUserAvgReturnPct(
+      simulatorStats.expectancy,
+      INITIAL_CASH,
+    );
+    const baselineAvgReturnPct = BBDX_BASELINE.avgReturnPct;
+    const avgReturnDiff = userAvgReturnPct - baselineAvgReturnPct;
+    // maxDrawdownPct: 사용자는 양수 (0.05 = -5%), BBDX baseline 은 음수.
+    // 절댓값으로 비교 (낮을수록 좋음).
+    const userMaxDdAbs = simulatorStats.maxDrawdownPct; // 양수
+    const baselineMaxDdAbs = Math.abs(BBDX_BASELINE.maxDrawdownPct);
+    const maxDdDiffAbs = userMaxDdAbs - baselineMaxDdAbs; // 양수 = 사용자가 더 깊은 DD
+    return {
+      userWinRatePct,
+      baselineWinRatePct,
+      winRateDiff,
+      userAvgReturnPct,
+      baselineAvgReturnPct,
+      avgReturnDiff,
+      userMaxDdAbs,
+      baselineMaxDdAbs,
+      maxDdDiffAbs,
+    };
+  }, [simulatorStats]);
+
+  const canCompareToBBDX =
+    simulatorStats.totalTrades >= MIN_TRADES_FOR_COMPARISON;
 
   /**
    * Phase 2 #6 — 현재 차트 심볼의 open 포지션 + pending limit 주문 priceLine 입력.
@@ -1176,6 +1221,15 @@ export default function Simulator() {
         </div>
       )}
 
+      {/* 🎯 BBDX 시스템 vs 내 거래 — 한 줄 요약 (Phase 4 #16) — 5건 이상에서만 노출 */}
+      {canCompareToBBDX && (
+        <BBDXComparisonOneLiner
+          winRateDiff={comparison.winRateDiff}
+          userWinRatePct={comparison.userWinRatePct}
+          baselineWinRatePct={comparison.baselineWinRatePct}
+        />
+      )}
+
       {/* 📊 Simulator Stats (Phase 4 #16 일부) — closed trades 가 있을 때만 노출 */}
       {simulatorStats.totalTrades > 0 && (
         <div className="rounded-md border border-neon-cyan/30 bg-card/40 px-3 py-2 flex flex-col gap-1.5">
@@ -1238,6 +1292,15 @@ export default function Simulator() {
             />
           </div>
         </div>
+      )}
+
+      {/* 📊 BBDX 시스템 vs 내 거래 — 표 형태 비교 카드 (Phase 4 #16) */}
+      {simulatorStats.totalTrades > 0 && (
+        <BBDXComparisonCard
+          canCompare={canCompareToBBDX}
+          stats={simulatorStats}
+          comparison={comparison}
+        />
       )}
 
       {/* ── Main 3-column grid (md: 768px 부터) ─────────── */}
@@ -2474,5 +2537,222 @@ function TradeHistoryTable({ transactions }: { transactions: any[] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ─── Phase 4 #16: BBDX 시스템 비교 ────────────────────────
+//
+// "내 거래 vs BBDX 시스템" 한 줄 요약 + 표 형태 카드.
+// 표본이 부족하면 (< MIN_TRADES_FOR_COMPARISON) 비교는 회색 텍스트 안내만.
+
+interface ComparisonValues {
+  userWinRatePct: number;
+  baselineWinRatePct: number;
+  winRateDiff: number;
+  userAvgReturnPct: number;
+  baselineAvgReturnPct: number;
+  avgReturnDiff: number;
+  userMaxDdAbs: number;
+  baselineMaxDdAbs: number;
+  maxDdDiffAbs: number;
+}
+
+/**
+ * 한 줄 요약 — 사용자 winRate 가 BBDX 보다 얼마나 더/덜 잘하고 있는지.
+ *
+ * 표시:
+ *   - 양수 차이: "🎯 당신의 Win Rate XX% — BBDX 시스템 (YY%) 대비 +Zpp 우수 ⭐"
+ *   - 음수 차이: "📉 당신의 Win Rate XX% — BBDX 시스템 (YY%) 대비 -Zpp. 시그널 정확히 따라가시면 개선 가능."
+ *   - ±2pp 이내: "≈ 당신의 Win Rate XX% — BBDX 시스템 (YY%) 과 유사 수준."
+ */
+function BBDXComparisonOneLiner({
+  winRateDiff,
+  userWinRatePct,
+  baselineWinRatePct,
+}: {
+  winRateDiff: number;
+  userWinRatePct: number;
+  baselineWinRatePct: number;
+}) {
+  let icon: React.ReactNode;
+  let text: React.ReactNode;
+  let color: string;
+  let border: string;
+
+  if (winRateDiff > 2) {
+    icon = <span>🎯</span>;
+    color = "text-neon-green";
+    border = "border-neon-green/40 bg-neon-green/5";
+    text = (
+      <>
+        당신의 Win Rate{" "}
+        <span className="font-bold">{userWinRatePct.toFixed(1)}%</span> — BBDX 시스템 ({baselineWinRatePct.toFixed(1)}%) 대비{" "}
+        <span className="font-bold">+{winRateDiff.toFixed(1)}pp 우수</span> ⭐
+      </>
+    );
+  } else if (winRateDiff < -2) {
+    icon = <span>📉</span>;
+    color = "text-neon-red";
+    border = "border-neon-red/40 bg-neon-red/5";
+    text = (
+      <>
+        당신의 Win Rate{" "}
+        <span className="font-bold">{userWinRatePct.toFixed(1)}%</span> — BBDX 시스템 ({baselineWinRatePct.toFixed(1)}%) 대비{" "}
+        <span className="font-bold">{winRateDiff.toFixed(1)}pp</span>. 시그널을
+        정확히 따라가시면 개선 가능합니다.
+      </>
+    );
+  } else {
+    icon = <span>≈</span>;
+    color = "text-neon-cyan";
+    border = "border-neon-cyan/40 bg-neon-cyan/5";
+    text = (
+      <>
+        당신의 Win Rate{" "}
+        <span className="font-bold">{userWinRatePct.toFixed(1)}%</span> — BBDX 시스템 ({baselineWinRatePct.toFixed(1)}%) 과 유사 수준 (±2pp).
+      </>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        "rounded-md border px-3 py-1.5 font-mono text-[11px] flex items-center gap-2",
+        border,
+        color,
+      )}
+    >
+      <span className="text-base leading-none">{icon}</span>
+      <span className="text-foreground/95">{text}</span>
+    </div>
+  );
+}
+
+/**
+ * 표 형태 비교 카드 — Win Rate / Avg Return / Sharpe / Max DD / Total Trades 행.
+ *
+ * 표본 부족 시 (< MIN_TRADES_FOR_COMPARISON): 카드는 노출하되 본문은 안내 텍스트만.
+ */
+function BBDXComparisonCard({
+  canCompare,
+  stats,
+  comparison,
+}: {
+  canCompare: boolean;
+  stats: SimulatorStats;
+  comparison: ComparisonValues;
+}) {
+  return (
+    <div className="rounded-md border border-neon-pink/30 bg-card/40 px-3 py-2 flex flex-col gap-1.5">
+      <div className="flex items-center gap-2 text-[10px] font-mono">
+        <BarChart3 className="h-3.5 w-3.5 text-neon-pink" />
+        <span className="font-display font-bold text-foreground uppercase tracking-wide">
+          📊 BBDX 시스템 vs 내 거래
+        </span>
+        <span className="ml-auto text-muted-foreground hidden md:inline">
+          baseline: {BBDX_BASELINE.period}
+        </span>
+      </div>
+
+      {!canCompare ? (
+        <p className="font-mono text-[11px] text-muted-foreground py-1">
+          거래 {MIN_TRADES_FOR_COMPARISON}건 이상 누적 후 비교 가능합니다.
+          (현재 {stats.totalTrades} / {MIN_TRADES_FOR_COMPARISON})
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px] font-mono">
+            <thead>
+              <tr className="border-b border-border/20 text-[10px] text-muted-foreground uppercase">
+                <th className="text-left px-2 py-1">Metric</th>
+                <th className="text-right px-2 py-1">BBDX 시스템</th>
+                <th className="text-right px-2 py-1">당신</th>
+                <th className="text-right px-2 py-1">차이</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ComparisonRow
+                label="Win Rate"
+                baseline={`${comparison.baselineWinRatePct.toFixed(1)}%`}
+                user={`${comparison.userWinRatePct.toFixed(1)}%`}
+                diff={`${comparison.winRateDiff >= 0 ? "+" : ""}${comparison.winRateDiff.toFixed(1)}pp`}
+                better={comparison.winRateDiff > 0}
+              />
+              <ComparisonRow
+                label="Avg Return / trade"
+                baseline={`+${(comparison.baselineAvgReturnPct * 100).toFixed(2)}%`}
+                user={`${comparison.userAvgReturnPct >= 0 ? "+" : ""}${(comparison.userAvgReturnPct * 100).toFixed(2)}%`}
+                diff={`${comparison.avgReturnDiff >= 0 ? "+" : ""}${(comparison.avgReturnDiff * 100).toFixed(2)}pp`}
+                better={comparison.avgReturnDiff > 0}
+                title="사용자 거래당 평균 ROE 추정. 정확 분석은 /backtest 페이지."
+              />
+              <ComparisonRow
+                label="Sharpe (approx)"
+                baseline={BBDX_BASELINE.sharpe.toFixed(2)}
+                user="—"
+                diff="—"
+                better={null}
+                title="Sharpe 정확 계산은 /backtest 페이지. 시뮬레이터 표본은 분산이 커서 신뢰성 낮음."
+              />
+              <ComparisonRow
+                label="Max Drawdown"
+                baseline={`-${(comparison.baselineMaxDdAbs * 100).toFixed(1)}%`}
+                user={`-${(comparison.userMaxDdAbs * 100).toFixed(1)}%`}
+                diff={`${comparison.maxDdDiffAbs >= 0 ? "+" : ""}${(comparison.maxDdDiffAbs * 100).toFixed(1)}pp`}
+                // 낮은 DD 가 좋음 — 사용자 DD - baseline DD 가 음수 → 더 잘함.
+                better={comparison.maxDdDiffAbs < 0}
+              />
+              <ComparisonRow
+                label="Total Trades"
+                baseline={BBDX_BASELINE.totalTrades.toLocaleString("en-US")}
+                user={`${stats.totalTrades}`}
+                diff="—"
+                better={null}
+              />
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+        baseline 출처: BBDX 백테스트 ({BBDX_BASELINE.period}). 차이가 큰 경우 —
+        진입 타이밍 / slippage (0.1%) / leverage 선택 영향 가능. 정확한 비교는
+        Tradelab의{" "}
+        <code className="text-neon-cyan">/backtest</code> 페이지를 사용하세요.
+      </p>
+    </div>
+  );
+}
+
+function ComparisonRow({
+  label,
+  baseline,
+  user,
+  diff,
+  better,
+  title,
+}: {
+  label: string;
+  baseline: string;
+  user: string;
+  diff: string;
+  /** true = 사용자가 더 잘함 (green), false = 더 못함 (red), null = 비교 불가 (muted). */
+  better: boolean | null;
+  title?: string;
+}) {
+  const diffColor =
+    better === null
+      ? "text-muted-foreground"
+      : better
+        ? "text-neon-green font-bold"
+        : "text-neon-red font-bold";
+  return (
+    <tr
+      className="border-b border-border/10 hover:bg-muted/10"
+      title={title}
+    >
+      <td className="px-2 py-1 text-foreground">{label}</td>
+      <td className="px-2 py-1 text-right text-muted-foreground">{baseline}</td>
+      <td className="px-2 py-1 text-right text-foreground">{user}</td>
+      <td className={cn("px-2 py-1 text-right", diffColor)}>{diff}</td>
+    </tr>
   );
 }

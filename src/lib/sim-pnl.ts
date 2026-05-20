@@ -340,6 +340,69 @@ export function computeSimulatorStats(
   };
 }
 
+// ─── BBDX Baseline (Phase 4 #16) ───────────────────────────
+//
+// 사용자의 시뮬레이터 stats 와 비교할 때 표시되는 BBDX 시스템 baseline.
+// /backtest 페이지의 동적 query 는 heavy + 1초+ 응답이라 시뮬레이터의 빠른
+// 비교 UX 에 적합하지 않음. 본 baseline 은 정적 수치로 "즉시 표시" 를 보장한다.
+//
+// 출처:
+//   - winRate / avgReturn / sharpe / maxDD 는 BBDX 백테스트 명세 (TestingBranch
+//     2026-05 기준, BTCUSDT 4h, 180d, lookahead-free) 의 대표 결과를 사용.
+//   - 정확한 비교를 원하는 사용자에게는 UI 에서 "/backtest 페이지" 링크 안내.
+//
+// 본 값은 추후 backend tRPC `trpc.backtest.summary` 등으로 동적 fetch 가능하나
+// 본 단계는 hardcode 로 시작 (AUDIT.md §4 #16 권장 경로).
+export interface BBDXBaseline {
+  /** BBDX 시스템의 백테스트 표시 승률 (0~1) */
+  winRate: number;
+  /** 거래당 평균 ROE (margin 대비, 0.018 = +1.8%) — 사용자 expectancy%와 비교용 */
+  avgReturnPct: number;
+  /** Approximate Sharpe ratio (annualized) — 본 표는 표시용, 직접 비교 X */
+  sharpe: number;
+  /** Maximum drawdown 비율 (음수, -0.187 = -18.7%) */
+  maxDrawdownPct: number;
+  /** baseline 표본 거래 수 */
+  totalTrades: number;
+  /** 표본 기간 + 심볼 (UI 캡션) */
+  period: string;
+}
+
+export const BBDX_BASELINE: BBDXBaseline = {
+  winRate: 0.572,
+  avgReturnPct: 0.018,
+  sharpe: 1.34,
+  maxDrawdownPct: -0.187,
+  totalTrades: 1247,
+  period: "180d · BTCUSDT 4h · lookahead-free",
+};
+
+/**
+ * 비교 표시 임계값 — 사용자 trades 가 본 값 미만이면 비교 결과가 통계적으로
+ * 의미 없으므로 "5 거래 이상 누적 후 비교 가능" 안내만 노출.
+ */
+export const MIN_TRADES_FOR_COMPARISON = 5;
+
+/**
+ * 사용자의 거래당 평균 ROE 추정 — Stats 의 expectancy / margin 대비.
+ *
+ * 시뮬레이터는 leverage 가 거래마다 다를 수 있어 정확한 ROE 평균은 거래별
+ * 가중 계산이 필요하지만, baseline 비교용 근사로 expectancy / (initial / 100)
+ * 을 사용 (initialCash 의 1% 를 평균 margin 으로 가정).
+ *
+ * 정확도가 필요한 사용자는 /backtest 페이지로 안내.
+ */
+export function estimateUserAvgReturnPct(
+  expectancy: number,
+  initialCash: number,
+): number {
+  if (initialCash <= 0) return 0;
+  // initial 1% 를 평균 margin proxy 로 가정 — Bybit 모의 trader 의 평균적인 1x~10x
+  // 분포에서 합리적 근사. 정확한 분석은 backtest 페이지.
+  const avgMarginProxy = initialCash * 0.01;
+  return avgMarginProxy > 0 ? expectancy / avgMarginProxy : 0;
+}
+
 /**
  * Market 진입 가격에 slippage 적용 (LIMIT 주문에는 적용 X).
  *
