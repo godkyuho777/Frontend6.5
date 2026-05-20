@@ -36,6 +36,7 @@ import {
   type ChartOrderLine,
 } from "@/components/CandleChartLW";
 import { SimulatorWelcome } from "@/components/SimulatorWelcome";
+import { SimulatorOnboarding } from "@/components/SimulatorOnboarding";
 import { useSimUser } from "@/hooks/useSimUser";
 import {
   fetchSimKlines,
@@ -63,6 +64,8 @@ import {
   buildIdempotencyToken,
   checkAndRecordIdempotency,
   isAccountAbnormallyLarge,
+  hasSeenOnboarding,
+  markOnboardingShown,
   INITIAL_CASH,
   INITIAL_CASH_SANITY_THRESHOLD,
   type SimOrder,
@@ -101,6 +104,7 @@ import {
   Upload,
   AlertTriangle,
   BarChart3,
+  HelpCircle,
 } from "lucide-react";
 import type { Candle } from "@shared/types";
 
@@ -318,6 +322,32 @@ export default function Simulator() {
   const transactions = useLocalMode ? localTxs : (transactionsQuery.data ?? []);
 
   const currentPrice = ticker?.lastPrice ?? 0;
+
+  // ── Onboarding (Phase 4 #15) ─────────────────────────────
+  //
+  // 첫 진입: simUser 등록 + 모달 미표시 + 사용자가 실제 사용 가능한 상태일 때만
+  // 1회 노출. mount 후 약간 지연 (50ms) — 다른 toast / overlay 와 겹치지 않도록.
+  //
+  // 재진입: 헤더 HelpCircle 클릭 시 setShowOnboarding(true) — onboardingShown 키는
+  // 그대로 유지 (이미 mark 되어 있어 자동 노출 영향 X).
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const autoOnboardingHandled = useRef(false);
+  useEffect(() => {
+    if (!simUser?.id) return;
+    if (autoOnboardingHandled.current) return;
+    autoOnboardingHandled.current = true;
+    if (hasSeenOnboarding()) return;
+    // 약간의 지연으로 다른 mount-time alert 들 (sanity, local mode 안내) 와 분리.
+    const t = window.setTimeout(() => setShowOnboarding(true), 50);
+    return () => window.clearTimeout(t);
+  }, [simUser?.id]);
+
+  const handleCloseOnboarding = useCallback((_completed: boolean) => {
+    // 정책: 시작하기 / 건너뛰기 / esc / overlay 모두 동일하게 mark — 사용자가
+    // 한 번이라도 본 이상 자동 노출 안 함. "다시 보기" 버튼은 별도 경로.
+    markOnboardingShown();
+    setShowOnboarding(false);
+  }, []);
 
   // ── Sanity Guard (Phase 4): 비정상 자본 감지 ──────────────
   //
@@ -862,6 +892,11 @@ export default function Simulator() {
   // ── Render simulator ─────────────────────────────────────
   return (
     <div className="flex flex-col p-2 gap-2 text-xs">
+      {/* Phase 4 #15: 신규 사용자 가이드 모달 + 다시 보기 진입점. */}
+      <SimulatorOnboarding
+        open={showOnboarding}
+        onClose={handleCloseOnboarding}
+      />
       {/* ── Top bar ──────────────────────────────────────── */}
       <div className="rounded-md border border-border/30 bg-card/60 backdrop-blur-sm px-3 py-2 flex flex-wrap items-center gap-3">
         {/* Symbol picker */}
@@ -974,6 +1009,14 @@ export default function Simulator() {
                 className="text-muted-foreground hover:text-neon-cyan"
               >
                 <Edit3 className="h-3 w-3" />
+              </button>
+              {/* Phase 4 #15: Onboarding 가이드 다시 보기 — onboardingShown 키는 변경 X. */}
+              <button
+                onClick={() => setShowOnboarding(true)}
+                title="시뮬레이터 가이드 다시 보기"
+                className="text-muted-foreground hover:text-neon-cyan"
+              >
+                <HelpCircle className="h-3 w-3" />
               </button>
               <button
                 onClick={handleSignOut}

@@ -969,6 +969,40 @@ export function cancelLocalOrder(
   });
 }
 
+// ─── Onboarding (Phase 4 #15) ──────────────────────────────
+//
+// 신규 사용자가 SimulatorWelcome → register 후 시뮬레이터 main 에 첫 진입할 때
+// 5-step 가이드 모달을 1회 노출. 사용자가 "건너뛰기" 또는 "시작하기" 클릭 시
+// onboardingShown 키를 true 로 저장하고 다시 보이지 않도록 한다.
+//
+// 사용자가 "다시 보기" (Simulator 헤더 HelpCircle 버튼) 클릭 시 다시 모달을
+// 띄울 수 있다 — 그 경로는 본 키를 변경하지 않고 컴포넌트의 state 만 사용한다.
+//
+// 데이터는 simUserId 와 독립 (= 닉네임/UUID 와 무관) — 같은 브라우저의 모든
+// 닉네임이 한 번의 onboarding 으로 통일된 경험을 갖는다.
+
+const ONBOARDING_SHOWN_KEY = "tradelab.sim.onboardingShown";
+
+/** Onboarding 모달이 한 번이라도 표시(완료/건너뛰기)됐는지. */
+export function hasSeenOnboarding(): boolean {
+  if (typeof window === "undefined") return true; // SSR → 표시 안 함
+  try {
+    return window.localStorage.getItem(ONBOARDING_SHOWN_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+/** Onboarding 모달 표시 완료 기록 (= 다음부터 자동 노출 안 함). */
+export function markOnboardingShown(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ONBOARDING_SHOWN_KEY, "1");
+  } catch {
+    // private mode — ignore
+  }
+}
+
 // ─── Idempotency (Phase 3 #11) ─────────────────────────────
 //
 // 진입 버튼 빠르게 연속 클릭 시 같은 (symbol, side, qty, price, leverage)
