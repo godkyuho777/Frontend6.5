@@ -37,6 +37,12 @@ import {
 } from "@/components/CandleChartLW";
 import { SimulatorWelcome } from "@/components/SimulatorWelcome";
 import { SimulatorOnboarding } from "@/components/SimulatorOnboarding";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSimUser } from "@/hooks/useSimUser";
 import {
   fetchSimKlines,
@@ -891,13 +897,14 @@ export default function Simulator() {
 
   // ── Render simulator ─────────────────────────────────────
   return (
-    <div className="flex flex-col p-2 gap-2 text-xs">
-      {/* Phase 4 #15: 신규 사용자 가이드 모달 + 다시 보기 진입점. */}
-      <SimulatorOnboarding
-        open={showOnboarding}
-        onClose={handleCloseOnboarding}
-      />
-      {/* ── Top bar ──────────────────────────────────────── */}
+    <TooltipProvider delayDuration={300}>
+      <div className="flex flex-col p-2 gap-2 text-xs">
+        {/* Phase 4 #15: 신규 사용자 가이드 모달 + 다시 보기 진입점. */}
+        <SimulatorOnboarding
+          open={showOnboarding}
+          onClose={handleCloseOnboarding}
+        />
+        {/* ── Top bar ──────────────────────────────────────── */}
       <div className="rounded-md border border-border/30 bg-card/60 backdrop-blur-sm px-3 py-2 flex flex-wrap items-center gap-3">
         {/* Symbol picker */}
         <Input
@@ -1462,19 +1469,28 @@ export default function Simulator() {
           <div className="grid grid-cols-2 gap-y-0.5 gap-x-3 text-[10px] font-mono mt-1 pt-1 border-t border-border/20">
             <span className="text-muted-foreground">Value</span>
             <span className="text-right text-foreground">{formatUSD(positionValue)}</span>
-            <span className="text-muted-foreground">Margin</span>
+            {/* Phase 4 #15: Margin / Fee tooltips. */}
+            <TermTooltip
+              label="Margin"
+              content="이 포지션에 사용될 자본 (USD). positionValue / leverage. 청산 시 max(0, margin + PnL) 가 cash 로 환원됩니다."
+              className="text-muted-foreground"
+            />
             <span className="text-right text-foreground">{formatUSD(margin)}</span>
-            <span className="text-muted-foreground">Fee (0.01%)</span>
+            <TermTooltip
+              label="Fee (0.01%)"
+              content="거래 수수료. positionValue × 0.01% × leverage. 본 시뮬레이터는 진입과 종료 모두에 동일 비율 적용 (Bybit Spot · Perp 표준)."
+              className="text-muted-foreground"
+            />
             <span className="text-right text-neon-yellow">{formatUSD(commission)}</span>
-            {/* Phase 3 #9: Market 진입 시 slippage 미리보기 — LONG/SHORT 모두 손해 방향. */}
+            {/* Phase 3 #9: Market 진입 시 slippage 미리보기 — LONG/SHORT 모두 손해 방향.
+                Phase 4 #15: TermTooltip 으로 hover 시 정확한 설명 노출. */}
             {orderType === "market" && effectivePrice > 0 && (
               <>
-                <span
+                <TermTooltip
+                  label={`Est. Entry (${side === "long" ? "Buy" : "Sell"})`}
+                  content={`Market 주문 시 적용되는 Slippage (${(SLIPPAGE_PCT * 100).toFixed(2)}%). 실제 체결가가 예상보다 사용자에게 불리한 방향으로 결정됩니다. LONG 매수 → 체결가 ↑, SHORT 매도 → 체결가 ↓. Limit 주문은 적용 X.`}
                   className="text-muted-foreground"
-                  title={`Market 진입 시 ${(SLIPPAGE_PCT * 100).toFixed(2)}% 슬리피지가 사용자 손해 방향으로 적용됩니다`}
-                >
-                  Est. Entry ({side === "long" ? "Buy" : "Sell"})
-                </span>
+                />
                 <span className="text-right text-amber-300/80">
                   ${formatPrice(applySlippage(effectivePrice, side))}
                   <span className="ml-1 opacity-70">
@@ -1603,11 +1619,52 @@ export default function Simulator() {
           데이터는 본 브라우저 localStorage 한정
         </span>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 
 // ─── Sub-components ─────────────────────────────────────────
+
+/**
+ * Phase 4 #15: 핵심 용어 hover 시 설명 tooltip.
+ *
+ * 사용처: PositionsTable 헤더 (Margin / Liq Price / ROE / MR) + 주문 form 의
+ * Margin / Fee / Slippage 라벨. 부모는 반드시 TooltipProvider 안에 있어야 한다
+ * (Simulator render root 에 이미 wrap).
+ *
+ * 점선 underline + cursor-help 으로 "hover 시 정보 있음" 시각 hint.
+ */
+function TermTooltip({
+  label,
+  content,
+  className,
+}: {
+  label: React.ReactNode;
+  content: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2",
+            className,
+          )}
+        >
+          {label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-xs text-[11px] font-mono leading-relaxed"
+      >
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function StatPair({ label, value }: { label: string; value: string }) {
   return (
@@ -2100,23 +2157,37 @@ function PositionsTable({
             <th className="text-left px-2 py-1.5">Type</th>
             <th className="text-right px-2 py-1.5">Lev</th>
             <th className="text-right px-2 py-1.5">Qty</th>
-            <th
-              className="text-right px-2 py-1.5"
-              title="Position 에 묶인 Margin (자본 대비 비율)"
-            >
-              Margin
+            {/* Phase 4 #15: Margin tooltip. */}
+            <th className="text-right px-2 py-1.5">
+              <TermTooltip
+                label="Margin"
+                content="이 포지션에 사용된 자본 (USD). Position 청산 시 max(0, margin + PnL) 가 cash 로 환원됩니다. 강제청산은 0 환원 (margin 전손)."
+              />
             </th>
             <th className="text-right px-2 py-1.5">Entry</th>
             <th className="text-right px-2 py-1.5">{showClosed ? "Exit" : "Mark"}</th>
-            <th className="text-right px-2 py-1.5">Liq Price</th>
+            {/* Phase 4 #15: Liq Price tooltip. */}
+            <th className="text-right px-2 py-1.5">
+              <TermTooltip
+                label="Liq Price"
+                content="강제 청산 가격. mark price 가 도달 시 margin 전손. LONG 은 entry 아래, SHORT 은 entry 위에 위치. 청산 임계 = 1/leverage + 유지 margin (0.5%)."
+              />
+            </th>
             <th className="text-right px-2 py-1.5">P&L</th>
-            <th className="text-right px-2 py-1.5">P&L %</th>
+            {/* Phase 4 #15: ROE tooltip (P&L %). */}
+            <th className="text-right px-2 py-1.5">
+              <TermTooltip
+                label="ROE"
+                content="Return on Equity — Margin 대비 수익률. 10x 레버리지 + 1% 가격 변동 = ±10% ROE. -100% 도달 시 청산 임계."
+              />
+            </th>
             {!showClosed && (
-              <th
-                className="text-right px-2 py-1.5"
-                title="Margin Ratio — 청산 임박도 (maintenance / current margin). 1.0 = 청산 임계."
-              >
-                MR
+              <th className="text-right px-2 py-1.5">
+                {/* Phase 4 #15: MR tooltip. */}
+                <TermTooltip
+                  label="MR"
+                  content="Margin Ratio — 유지 margin / 현재 margin (청산 임박도). 0.5 미만 안전, 0.5~0.8 경고, 0.8 이상 위험, 1.0 도달 시 청산 임계."
+                />
               </th>
             )}
             <th className="text-left px-2 py-1.5">{showClosed ? "Reason" : "Time"}</th>
