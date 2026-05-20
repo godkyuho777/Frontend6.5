@@ -147,7 +147,7 @@ export function SimulatorOnboarding({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md border-neon-cyan/30 bg-card/95 backdrop-blur-sm shadow-[0_0_40px_-15px_rgba(0,229,255,0.4)]">
+      <DialogContent className="sm:max-w-md max-w-[calc(100vw-1.5rem)] border-neon-cyan/30 bg-card/95 backdrop-blur-sm shadow-[0_0_40px_-15px_rgba(0,229,255,0.4)]">
         <DialogHeader>
           {/* Top accent */}
           <div className="inline-flex items-center gap-2 self-start px-2 py-0.5 rounded-full border border-neon-cyan/40 bg-neon-cyan/5 font-mono text-[10px] uppercase tracking-wider text-neon-cyan mb-2">

@@ -1027,7 +1027,7 @@ export default function Simulator() {
                     setEditingNick(false);
                   }
                 }}
-                className="h-7 w-32 font-mono text-xs"
+                className="h-9 sm:h-7 w-32 font-mono text-base sm:text-xs"
                 autoFocus
               />
               <button
@@ -1360,7 +1360,7 @@ export default function Simulator() {
         {/* Right — Trade Form (xl shows separately; md/lg stacks under)
             모바일: chart 바로 아래 (order-2) — 사용자가 빠르게 주문 form 접근 */}
         <div className="rounded-md border border-border/30 bg-card/60 p-2.5 sm:p-3 flex flex-col gap-2 xl:col-span-1 md:col-span-2 xl:col-auto order-2 md:order-none">
-          {/* Product type tabs */}
+          {/* Product type tabs — 모바일 터치 타겟 확보 (py-2 sm:py-1) */}
           <div className="flex gap-1">
             {(["perp", "spot"] as const).map((t) => (
               <button
@@ -1375,7 +1375,7 @@ export default function Simulator() {
                   }
                 }}
                 className={cn(
-                  "flex-1 py-1 rounded-sm border text-[11px] font-mono uppercase transition-colors",
+                  "flex-1 py-2 sm:py-1 rounded-sm border text-[11px] font-mono uppercase transition-colors",
                   productType === t
                     ? "border-neon-pink text-neon-pink bg-neon-pink/10"
                     : "border-border/30 text-muted-foreground hover:border-neon-pink/40",
@@ -1399,7 +1399,7 @@ export default function Simulator() {
                       key={m}
                       onClick={() => setMarginMode(m)}
                       className={cn(
-                        "flex-1 py-0.5 rounded-sm border text-[10px] font-mono uppercase",
+                        "flex-1 py-1.5 sm:py-0.5 rounded-sm border text-[10px] font-mono uppercase",
                         marginMode === m
                           ? "border-neon-yellow text-neon-yellow bg-neon-yellow/10"
                           : "border-border/30 text-muted-foreground",
@@ -1414,6 +1414,7 @@ export default function Simulator() {
                 <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
                   Leverage {leverage}x
                 </label>
+                {/* 모바일에서 큰 슬라이더 thumb — touch friendly */}
                 <input
                   type="range"
                   min={1}
@@ -1421,20 +1422,20 @@ export default function Simulator() {
                   step={1}
                   value={leverage}
                   onChange={(e) => setLeverage(parseInt(e.target.value))}
-                  className="w-full accent-neon-cyan h-6"
+                  className="w-full accent-neon-cyan h-7 sm:h-6 touch-manipulation"
                 />
               </div>
             </div>
           )}
 
-          {/* Order type tabs */}
+          {/* Order type tabs — 모바일 터치 타겟 확보 */}
           <div className="flex gap-1 border-b border-border/30">
             {(["market", "limit"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setOrderType(t)}
                 className={cn(
-                  "px-3 py-1 font-mono text-[11px] uppercase border-b-2 transition-colors",
+                  "px-3 py-2 sm:py-1 font-mono text-[11px] uppercase border-b-2 transition-colors",
                   orderType === t
                     ? "border-neon-cyan text-neon-cyan"
                     : "border-transparent text-muted-foreground hover:text-foreground",
@@ -1445,7 +1446,7 @@ export default function Simulator() {
             ))}
           </div>
 
-          {/* Price */}
+          {/* Price — text-base (16px) iOS zoom 방지 */}
           <div>
             <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
               Price (USDT)
@@ -1457,11 +1458,11 @@ export default function Simulator() {
               onChange={(e) => setPriceText(e.target.value)}
               disabled={orderType === "market"}
               placeholder={ticker ? formatPrice(ticker.lastPrice) : "0.00"}
-              className="font-mono text-xs h-8"
+              className="font-mono text-base sm:text-xs h-10 sm:h-8"
             />
           </div>
 
-          {/* Quantity */}
+          {/* Quantity — text-base (16px) iOS zoom 방지 */}
           <div>
             <label className="font-mono text-[9px] uppercase text-muted-foreground mb-0.5 block">
               Quantity ({symbol.replace("USDT", "")})
@@ -1472,14 +1473,14 @@ export default function Simulator() {
               value={qtyText}
               onChange={(e) => setQtyText(e.target.value)}
               placeholder="0.00"
-              className="font-mono text-xs h-8"
+              className="font-mono text-base sm:text-xs h-10 sm:h-8"
             />
-            <div className="flex gap-1 mt-1">
+            <div className="flex gap-1 mt-1.5">
               {[25, 50, 75, 100].map((p) => (
                 <button
                   key={p}
                   onClick={() => setQtyByPercent(p)}
-                  className="flex-1 py-0.5 rounded-sm border border-border/30 text-[10px] font-mono text-muted-foreground hover:border-neon-cyan/40 hover:text-neon-cyan transition-colors"
+                  className="flex-1 py-1.5 sm:py-0.5 rounded-sm border border-border/30 text-[10px] font-mono text-muted-foreground hover:border-neon-cyan/40 hover:text-neon-cyan active:bg-neon-cyan/10 transition-colors"
                 >
                   {p}%
                 </button>
@@ -1487,14 +1488,14 @@ export default function Simulator() {
             </div>
           </div>
 
-          {/* Buy/Sell — ALWAYS HIGH UP (Bybit style) */}
+          {/* Buy/Sell — ALWAYS HIGH UP (Bybit style) — 모바일 큰 버튼 */}
           {/* Phase 3 #11: submitting state 까지 disabled 조건에 포함 — 연속 클릭 차단. */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Button
               onClick={() => submitOrder("long")}
               disabled={!isAffordable || openMutation.isPending || submitting}
               className={cn(
-                "h-10 font-display font-bold uppercase text-sm",
+                "h-12 sm:h-10 font-display font-bold uppercase text-sm",
                 "bg-neon-green hover:bg-neon-green/80 text-background",
                 (!isAffordable || openMutation.isPending || submitting) && "opacity-60",
               )}
@@ -1517,7 +1518,7 @@ export default function Simulator() {
                 !isAffordable
               }
               className={cn(
-                "h-10 font-display font-bold uppercase text-sm",
+                "h-12 sm:h-10 font-display font-bold uppercase text-sm",
                 "bg-neon-red hover:bg-neon-red/80 text-background",
                 (productType === "spot" || !isAffordable || submitting) && "opacity-60",
               )}

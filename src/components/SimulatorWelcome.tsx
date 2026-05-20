@@ -167,27 +167,27 @@ export function SimulatorWelcome({ onRegister }: Props) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-3rem)] p-4">
+    <div className="flex items-center justify-center min-h-[calc(100vh-3rem)] p-3 sm:p-4">
       <div className="w-full max-w-xl">
         {/* Top accent */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4 sm:mb-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neon-cyan/40 bg-neon-cyan/5 font-mono text-[10px] uppercase tracking-wider text-neon-cyan">
             <Sparkles className="h-3 w-3" />
             Investment Simulator · 모의투자
           </div>
         </div>
 
-        {/* Main card */}
-        <div className="rounded-lg border border-neon-cyan/30 bg-card/80 backdrop-blur-sm p-6 sm:p-8 shadow-[0_0_40px_-15px_rgba(0,229,255,0.4)]">
+        {/* Main card — 모바일 패딩 4 / 데스크탑 6-8 */}
+        <div className="rounded-lg border border-neon-cyan/30 bg-card/80 backdrop-blur-sm p-4 sm:p-6 lg:p-8 shadow-[0_0_40px_-15px_rgba(0,229,255,0.4)]">
           <div className="flex items-center gap-3 mb-2">
-            <div className="rounded-md bg-neon-cyan/10 border border-neon-cyan/40 p-2">
-              <Wallet className="h-6 w-6 text-neon-cyan" />
+            <div className="rounded-md bg-neon-cyan/10 border border-neon-cyan/40 p-2 flex-shrink-0">
+              <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-neon-cyan" />
             </div>
-            <div>
-              <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-xl sm:text-2xl lg:text-3xl text-foreground">
                 Welcome, Trader
               </h1>
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="font-mono text-[10px] sm:text-xs text-muted-foreground leading-tight">
                 닉네임을 입력하고 가상 자금 $200,000 USD 를 받아 모의 거래를 시작하세요.
               </p>
             </div>
@@ -227,8 +227,8 @@ export function SimulatorWelcome({ onRegister }: Props) {
             </div>
           </div>
 
-          {/* Features */}
-          <div className="grid grid-cols-3 gap-2 my-5">
+          {/* Features — 모바일 갭/패딩 축소 */}
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 my-4 sm:my-5">
             <FeatureCard
               icon={<Wallet className="h-4 w-4" />}
               title="$200,000"
@@ -333,7 +333,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
                 type="button"
                 onClick={handleExport}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:py-1 rounded-sm",
                   "border border-neon-cyan/30 bg-neon-cyan/5 text-neon-cyan",
                   "hover:bg-neon-cyan/15 hover:border-neon-cyan/60",
                   "font-mono text-[10px] uppercase tracking-wider transition-colors",
@@ -347,7 +347,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
                 type="button"
                 onClick={handleImportClick}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:py-1 rounded-sm",
                   "border border-neon-green/30 bg-neon-green/5 text-neon-green",
                   "hover:bg-neon-green/15 hover:border-neon-green/60",
                   "font-mono text-[10px] uppercase tracking-wider transition-colors",
@@ -361,7 +361,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
                 type="button"
                 onClick={handleNuke}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm",
+                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:py-1 rounded-sm",
                   "border border-neon-red/30 bg-neon-red/5 text-neon-red",
                   "hover:bg-neon-red/15 hover:border-neon-red/60",
                   "font-mono text-[10px] uppercase tracking-wider transition-colors",
@@ -401,10 +401,12 @@ function FeatureCard({
   color: string;
 }) {
   return (
-    <div className="rounded-md border border-border/30 bg-background/40 p-2.5 flex flex-col items-center text-center gap-1">
+    <div className="rounded-md border border-border/30 bg-background/40 p-2 sm:p-2.5 flex flex-col items-center text-center gap-0.5 sm:gap-1">
       <span className={color}>{icon}</span>
-      <span className={cn("font-display font-bold text-sm", color)}>{title}</span>
-      <span className="font-mono text-[9px] uppercase text-muted-foreground">
+      <span className={cn("font-display font-bold text-xs sm:text-sm leading-tight", color)}>
+        {title}
+      </span>
+      <span className="font-mono text-[9px] uppercase text-muted-foreground leading-tight">
         {subtitle}
       </span>
     </div>
