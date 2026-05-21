@@ -13,8 +13,9 @@
  *   - Mock fallback 은 클라이언트 `rankLeaderboard` 로 동일하게 정렬.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import {
   Trophy,
   Medal,
@@ -25,9 +26,11 @@ import {
   Sparkles,
   AlertCircle,
   RefreshCw,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
@@ -50,6 +53,8 @@ import {
   adaptBackendLeaderboard,
   findYourRank,
   rankLeaderboard,
+  readLeaderboardOptIn,
+  writeLeaderboardOptIn,
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from "@/lib/sim-leaderboard";
@@ -101,6 +106,7 @@ export default function LeaderboardPage() {
   const [, setLocation] = useLocation();
   const { simUser } = useSimUser();
   const [period, setPeriod] = useState<LeaderboardPeriod>("all");
+  const [nickInput, setNickInput] = useState<string>(simUser?.nickname ?? "");
 
   // ── 본인 stats — local store + closed positions 기반 ──────
   // (Mock fallback 본인 entry 와 BBDX baseline comparison 에 사용)
@@ -129,6 +135,78 @@ export default function LeaderboardPage() {
       retry: 1,
     },
   );
+
+  // ── Opt-in 상태 동기화 ─────────────────────────────────────
+  // localStorage flag 가 즉시 판별용 source-of-truth. backend fetch 의
+  // result.entries 안에 isYou=true 본인 entry 가 있으면 자동으로 localStorage
+  // 갱신 (다른 기기 / 다른 세션에서 opt-in 한 케이스 대응).
+  const [optedIn, setOptedIn] = useState<boolean>(
+    () => readLeaderboardOptIn() ?? false,
+  );
+
+  useEffect(() => {
+    if (!leaderboardQuery.data || !leaderboardQuery.data.ok) return;
+    const youEntry = leaderboardQuery.data.entries.find((e) => e.isYou);
+    const actuallyOptedIn = !!youEntry;
+    if (actuallyOptedIn !== optedIn) {
+      writeLeaderboardOptIn(actuallyOptedIn);
+      setOptedIn(actuallyOptedIn);
+    }
+  }, [leaderboardQuery.data, optedIn]);
+
+  // ── Opt-in / opt-out mutations ─────────────────────────────
+  const optInMutation = trpc.simulatorLeaderboard.optIn.useMutation({
+    onSuccess: (res) => {
+      if (res.ok) {
+        toast.success(
+          res.reactivated ? "랭킹에 다시 참여합니다" : "랭킹 참여 완료",
+          { description: `닉네임: ${res.nickname}` },
+        );
+        writeLeaderboardOptIn(true);
+        setOptedIn(true);
+        // 약간의 지연 후 refetch — backend 가 새 row 를 반영하도록.
+        window.setTimeout(() => {
+          leaderboardQuery.refetch();
+        }, 500);
+      } else {
+        toast.error("랭킹 참여 실패", { description: res.message });
+      }
+    },
+    onError: (err) => {
+      toast.error("네트워크 오류", { description: err.message });
+    },
+  });
+
+  const optOutMutation = trpc.simulatorLeaderboard.optOut.useMutation({
+    onSuccess: (res) => {
+      if (res.ok) {
+        toast.success("랭킹에서 제외되었습니다");
+        writeLeaderboardOptIn(false);
+        setOptedIn(false);
+        leaderboardQuery.refetch();
+      } else {
+        toast.error("랭킹 제외 실패", { description: res.message });
+      }
+    },
+    onError: (err) => {
+      toast.error("네트워크 오류", { description: err.message });
+    },
+  });
+
+  const handleOptIn = () => {
+    if (!simUser?.id) return;
+    const nick = nickInput.trim();
+    if (nick.length < 1 || nick.length > 24) {
+      toast.error("닉네임은 1~24 글자여야 합니다");
+      return;
+    }
+    optInMutation.mutate({ clientToken: simUser.id, nickname: nick });
+  };
+
+  const handleOptOut = () => {
+    if (!simUser?.id) return;
+    optOutMutation.mutate({ clientToken: simUser.id });
+  };
 
   // ── Mock fallback 본인 entry 생성 ──────────────────────────
   // `DB_UNAVAILABLE` 응답 시 backend 가 비어있어 본인 stats 를 동적으로 끼워 넣음.
@@ -188,6 +266,18 @@ export default function LeaderboardPage() {
 
       {/* Period Tabs */}
       <PeriodTabs current={period} onChange={setPeriod} />
+
+      {/* Opt-in / Opt-out Card — backend 응답 처리 후 항상 표시 */}
+      <OptInCard
+        simUserId={simUser?.id ?? null}
+        optedIn={optedIn}
+        nickInput={nickInput}
+        onNickChange={setNickInput}
+        onOptIn={handleOptIn}
+        onOptOut={handleOptOut}
+        isOptingIn={optInMutation.isPending}
+        isOptingOut={optOutMutation.isPending}
+      />
 
       {/* Body — loading / error / mock fallback / live */}
       <LeaderboardBody
@@ -384,6 +474,125 @@ function LiveDataNotice({ totalUsers }: { totalUsers: number }) {
             opt-in 한 사용자만 표시됩니다. 30초마다 자동 갱신. 식별자는 sha256
             hash 로 익명화되어 표시 — clientToken 은 절대 노출되지 않습니다.
           </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Opt-in / Opt-out Card ───────────────────────────────
+
+function OptInCard({
+  simUserId,
+  optedIn,
+  nickInput,
+  onNickChange,
+  onOptIn,
+  onOptOut,
+  isOptingIn,
+  isOptingOut,
+}: {
+  simUserId: string | null;
+  optedIn: boolean;
+  nickInput: string;
+  onNickChange: (v: string) => void;
+  onOptIn: () => void;
+  onOptOut: () => void;
+  isOptingIn: boolean;
+  isOptingOut: boolean;
+}) {
+  if (!simUserId) {
+    return (
+      <div className="rounded-lg border border-border/40 bg-card p-4">
+        <div className="flex items-center gap-3">
+          <Info className="size-5 shrink-0 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              아직 시뮬레이터에 등록되지 않았어요.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              랭킹에 참여하려면 먼저 시뮬레이터에서 닉네임을 등록하고 거래를
+              시작해 보세요.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (optedIn) {
+    return (
+      <div className="rounded-lg border border-neon-green/40 bg-gradient-to-r from-neon-green/10 to-transparent p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Trophy className="mt-0.5 size-5 shrink-0 text-neon-green" />
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-foreground">
+                  랭킹 참여 중
+                </p>
+                <Badge
+                  variant="outline"
+                  className="border-neon-green/60 bg-neon-green/10 text-[10px] text-neon-green"
+                >
+                  opted-in
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                본인 stats 가 5분마다 자동 sync 됩니다. 언제든 opt-out 가능.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOptOut}
+            disabled={isOptingOut}
+            className="self-start border-destructive/40 text-destructive hover:bg-destructive/10 sm:self-auto"
+          >
+            <X className="mr-1 size-3.5" />
+            {isOptingOut ? "처리 중..." : "랭킹에서 제외"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Opted-out / 미등록
+  return (
+    <div className="rounded-lg border border-neon-cyan/40 bg-gradient-to-r from-neon-cyan/10 to-transparent p-4">
+      <div className="flex items-start gap-3">
+        <Trophy className="mt-0.5 size-5 shrink-0 text-neon-cyan" />
+        <div className="flex-1">
+          <p className="text-sm font-bold text-foreground">
+            랭킹에 참여하시겠습니까?
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            다른 시뮬레이터 사용자들과 자본 / 승률을 비교. 닉네임 + 통계만
+            전송되며 본인 식별자 (clientToken) 는 sha256 hash 로 익명화됩니다.
+            언제든 opt-out 가능.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={nickInput}
+              onChange={(e) => onNickChange(e.target.value)}
+              placeholder="닉네임 (1~24자)"
+              maxLength={24}
+              className="sm:max-w-xs"
+            />
+            <Button
+              onClick={onOptIn}
+              disabled={
+                isOptingIn ||
+                nickInput.trim().length < 1 ||
+                nickInput.trim().length > 24
+              }
+              className="shrink-0"
+            >
+              <Trophy className="mr-1 size-3.5" />
+              {isOptingIn ? "참여 중..." : "랭킹 참여하기"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

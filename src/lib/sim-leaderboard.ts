@@ -283,3 +283,50 @@ export function adaptBackendLeaderboard(
   }));
   return { entries, yourRank, totalUsers };
 }
+
+// ── Opt-in 상태 LocalStorage helper ─────────────────────────
+//
+// Auto-sync hook (`useSimulatorLeaderboardSync`) 가 backend fetch 응답을 기다리지
+// 않고 즉시 opt-in 여부를 알 수 있도록 클라이언트 측 캐시를 둔다.
+//
+// 정합성:
+//   - opt-in mutation 성공 시 setLeaderboardOptedIn(true)
+//   - opt-out mutation 성공 시 setLeaderboardOptedIn(false)
+//   - backend fetch 의 entries 중 isYou=true 확인 시 자동 동기화 (페이지 refresh)
+//   - mismatch 발생 (예: 다른 기기에서 opt-out) 시 다음 fetch 가 시정.
+
+const LEADERBOARD_OPTIN_KEY = "tradelab.sim.leaderboard.optedIn";
+
+/** 현재 LocalStorage 의 opt-in flag. `null` = unknown (SSR / 미초기화). */
+export function readLeaderboardOptIn(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LEADERBOARD_OPTIN_KEY);
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeLeaderboardOptIn(optedIn: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      LEADERBOARD_OPTIN_KEY,
+      optedIn ? "true" : "false",
+    );
+  } catch {
+    // private mode — ignore
+  }
+}
+
+export function clearLeaderboardOptIn(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(LEADERBOARD_OPTIN_KEY);
+  } catch {
+    // ignore
+  }
+}
