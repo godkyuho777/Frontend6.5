@@ -29,6 +29,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Trophy,
   Wallet,
   Waves,
   X,
@@ -109,7 +110,15 @@ const workspaceItems: MenuItem[] = [
   },
   { icon: BarChart3, label: "Tech tracker (Pro)", path: "/tech-tracker" },
   { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
-  { icon: Wallet, label: "Investment Simulator 💰", path: "/simulator" },
+  {
+    icon: Wallet,
+    label: "Investment Simulator 💰",
+    path: "/simulator",
+    children: [
+      { icon: Wallet, label: "Trading", path: "/simulator" },
+      { icon: Trophy, label: "Leaderboard 🏆", path: "/simulator/leaderboard" },
+    ],
+  },
   { icon: Database, label: "Onchain data", path: "/onchain" },
   { icon: Radar, label: "Sector Pulse ✨", path: "/sectors" },
 ];
