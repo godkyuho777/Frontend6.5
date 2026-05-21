@@ -36,6 +36,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { useSimUser } from "@/hooks/useSimUser";
+import { useSimulatorLeaderboardSync } from "@/hooks/useSimulatorLeaderboardSync";
 import {
   useLocalAccountSync,
   useLocalEquitySync,
@@ -154,6 +155,22 @@ export default function LeaderboardPage() {
     }
   }, [leaderboardQuery.data, optedIn]);
 
+  // ── 동적 equity 계산 — Mock fallback + auto-sync 양쪽에 사용 ──
+  const equity = localEquity.equity || (localAccount?.cash ?? INITIAL_CASH);
+  const totalPnl = equity - INITIAL_CASH;
+  const pnlPct = (totalPnl / INITIAL_CASH) * 100;
+
+  // ── Auto-sync (opt-in 사용자만 작동) ───────────────────────
+  // simUser + equity + stats 변경 시 5분 throttle 로 backend 갱신.
+  // hook 내부에서 opt-in 미등록 시 noop. opt-in 직후 즉시 sync 가능 (syncNow).
+  const syncCtl = useSimulatorLeaderboardSync({
+    simUserId: simUser?.id,
+    equity,
+    totalPnl,
+    pnlPct,
+    stats: userStats,
+  });
+
   // ── Opt-in / opt-out mutations ─────────────────────────────
   const optInMutation = trpc.simulatorLeaderboard.optIn.useMutation({
     onSuccess: (res) => {
@@ -164,10 +181,12 @@ export default function LeaderboardPage() {
         );
         writeLeaderboardOptIn(true);
         setOptedIn(true);
-        // 약간의 지연 후 refetch — backend 가 새 row 를 반영하도록.
+        // Opt-in 직후 즉시 sync — 본인 entry 가 다음 fetch refetch 에 빠르게 보이도록.
+        syncCtl.syncNow();
+        // 약간의 지연 후 refetch — backend 가 sync 받은 직후 query 가 갱신되도록.
         window.setTimeout(() => {
           leaderboardQuery.refetch();
-        }, 500);
+        }, 1000);
       } else {
         toast.error("랭킹 참여 실패", { description: res.message });
       }
@@ -210,9 +229,6 @@ export default function LeaderboardPage() {
 
   // ── Mock fallback 본인 entry 생성 ──────────────────────────
   // `DB_UNAVAILABLE` 응답 시 backend 가 비어있어 본인 stats 를 동적으로 끼워 넣음.
-  const equity = localEquity.equity || (localAccount?.cash ?? INITIAL_CASH);
-  const totalPnl = equity - INITIAL_CASH;
-  const pnlPct = (totalPnl / INITIAL_CASH) * 100;
   const fallbackYouEntry: LeaderboardEntry | null = useMemo(() => {
     if (!simUser) return null;
     return {

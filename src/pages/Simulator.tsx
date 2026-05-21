@@ -45,6 +45,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSimUser } from "@/hooks/useSimUser";
+import { useSimulatorLeaderboardSync } from "@/hooks/useSimulatorLeaderboardSync";
 import {
   fetchSimKlines,
   fetchOrderBook,
@@ -401,6 +402,25 @@ export default function Simulator() {
     () => computeSimulatorStats(closedPositions, INITIAL_CASH),
     [closedPositions],
   );
+
+  // ── Leaderboard 자동 sync (opt-in 사용자만 작동) ────────────
+  //
+  // INVESTMENT_SIMULATOR_AUDIT.md §5 Phase 2 — opt-in 사용자의 stats 가
+  // 5분에 1회 backend 에 sync 되어 다른 사용자들에게 보임. opt-in 안 됐으면
+  // hook 내부에서 noop. trading 화면에서 거래할 때마다 stats 가 변하므로
+  // 백그라운드로 자동 갱신이 적절함.
+  const sim_equity_for_sync =
+    (localEquity.equity || localAccount?.cash) ?? INITIAL_CASH;
+  const sim_totalPnl_for_sync = sim_equity_for_sync - INITIAL_CASH;
+  const sim_pnlPct_for_sync =
+    (sim_totalPnl_for_sync / INITIAL_CASH) * 100;
+  useSimulatorLeaderboardSync({
+    simUserId: simUser?.id,
+    equity: sim_equity_for_sync,
+    totalPnl: sim_totalPnl_for_sync,
+    pnlPct: sim_pnlPct_for_sync,
+    stats: simulatorStats,
+  });
 
   /**
    * Phase 4 #16: BBDX 시스템 baseline 과 사용자 stats 비교 데이터.
