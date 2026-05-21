@@ -64,11 +64,32 @@ export function useSimulatorLeaderboardSync(
   const lastSyncOkRef = useRef(false);
   const syncMutation = trpc.simulatorLeaderboard.sync.useMutation();
 
-  /** 핵심 sync 함수 — opt-in 체크 + rate-limit + mutation. */
+  // 🚨 깜빡거림 fix (2026-05-22):
+  //   기존 `performSync` 의 useCallback deps 가 `[simUserId, equity, totalPnl,
+  //   pnlPct, stats, syncMutation]` 였음. ticker tick 마다 equity 가 primitive
+  //   number 로 변경되므로 performSync reference 가 매번 새로 만들어졌고, 그를
+  //   dep 으로 두는 useEffect 가 clearInterval + setInterval 을 반복 호출 →
+  //   사이드 이펙트 누적 + React 의 timer 정리 오버헤드 + 다른 effect chain 의
+  //   timing 을 흩뜨림.
+  //
+  //   Fix: input 전체를 ref 로 저장하고 performSync 는 deps 비어있는 stable
+  //   reference 로 유지. ref 갱신은 매 render 마다 (mutation X) — 동기적이고
+  //   안전. mutation 시점에서 ref.current 의 최신 값을 읽어 sync.
+  const inputRef = useRef(input);
+  inputRef.current = input;
+
+  /** 핵심 sync 함수 — opt-in 체크 + rate-limit + mutation. Stable reference. */
   const performSync = useCallback(
     (force: boolean) => {
-      if (!simUserId) return;
-      if (equity == null || stats == null) return;
+      const {
+        simUserId: uid,
+        equity: eq,
+        totalPnl: tp,
+        pnlPct: pp,
+        stats: st,
+      } = inputRef.current;
+      if (!uid) return;
+      if (eq == null || st == null) return;
 
       // opt-in 안 됐으면 skip (localStorage 즉시 판별)
       const optedIn = readLeaderboardOptIn();
@@ -79,23 +100,22 @@ export function useSimulatorLeaderboardSync(
       if (!force && now - lastSyncRef.current < SYNC_INTERVAL_MS) return;
 
       // pnlPct 가 NaN / Infinity 면 backend 거부 — 방어적 clamp
-      const safePnlPct =
-        Number.isFinite(pnlPct) ? pnlPct : 0;
-      const safeMaxDdPct = Number.isFinite(stats.maxDrawdownPct)
-        ? stats.maxDrawdownPct * 100
+      const safePnlPct = Number.isFinite(pp) ? pp : 0;
+      const safeMaxDdPct = Number.isFinite(st.maxDrawdownPct)
+        ? st.maxDrawdownPct * 100
         : 0;
 
       lastSyncRef.current = now;
       syncMutation.mutate(
         {
-          clientToken: simUserId,
-          currentCapital: equity,
-          totalPnl,
+          clientToken: uid,
+          currentCapital: eq,
+          totalPnl: tp,
           pnlPct: safePnlPct,
-          totalTrades: stats.totalTrades,
-          wins: stats.wins,
-          losses: stats.losses,
-          winRate: stats.winRate,
+          totalTrades: st.totalTrades,
+          wins: st.wins,
+          losses: st.losses,
+          winRate: st.winRate,
           maxDrawdownPct: safeMaxDdPct,
         },
         {
@@ -125,7 +145,10 @@ export function useSimulatorLeaderboardSync(
         },
       );
     },
-    [simUserId, equity, totalPnl, pnlPct, stats, syncMutation],
+    // syncMutation reference 는 tRPC 가 안정 보장 (React Query 의 mutation cache).
+    // inputRef 는 ref 라 deps 에 안 들어감 — performSync 는 마운트 후 stable reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   /**
@@ -134,6 +157,9 @@ export function useSimulatorLeaderboardSync(
    *   - 그 후: 5분 throttle 로 자동 재 sync (stats 변경 시마다 evaluate)
    *
    * stats 가 변하지 않아도 5분 단위로 sync 가 발화하도록 interval 도 함께 설치.
+   *
+   * 🚨 deps 비어있어 마운트 1회만 install. unmount 시 clearInterval. performSync
+   * 는 stable reference 라 stale closure 위험 X — 내부에서 ref.current 로 최신 input 사용.
    */
   useEffect(() => {
     performSync(false);
@@ -143,7 +169,9 @@ export function useSimulatorLeaderboardSync(
     return () => {
       window.clearInterval(id);
     };
-  }, [performSync]);
+    // performSync 는 stable reference (deps 비어있음). 1회 install 후 unmount 시 정리.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const syncNow = useCallback(() => {
     performSync(true);

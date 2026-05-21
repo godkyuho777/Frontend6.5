@@ -77,6 +77,19 @@ export function useLocalAccountSync(
  *
  * 수정: filter 가 "all" 이 아니면 결과 array 의 (id, status, currentPrice)
  * tuple 을 key 로 캐싱. 같은 raw 데이터에 대해 같은 array 를 반환.
+ *
+ * 🚨 깜빡거림 fix (2026-05-22 추가):
+ *   "open" 분기는 `getLocalPositions` 의 raw-JSON 캐시에 의존했지만, mark-to-market
+ *   이 currentPrice 만 변경해도 raw JSON 이 달라져 캐시 miss → 새 array reference.
+ *   따라서 ticker tick 마다 PositionsTable 이 새 positions prop 을 받아 전체
+ *   PositionRow 가 React.memo 비교를 거치게 됨. 추가로 (mode flip 등) 일시적으로
+ *   length 가 0 으로 보이는 race 가 있을 경우 카드가 "사라졌다 떴다" 깜빡임.
+ *
+ *   본 fix: open 분기도 별도 signature 기반 캐시 적용. 단, signature 는 id + status
+ *   + entryPrice + liqPrice + margin + currentPrice 까지 포함해 PositionRow 의 표시
+ *   필드가 변하면 새 array, 그 외 (단순 메타데이터) 변경에는 같은 reference 유지.
+ *   currentPrice 가 정말 변했을 때는 새 reference 가 필요 — PositionRow 의 PnL 셀이
+ *   재계산되어야 하므로.
  */
 const _filteredPositionsCache = new Map<
   string,
@@ -85,10 +98,11 @@ const _filteredPositionsCache = new Map<
 
 function buildPositionSignature(positions: LocalSimPosition[]): string {
   // 가격 / 상태 / 청산가 변화를 모두 포착하는 fingerprint.
+  // currentPrice 도 포함 — 진짜 가격이 변하면 새 array reference 가 필요 (PnL 재계산).
   return positions
     .map(
       (p) =>
-        `${p.id}:${p.status}:${p.currentPrice ?? 0}:${p.closedPnl ?? 0}`,
+        `${p.id}:${p.status}:${p.entryPrice}:${p.liqPrice ?? 0}:${p.margin}:${p.currentPrice ?? 0}:${p.closedPnl ?? 0}`,
     )
     .join("|");
 }
@@ -101,22 +115,26 @@ export function useLocalPositionsSync(
     subscribeSimChange,
     () => {
       if (!userId) return EMPTY_POSITIONS as LocalSimPosition[];
-      if (filter === "open") {
-        // getLocalPositions 자체가 캐시된 stable reference 반환.
-        return getLocalPositions(userId, { includeClosed: false });
+      if (filter === "all") {
+        // "all" 은 getLocalPositions 의 raw-key 캐시에 위임 (변경 시점 동일).
+        return getLocalPositions(userId, { includeClosed: true, limit: 200 });
       }
-      const all = getLocalPositions(userId, { includeClosed: true, limit: 200 });
-      if (filter === "all") return all;
 
-      // "closed" 분기 — .filter() 가 매번 새 array 를 만들어 #185 유발.
-      // (userId|filter) 별로 signature 비교 캐시.
+      // "open" 또는 "closed" — signature 기반 캐시로 같은 의미값이면 같은 reference 보장.
+      // 같은 가격이 반복 fetch 되어도 signature 동일 → PositionsTable 이 같은 array 를
+      // 받아 .length === 0 검사 등의 race 가 사라지고 row memo 도 정확하게 hit.
+      const source =
+        filter === "open"
+          ? getLocalPositions(userId, { includeClosed: false })
+          : getLocalPositions(userId, { includeClosed: true, limit: 200 });
       const cacheKey = `${userId}|${filter}`;
-      const signature = buildPositionSignature(all);
+      const signature = buildPositionSignature(source);
       const cached = _filteredPositionsCache.get(cacheKey);
       if (cached && cached.signature === signature) {
         return cached.result;
       }
-      const filtered = all.filter((p) => p.status !== "open");
+      const filtered =
+        filter === "open" ? source : source.filter((p) => p.status !== "open");
       _filteredPositionsCache.set(cacheKey, { signature, result: filtered });
       return filtered;
     },

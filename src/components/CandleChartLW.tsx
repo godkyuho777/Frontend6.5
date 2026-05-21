@@ -634,6 +634,31 @@ export function CandleChartLW({
   //
   // positionLines / orderLines props 변경 시 일괄 제거 후 재생성. removeSeries
   // 가 아닌 removePriceLine 을 사용하므로 zoom/pan 상태에 영향 X.
+  //
+  // 🚨 깜빡거림 fix (2026-05-21):
+  //   - 기존 deps `[positionLines, orderLines]` 는 부모가 새 array reference 를
+  //     넘길 때마다 effect 가 매번 run → priceLine remove + create 반복 → 시각적
+  //     깜빡거림. 부모 (Simulator.tsx) 의 useMemo 가 primitive key 로 stable
+  //     reference 를 보장하지만 — 본 컴포넌트가 다른 페이지에서도 사용되므로
+  //     defense-in-depth 로 본 effect 도 signature key 로 deps 안정화.
+  //   - 같은 의미의 값 (id, side, entry, liq) 이면 같은 string → effect skip.
+  const positionLinesSig = positionLines
+    ? positionLines
+        .map(
+          (p) =>
+            `${p.id}:${p.side}:${p.entryPrice}:${p.liqPrice ?? 0}:${p.label ?? ""}`,
+        )
+        .join("|")
+    : "";
+  const orderLinesSig = orderLines
+    ? orderLines
+        .map(
+          (o) =>
+            `${o.id}:${o.side}:${o.limitPrice}:${o.label ?? ""}`,
+        )
+        .join("|")
+    : "";
+
   useEffect(() => {
     if (!setupCompleteRef.current) return;
     const candleSeries = candleSeriesRef.current;
@@ -698,7 +723,10 @@ export function CandleChartLW({
         simPriceLinesRef.current.push(orderLine);
       }
     }
-  }, [positionLines, orderLines]);
+    // positionLines / orderLines 는 closure 로 접근 — 같은 sig 면 같은 의미값이므로
+    // 안전. exhaustive-deps 룰 우회 (의도된 stable key 기반 trigger).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionLinesSig, orderLinesSig]);
 
   return (
     <div className="relative">
