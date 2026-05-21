@@ -26,7 +26,6 @@ import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { useThrottledValue } from "@/hooks/useThrottledValue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -494,7 +493,31 @@ export default function Simulator() {
    * 같은 심볼만 필터해 차트에 overlay (다른 심볼 포지션이 BTC 차트에 보이면 혼란).
    * useMemo 로 reference stability 보장 — positions / orders / symbol 이 안 변하면
    * 같은 array 를 재사용해 CandleChartLW 의 useEffect 가 불필요하게 재실행되지 않음.
+   *
+   * 🚨 깜빡거림 fix (2026-05-21, Phase 4+):
+   *   - 기존 deps `[positions, symbol]` 은 ticker tick 마다 mark-to-market 이
+   *     positions array 의 reference 를 새로 만들면 — 동일 (id, entryPrice,
+   *     liqPrice) 임에도 useMemo cache miss → 새 chartPositionLines array →
+   *     CandleChartLW 의 priceLine effect 가 매번 remove+create → 시각적 깜빡거림.
+   *   - Fix: primitive signature key (id|entryPrice|liqPrice) 를 deps 로 사용.
+   *     같은 의미의 값이면 같은 string → useMemo cache hit → 같은 array reference.
+   *   - currentPrice 변동은 priceLine 에 반영 X (entry/liq 는 정적) — 의도된 동작.
    */
+  const positionLinesKey = useMemo(() => {
+    return positions
+      .filter((p: any) => p.symbol === symbol && p.status === "open")
+      .map((p: any) => {
+        const liq =
+          typeof p.liqPrice === "number" && p.liqPrice > 0
+            ? p.liqPrice
+            : typeof p.liquidationPrice === "number" && p.liquidationPrice > 0
+              ? p.liquidationPrice
+              : 0;
+        return `${p.id}:${p.side}:${p.entryPrice}:${liq}:${p.quantity}`;
+      })
+      .join("|");
+  }, [positions, symbol]);
+
   const chartPositionLines = useMemo<ChartPositionLine[]>(() => {
     return positions
       .filter((p: any) => p.symbol === symbol && p.status === "open")
@@ -513,7 +536,26 @@ export default function Simulator() {
           label: `${p.side === "long" ? "L" : "S"} ${formatQty(p.quantity)}`,
         };
       });
-  }, [positions, symbol]);
+    // positionLinesKey 가 primitive string 이므로 같은 의미의 값이면 cache hit.
+    // positions / symbol 은 closure 로 접근하므로 deps 에 안 넣어도 안전 (key 변경
+    // 시점이 곧 값 변경 시점).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionLinesKey]);
+
+  const orderLinesKey = useMemo(() => {
+    if (!useLocalMode) return "";
+    return localPendingOrders
+      .filter(
+        (o) =>
+          o.symbol === symbol &&
+          o.status === "pending" &&
+          o.type === "limit" &&
+          typeof o.limitPrice === "number" &&
+          o.limitPrice > 0,
+      )
+      .map((o) => `${o.id}:${o.side}:${o.limitPrice}:${o.qty}`)
+      .join("|");
+  }, [localPendingOrders, symbol, useLocalMode]);
 
   const chartOrderLines = useMemo<ChartOrderLine[]>(() => {
     if (!useLocalMode) return [];
@@ -532,7 +574,9 @@ export default function Simulator() {
         limitPrice: o.limitPrice as number,
         label: `${o.side === "long" ? "L" : "S"} ${formatQty(o.qty)} Limit`,
       }));
-  }, [localPendingOrders, symbol, useLocalMode]);
+    // orderLinesKey 가 primitive string — 같은 값이면 cache hit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderLinesKey]);
 
   const qty = parseFloat(qtyText) || 0;
   const price = parseFloat(priceText) || 0;
@@ -546,47 +590,63 @@ export default function Simulator() {
     cashAvailable >= totalCost && qty > 0 && effectivePrice > 0;
 
   /**
-   * Phase 3 #3 (2026-05-20): ticker 250ms throttle — 분봉 버벅거림 최적화.
+   * 🚨 깜빡거림 fix (2026-05-22, Phase 4+ 추가 fix):
+   *   기존 `useThrottledValue(ticker, 250)` 는 ticker 가 새 reference 일 때마다
+   *   setThrottled(newRef) 를 호출 → 추가 re-render 1회 + primitive 값은 동일하지만
+   *   throttledTicker reference 가 흔들려 downstream chain (memo dep, useEffect
+   *   compare) 의 stability 검증을 어렵게 만든다.
    *
-   * ticker 자체는 3 초마다 polling 이므로 자주 갱신되지 않지만, 단일 fetch
-   * 안에서 같은 reference 가 setState 될 때 React 가 새 reference 로 인식해
-   * 매번 mark-to-market useEffect 가 실행됐다. 250ms throttle 로 한 묶음에 한
-   * 번만 처리하도록 만들어 re-render 비용 절감.
+   *   ticker 폴링이 이미 3초 주기이므로 250ms throttle 자체가 무의미 (3000 / 250 → 1회).
+   *   ticker 객체에서 primitive 필드를 직접 추출하면 React 가 자동으로 same-value bail-out
+   *   (Object.is) → 같은 가격이면 setState 처럼 보여도 re-render 안 함.
    *
-   * 청산 검사는 unthrottled (즉시) 분리 — 가격이 청산가 닿는 정확한 순간을
-   * 놓치면 사용자 손해.
+   *   primitive 추출:
+   *     - tickerSymbol: 심볼 변경 시에만 변경.
+   *     - tickerPrice: 가격이 진짜 변했을 때만 변경.
+   *
+   *   효과: 같은 가격이 반복 fetch 되면 tickerPrice 가 동일 primitive → 모든
+   *   downstream useEffect 의 deps 비교 skip → mark-to-market / liquidation /
+   *   limit-order 검사 / leaderboard sync 가 진짜 가격 변화에만 fire.
    */
-  const throttledTicker = useThrottledValue(ticker, 250);
+  const tickerSymbol = ticker?.symbol ?? null;
+  const tickerPrice = ticker?.lastPrice ?? null;
 
   /**
    * Local 모드 — Mark-to-market (250ms throttle 적용).
    *
    * `localMarkToMarket` 은 내부에서 emitSimChange() 호출하므로 별도 setState
    * 트리거 불필요. 250ms 묶음으로 호출되어 chart re-render 비용을 줄인다.
+   *
+   * Deps 는 primitive (symbol, price) 로 분해 — 같은 가격이면 effect skip.
    */
   useEffect(() => {
-    if (!useLocalMode || !simUser?.id || !throttledTicker) return;
-    const prices = new Map<string, number>([
-      [throttledTicker.symbol, throttledTicker.lastPrice],
-    ]);
+    if (!useLocalMode || !simUser?.id) return;
+    if (!tickerSymbol || tickerPrice == null || tickerPrice <= 0) return;
+    const prices = new Map<string, number>([[tickerSymbol, tickerPrice]]);
     localMarkToMarket(simUser.id, prices);
-  }, [useLocalMode, simUser?.id, throttledTicker]);
+  }, [useLocalMode, simUser?.id, tickerSymbol, tickerPrice]);
 
   /**
    * Local 모드 — 강제청산 검사 (unthrottled = 즉시).
    *
    * 청산가 닿는 순간을 절대 놓치면 안 되므로 throttle 적용 X.
    * 단, ticker 폴링은 3 초 주기이므로 실제 검사 빈도는 충분히 낮다.
+   *
+   * 🚨 깜빡거림 fix (2026-05-22):
+   *   기존 deps `[ticker]` 은 ticker 폴링 (3 초마다 setTicker(newObject)) 에서
+   *   가격이 동일해도 새 reference 가 만들어져 effect 가 매번 fire → 같은 데이터로
+   *   liquidation 검사가 반복되고 다른 effect chain 의 timing 을 흩뜨림.
+   *   primitive (symbol, lastPrice) 로 분해해 진짜 가격 변화에만 fire 하도록 변경.
    */
   useEffect(() => {
-    if (!useLocalMode || !simUser?.id || !ticker) return;
+    if (!useLocalMode || !simUser?.id) return;
+    if (!tickerSymbol || tickerPrice == null || tickerPrice <= 0) return;
     const openPositions = getLocalPositions(simUser.id, { includeClosed: false });
     for (const pos of openPositions) {
-      if (pos.symbol !== ticker.symbol) continue;
+      if (pos.symbol !== tickerSymbol) continue;
       if (!pos.liqPrice || pos.liqPrice <= 0) continue;
-      const mark = ticker.lastPrice;
       const hit =
-        pos.side === "long" ? mark <= pos.liqPrice : mark >= pos.liqPrice;
+        pos.side === "long" ? tickerPrice <= pos.liqPrice : tickerPrice >= pos.liqPrice;
       if (!hit) continue;
       const result = localClosePosition({
         simUserId: simUser.id,
@@ -603,7 +663,7 @@ export default function Simulator() {
         );
       }
     }
-  }, [useLocalMode, simUser?.id, ticker]);
+  }, [useLocalMode, simUser?.id, tickerSymbol, tickerPrice]);
 
   /**
    * Local 모드 — pending limit 주문 트리거.
@@ -621,19 +681,22 @@ export default function Simulator() {
    * (자동 취소 안 함) — 사용자가 직접 취소 또는 잔액 보충 후 자동 재시도.
    */
   useEffect(() => {
-    if (!useLocalMode || !simUser?.id || !ticker) return;
+    if (!useLocalMode || !simUser?.id) return;
+    if (!tickerSymbol || tickerPrice == null || tickerPrice <= 0) return;
     // localPendingOrders 는 useLocalOrdersSync 가 항상 최신을 보장하므로
     // 별도 read 불필요. 단, 본 effect 는 ticker 변경 시에만 트리거되어야
     // 하므로 의존성에서 localPendingOrders 는 제외 (무한 루프 방지).
+    //
+    // 🚨 깜빡거림 fix (2026-05-22): ticker (object) → primitive (symbol, price).
+    //   같은 가격 fetch 가 반복되어도 effect skip — 진짜 가격 변화에만 검사.
     for (const order of localPendingOrders) {
       if (order.type !== "limit") continue;
       if (!order.limitPrice || order.limitPrice <= 0) continue;
-      if (order.symbol !== ticker.symbol) continue;
-      const mark = ticker.lastPrice;
+      if (order.symbol !== tickerSymbol) continue;
       const shouldFill =
         order.side === "long"
-          ? mark <= order.limitPrice
-          : mark >= order.limitPrice;
+          ? tickerPrice <= order.limitPrice
+          : tickerPrice >= order.limitPrice;
       if (!shouldFill) continue;
       const result = localOpenPosition({
         simUserId: simUser.id,
@@ -657,7 +720,7 @@ export default function Simulator() {
     // localPendingOrders 가 dep 에 빠진 건 의도적 (위 mark-to-market 과
     // 무한 루프 방지). 다음 ticker 갱신에서 자연스럽게 재실행됨.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useLocalMode, simUser?.id, ticker]);
+  }, [useLocalMode, simUser?.id, tickerSymbol, tickerPrice]);
 
   /** 로컬 모드에서 mutation 결과 errors 표시용 */
   const [localError, setLocalError] = useState<string | null>(null);
@@ -733,10 +796,9 @@ export default function Simulator() {
             setQtyText("");
             return;
           }
-          // Market 주문 — slippage 적용 (Phase 3 #9, AUDIT.md).
-          // LONG : entry × (1 + 0.1%) — 사용자 손해 방향 (체결가 ↑)
-          // SHORT: entry × (1 - 0.1%) — 사용자 손해 방향 (체결가 ↓)
-          // PnL 은 entryPrice 가 적용 후 값이므로 자동 반영.
+          // Market 주문 — slippage 정책 (2026-05-19, sim-pnl.ts):
+          //   SLIPPAGE_PCT = 0 → 시장가 (effectivePrice) 그대로 체결.
+          //   향후 SLIPPAGE_PCT > 0 으로 복귀 시 applySlippage 가 자동 반영.
           const slippedEntry = applySlippage(effectivePrice, forSide);
           const result = localOpenPosition({
             simUserId: simUser.id,
@@ -754,9 +816,12 @@ export default function Simulator() {
             toast.success(
               `Market ${forSide.toUpperCase()} ${symbol} 체결`,
               {
-                description: `Entry $${slippedEntry.toFixed(2)} (slippage ${
-                  forSide === "long" ? "+" : "-"
-                }${(SLIPPAGE_PCT * 100).toFixed(2)}%)`,
+                description:
+                  SLIPPAGE_PCT > 0
+                    ? `Entry $${slippedEntry.toFixed(2)} (slippage ${
+                        forSide === "long" ? "+" : "-"
+                      }${(SLIPPAGE_PCT * 100).toFixed(2)}%)`
+                    : `Entry $${slippedEntry.toFixed(2)} (시장가 체결)`,
               },
             );
           }
@@ -795,27 +860,44 @@ export default function Simulator() {
     ],
   );
 
-  const handleCancelOrder = (orderId: string) => {
-    if (!simUser?.id) return;
-    if (!useLocalMode) return;
-    cancelLocalOrder(simUser.id, orderId);
-  };
+  // 🚨 깜빡거림 fix (2026-05-22): handleClose / handleCancelOrder 를 useCallback 으로
+  //   안정화. 과거에는 매 render 마다 새 reference 가 되어 PositionRow / OrderRow 의
+  //   React.memo 비교 (prev.onClose === next.onClose) 가 항상 fail → 모든 row 가
+  //   ticker tick 마다 re-render. currentPrice 만 변경된 경우에도 전체 row 가
+  //   remount 처럼 깜빡이는 원인.
+  //
+  //   currentPrice 는 ref 로 접근해 mutation 시점에 최신 값을 읽음 → useCallback
+  //   deps 가 작아져 reference stability 보장.
+  const currentPriceRef = useRef(currentPrice);
+  currentPriceRef.current = currentPrice;
 
-  const handleClose = (positionId: number) => {
-    if (!simUser?.id) return;
-    setLocalError(null);
-    if (useLocalMode) {
-      const result = localClosePosition({
-        simUserId: simUser.id,
-        positionId,
-        exitPrice: currentPrice,
-        reason: "manual",
-      });
-      if (result.error) setLocalError(result.error);
-      return;
-    }
-    closeMutation.mutate({ simUserId: simUser.id, positionId });
-  };
+  const handleCancelOrder = useCallback(
+    (orderId: string) => {
+      if (!simUser?.id) return;
+      if (!useLocalMode) return;
+      cancelLocalOrder(simUser.id, orderId);
+    },
+    [simUser?.id, useLocalMode],
+  );
+
+  const handleClose = useCallback(
+    (positionId: number) => {
+      if (!simUser?.id) return;
+      setLocalError(null);
+      if (useLocalMode) {
+        const result = localClosePosition({
+          simUserId: simUser.id,
+          positionId,
+          exitPrice: currentPriceRef.current,
+          reason: "manual",
+        });
+        if (result.error) setLocalError(result.error);
+        return;
+      }
+      closeMutation.mutate({ simUserId: simUser.id, positionId });
+    },
+    [simUser?.id, useLocalMode, closeMutation],
+  );
 
   const handleReset = () => {
     if (!simUser?.id) return;
@@ -1635,23 +1717,28 @@ export default function Simulator() {
             />
             <span className="text-right text-neon-yellow">{formatUSD(commission)}</span>
             {/* Phase 3 #9: Market 진입 시 slippage 미리보기 — LONG/SHORT 모두 손해 방향.
-                Phase 4 #15: TermTooltip 으로 hover 시 정확한 설명 노출. */}
-            {orderType === "market" && effectivePrice > 0 && (
-              <>
-                <TermTooltip
-                  label={`Est. Entry (${side === "long" ? "Buy" : "Sell"})`}
-                  content={`Market 주문 시 적용되는 Slippage (${(SLIPPAGE_PCT * 100).toFixed(2)}%). 실제 체결가가 예상보다 사용자에게 불리한 방향으로 결정됩니다. LONG 매수 → 체결가 ↑, SHORT 매도 → 체결가 ↓. Limit 주문은 적용 X.`}
-                  className="text-muted-foreground"
-                />
-                <span className="text-right text-amber-300/80">
-                  ${formatPrice(applySlippage(effectivePrice, side))}
-                  <span className="ml-1 opacity-70">
-                    ({side === "long" ? "+" : "-"}
-                    {(SLIPPAGE_PCT * 100).toFixed(2)}%)
+                Phase 4 #15: TermTooltip 으로 hover 시 정확한 설명 노출.
+                2026-05-19: SLIPPAGE_PCT=0 (revoked) → 라인 자체를 숨겨 시장가 그대로
+                체결됨을 명확히 한다.  나중에 spread 시뮬레이션 도입 시 SLIPPAGE_PCT
+                > 0 로 부활시키면 동일 UI 자동 활성. */}
+            {orderType === "market" &&
+              effectivePrice > 0 &&
+              SLIPPAGE_PCT > 0 && (
+                <>
+                  <TermTooltip
+                    label={`Est. Entry (${side === "long" ? "Buy" : "Sell"})`}
+                    content={`Market 주문 시 적용되는 Slippage (${(SLIPPAGE_PCT * 100).toFixed(2)}%). 실제 체결가가 예상보다 사용자에게 불리한 방향으로 결정됩니다. LONG 매수 → 체결가 ↑, SHORT 매도 → 체결가 ↓. Limit 주문은 적용 X.`}
+                    className="text-muted-foreground"
+                  />
+                  <span className="text-right text-amber-300/80">
+                    ${formatPrice(applySlippage(effectivePrice, side))}
+                    <span className="ml-1 opacity-70">
+                      ({side === "long" ? "+" : "-"}
+                      {(SLIPPAGE_PCT * 100).toFixed(2)}%)
+                    </span>
                   </span>
-                </span>
-              </>
-            )}
+                </>
+              )}
             <span className="text-muted-foreground">Total Cost</span>
             <span
               className={cn(

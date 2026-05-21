@@ -162,10 +162,20 @@ export function computeCashReturned(
 /**
  * Slippage rate — Market 진입 시 사용자에게 불리한 방향으로 적용되는 비율.
  *
- * 0.1% — 대형 거래소 (Bybit / Binance) 의 평균 market spread 와 비슷.
- * INVESTMENT_SIMULATOR_AUDIT.md Phase 3 #9 기본값.
+ * 2026-05-19: 사용자 피드백 — "시장가 기반이 아니라 시장가보다 높은 가격으로
+ * 체결됨" → 가시적 surcharge 가 모의투자 UX 를 직관적이지 않게 만듦.
+ *
+ * 정책 변경: **0** — 시장가 (ticker.lastPrice) 그대로 체결.
+ *   - 기존 0.1% slippage 는 실거래 spread 추정값이었으나 학습 / UI 검증 용도의
+ *     모의투자에서는 혼란만 야기.
+ *   - `applySlippage()` 함수 시그니처는 그대로 유지 — 호출자 (Simulator) 가
+ *     계속 호출하되 0 × direction = 0 으로 무영향.
+ *   - 향후 정확한 spread 시뮬레이션이 필요하면 orderbook bid/ask 기반으로
+ *     대체 (LONG → best ask, SHORT → best bid).
+ *
+ * INVESTMENT_SIMULATOR_AUDIT.md Phase 3 #9 (2026-05-17) → revoked 2026-05-19.
  */
-export const SLIPPAGE_PCT = 0.001;
+export const SLIPPAGE_PCT = 0;
 
 // ─── Simulator Stats (Phase 4 #16 일부) ────────────────────
 //
