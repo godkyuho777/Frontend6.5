@@ -23,6 +23,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useThrottledValue } from "@/hooks/useThrottledValue";
@@ -90,6 +91,12 @@ import {
   type SimulatorStats,
 } from "@/lib/sim-pnl";
 import {
+  MOCK_LEADERBOARD_ENTRIES,
+  findYourRank,
+  rankLeaderboard,
+  type LeaderboardEntry,
+} from "@/lib/sim-leaderboard";
+import {
   useLocalAccountSync,
   useLocalEquitySync,
   useLocalPositionsSync,
@@ -115,6 +122,7 @@ import {
   AlertTriangle,
   BarChart3,
   HelpCircle,
+  Trophy,
 } from "lucide-react";
 import type { Candle } from "@shared/types";
 
@@ -434,6 +442,31 @@ export default function Simulator() {
 
   const canCompareToBBDX =
     simulatorStats.totalTrades >= MIN_TRADES_FOR_COMPARISON;
+
+  // ── Leaderboard 위젯 (Phase 1 Frontend-only, AUDIT.md §5) ──
+  //
+  // Mock 10명 + 본인 동적 entry 를 합쳐 pnlPct 정렬 후 본인 rank 산출.
+  // simUser 없으면 widget 미표시 (Welcome 단계). Closed trades 0 이어도
+  // 본인 entry 는 INITIAL_CASH equity 로 끼어들어 항상 ranking 가능.
+  const [, setLocation] = useLocation();
+  const leaderboardRank = useMemo(() => {
+    if (!simUser || !localAccount) return { rank: null, total: 0, topPct: null };
+    const equity = localEquity.equity || localAccount.cash;
+    const youEntry: LeaderboardEntry = {
+      rank: 0,
+      userId: simUser.id,
+      displayName: simUser.nickname,
+      initialCapital: INITIAL_CASH,
+      currentCapital: equity,
+      totalPnl: equity - INITIAL_CASH,
+      pnlPct: ((equity - INITIAL_CASH) / INITIAL_CASH) * 100,
+      totalTrades: simulatorStats.totalTrades,
+      winRate: simulatorStats.winRate,
+      isYou: true,
+    };
+    const ranked = rankLeaderboard([...MOCK_LEADERBOARD_ENTRIES, youEntry]);
+    return findYourRank(ranked);
+  }, [simUser, localAccount, localEquity.equity, simulatorStats]);
 
   /**
    * Phase 2 #6 — 현재 차트 심볼의 open 포지션 + pending limit 주문 priceLine 입력.
@@ -1228,6 +1261,36 @@ export default function Simulator() {
           userWinRatePct={comparison.userWinRatePct}
           baselineWinRatePct={comparison.baselineWinRatePct}
         />
+      )}
+
+      {/* 🏆 내 랭킹 위젯 (Phase 1 Frontend-only, AUDIT.md §5 Leaderboard) ── */}
+      {simUser && leaderboardRank.rank != null && (
+        <button
+          type="button"
+          onClick={() => setLocation("/simulator/leaderboard")}
+          className="rounded-md border border-neon-yellow/30 bg-gradient-to-r from-neon-yellow/10 to-transparent px-3 py-2 flex items-center gap-3 hover:border-neon-yellow/50 hover:bg-neon-yellow/15 transition-colors text-left"
+        >
+          <Trophy className="h-4 w-4 text-neon-yellow shrink-0" />
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="font-display font-bold text-foreground uppercase tracking-wide">
+              내 랭킹
+            </span>
+            <span className="text-neon-yellow font-bold tabular-nums">
+              #{leaderboardRank.rank}
+            </span>
+            <span className="text-muted-foreground">
+              / {leaderboardRank.total}명
+            </span>
+            {leaderboardRank.topPct != null && (
+              <span className="text-muted-foreground">
+                · 상위 {leaderboardRank.topPct.toFixed(0)}%
+              </span>
+            )}
+          </div>
+          <span className="ml-auto text-[10px] font-mono text-neon-yellow underline-offset-2 hover:underline">
+            Leaderboard 보기 →
+          </span>
+        </button>
       )}
 
       {/* 📊 Simulator Stats (Phase 4 #16 일부) — closed trades 가 있을 때만 노출 */}

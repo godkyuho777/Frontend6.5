@@ -23,6 +23,7 @@ import WaveTrend from "./pages/WaveTrend";
 import TechTracker from "./pages/TechTracker";
 import Backtest from "./pages/Backtest";
 import Simulator from "./pages/Simulator";
+import SimulatorLeaderboard from "./pages/simulator/Leaderboard";
 import Onchain from "./pages/Onchain";
 import SectorPulse from "./pages/SectorPulse";
 import Charter from "./pages/Charter";
@@ -130,6 +131,7 @@ function ProShell() {
         <Route path={"/alerts"} component={AlertSettings} />
         <Route path={"/ai"} component={AIInsight} />
         <Route path={"/backtest"} component={Backtest} />
+        <Route path={"/simulator/leaderboard"} component={SimulatorLeaderboard} />
         <Route path={"/simulator"} component={Simulator} />
         <Route path={"/onchain"} component={Onchain} />
         {/* Sector Pulse — 12 섹터 24h % 변동 + drill-down (디스커버리). */}
