@@ -1,20 +1,22 @@
 /**
- * Investment Simulator — Leaderboard mock data + types (2026-05-21).
+ * Investment Simulator — Leaderboard types + fallback mock (2026-05-21).
  *
- * INVESTMENT_SIMULATOR_AUDIT.md §5 (Leaderboard) Phase 1 — Frontend-only
- * implementation.
+ * INVESTMENT_SIMULATOR_AUDIT.md §5 (Leaderboard) Phase 2 — Backend wiring.
  *
- * 전략:
- *   - Backend DB + tRPC route 는 별도 큰 PR (DB migration + 보안 + opt-in).
- *   - 본 모듈은 mock entries 10명 + 본인 simulator stats 를 동적 entry 로
- *     끼워 넣어 leaderboard UI 를 즉시 제공.
- *   - Backend 통합 시 동일 `LeaderboardEntry` interface 로 즉시 교체 가능
- *     (예: `trpc.simulator.leaderboard.useQuery` 결과를 같은 shape 로 매핑).
+ * 전략 (Phase 2 시점):
+ *   - 메인 경로: `trpc.simulatorLeaderboard.fetch.useQuery` 가 실 데이터를 제공.
+ *   - Fallback 경로: backend 응답이 `DB_UNAVAILABLE` / `INTERNAL` 일 때
+ *     `MOCK_LEADERBOARD_ENTRIES` 10명 + 본인 동적 entry 로 표시 (graceful
+ *     degradation — UI 가 깨지지 않음).
+ *   - 본 모듈은 fallback path 에 필요한 helper (`rankLeaderboard`,
+ *     `findYourRank`, `adaptBackendLeaderboard`) 와 mock entries 를 export.
  *
  * 정렬 기준:
  *   - 기본 정렬: `pnlPct` 내림차순 (수익률).  Cash equity 차이가 큰 경우에도
  *     공정한 비교가 가능.
- *   - 본 mock 의 entries 는 의도적으로 다양한 pnlPct 분포 (음수 포함) 로
+ *   - Backend live 경로는 backend 가 동일 기준으로 정렬 후 rank 부여한 결과를
+ *     그대로 표시 (재정렬 X).
+ *   - Mock fallback 의 entries 는 의도적으로 다양한 pnlPct 분포 (음수 포함) 로
  *     본인 entry 가 어느 위치에 끼더라도 자연스럽게 보이도록 구성.
  */
 
@@ -209,10 +211,10 @@ export function findYourRank(
 }
 
 /**
- * Period filter — 본 frontend-only 구현은 "all" 만 활성.
- *
- *   - all: 전체 기간 (현재 mock + 본인 stats)
- *   - 30d / 7d / 24h: backend 통합 후 활성화 — 본 UI 는 disabled tab 으로 표시
+ * Period filter — Phase 2 backend 는 모든 period 입력을 받지만 현재 "all"
+ * 만 실제 필터링이 적용됨 (snapshot join 미구현). UI 는 "all" 만 활성화하고
+ * 나머지는 disabled tab 으로 표시 — 백엔드가 snapshot 필터를 구현하면
+ * `enabled: true` 로 풀면 된다.
  */
 export type LeaderboardPeriod = "all" | "30d" | "7d" | "24h";
 
@@ -226,3 +228,58 @@ export const LEADERBOARD_PERIODS: Array<{
   { value: "7d", label: "7일", enabled: false },
   { value: "24h", label: "24시간", enabled: false },
 ];
+
+/**
+ * Backend `LeaderboardEntryDto` 의 shape (수동 mirror — backend 가 미설치 환경에서도
+ * TS check 가 깨지지 않도록).
+ *
+ * 실 backend 응답 (`simulatorLeaderboard.fetch`) 의 `entries[i]` 는 본 interface 와
+ * 일치 — `id` 는 익명 hash (`anon_<8-hex>`), `nickname` 은 클라이언트 입력값,
+ * `rank` 는 1-based, `isYou` 는 viewer 의 clientToken 과 일치할 때 true.
+ */
+export interface BackendLeaderboardEntry {
+  id: string;
+  nickname: string;
+  currentCapital: number;
+  initialCapital: number;
+  totalPnl: number;
+  pnlPct: number;
+  totalTrades: number;
+  winRate: number;
+  rank: number;
+  isYou: boolean;
+}
+
+/**
+ * Backend response → frontend display 형식 변환.
+ *
+ * Backend 는 이미 정렬 + rank + isYou 처리한 응답을 반환하므로 본 함수는 단순한
+ * shape adaptation 만 수행 (재정렬 / 재 ranking X). `userId` 는 backend 의
+ * 익명 `id` 를 그대로 사용 — UI 에서 React key 로 안전.
+ *
+ * displayName 매핑은 우선순위:
+ *   1. backend entry.nickname (저장된 닉네임)
+ *   2. fallback "Trader_<id 앞4자>" (방어적 — backend 가 빈 nickname 반환 시)
+ */
+export function adaptBackendLeaderboard(
+  backendEntries: BackendLeaderboardEntry[],
+  yourRank: number | null,
+  totalUsers: number,
+): { entries: LeaderboardEntry[]; yourRank: number | null; totalUsers: number } {
+  const entries: LeaderboardEntry[] = backendEntries.map((e) => ({
+    rank: e.rank,
+    userId: e.id,
+    displayName:
+      e.nickname && e.nickname.trim().length > 0
+        ? e.nickname
+        : `Trader_${e.id.slice(-4)}`,
+    initialCapital: e.initialCapital,
+    currentCapital: e.currentCapital,
+    totalPnl: e.totalPnl,
+    pnlPct: e.pnlPct,
+    totalTrades: e.totalTrades,
+    winRate: e.winRate,
+    isYou: e.isYou,
+  }));
+  return { entries, yourRank, totalUsers };
+}
