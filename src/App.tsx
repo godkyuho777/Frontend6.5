@@ -173,6 +173,11 @@ function Router() {
 }
 
 function App() {
+  // P2-#10 (2026-05-23): Dependency sanity check (dev only — production X 영향)
+  useEffect(() => {
+    void import("./lib/verify-deps").then((m) => m.verifyDepsAsync());
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
