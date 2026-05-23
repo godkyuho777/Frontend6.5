@@ -47,8 +47,10 @@ jobs:
       - name: Type check
         run: pnpm check
 
-      # 현재 frontend 는 vitest 미설정 → test step 생략.
-      # 추후 unit test 추가 시 여기에 `pnpm test --run` 활성화.
+      - name: Unit tests
+        # P2-#15 (2026-05-23): sim-pnl pure functions 45 tests.
+        # vitest.config.ts 의 include 패턴: src/**/*.{test,spec}.{ts,tsx}.
+        run: pnpm test:run
 
       - name: Build
         # Vite production build — 실제 Vercel 빌드와 동일 환경 검증
