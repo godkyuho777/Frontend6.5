@@ -393,48 +393,67 @@ function LeaderboardBody({
     );
   }
 
-  // ── DB_UNAVAILABLE → mock fallback ────────────────────────
-  if (data.code === "DB_UNAVAILABLE") {
-    const mockAll = fallbackYouEntry
-      ? [...MOCK_LEADERBOARD_ENTRIES, fallbackYouEntry]
-      : [...MOCK_LEADERBOARD_ENTRIES];
-    const ranked = rankLeaderboard(mockAll);
-    const youRank = findYourRank(ranked);
-    return (
-      <>
-        <DbUnavailableBanner />
-        <YourRankCard
-          youEntry={fallbackYouEntry}
-          rank={youRank.rank}
-          total={youRank.total}
-          topPct={youRank.topPct}
-          userStats={userStats}
-        />
-        <LeaderboardTable entries={ranked} />
-        <LeaderboardMobileList entries={ranked} />
-      </>
-    );
-  }
+  // ── DB_UNAVAILABLE 또는 INTERNAL → mock fallback (graceful) ─────
+  // 어떤 backend 에러든 mock 표시 — UI 가 깨지지 않게.
+  // INTERNAL 시에는 작은 경고 + 재시도 버튼 추가, 그 외는 graceful banner.
+  const mockAll = fallbackYouEntry
+    ? [...MOCK_LEADERBOARD_ENTRIES, fallbackYouEntry]
+    : [...MOCK_LEADERBOARD_ENTRIES];
+  const ranked = rankLeaderboard(mockAll);
+  const youRank = findYourRank(ranked);
+  const isInternal = data.code === "INTERNAL";
 
-  // ── INTERNAL 등 ─────────────────────────────────────────
   return (
-    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+    <>
+      {isInternal ? (
+        <InternalErrorBanner message={data.message} onRetry={onRetry} />
+      ) : (
+        <DbUnavailableBanner />
+      )}
+      <YourRankCard
+        youEntry={fallbackYouEntry}
+        rank={youRank.rank}
+        total={youRank.total}
+        topPct={youRank.topPct}
+        userStats={userStats}
+      />
+      <LeaderboardTable entries={ranked} />
+      <LeaderboardMobileList entries={ranked} />
+    </>
+  );
+}
+
+// ─── INTERNAL Error Banner (graceful, mock 함께 표시) ─────
+function InternalErrorBanner({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
       <div className="flex items-start gap-3">
-        <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
-        <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">
-            랭킹 조회 실패 — {data.code}
+        <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-medium text-foreground">
+              ⚠ 서버 일시 오류 — 데모 데이터 표시 중
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs shrink-0"
+              onClick={onRetry}
+            >
+              <RefreshCw className="mr-1 size-3" />
+              재시도
+            </Button>
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground line-clamp-2">
+            Backend deploy 또는 DB Migration 0008 미적용 상태. 일정 시간 후
+            자동 재시도. 본인 통계는 LocalStorage 기반으로 정확히 표시됩니다.
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{data.message}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-3"
-            onClick={onRetry}
-          >
-            <RefreshCw className="mr-1 size-3.5" />
-            재시도
-          </Button>
         </div>
       </div>
     </div>
