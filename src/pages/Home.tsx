@@ -371,17 +371,25 @@ export default function Home() {
   const totalCoins = scanData?.total ?? 0;
   const totalPages = scanData?.totalPages ?? 1;
   const pulseCoins = fullScanData?.coins ?? EMPTY_COINS;
+  // 검색이 활성일 때는 전체 코인 풀(fullScan)에서 찾아야 페이지 밖 코인도 매치됨.
+  // signalFilter 가 활성일 때도 fullScan 사용 (기존 동작 유지).
+  // fullScan 데이터가 아직 안 왔으면 페이지된 데이터로 fallback.
+  const trimmedQuery = searchQuery.trim();
+  const isSearching = trimmedQuery.length > 0;
   const watchlistCoins = signalFilter
     ? pulseCoins.filter(coin => matchesSignalFilter(coin, signalFilter))
-    : coins;
+    : isSearching
+      ? pulseCoins.length > 0
+        ? pulseCoins
+        : coins
+      : coins;
 
   const filteredAndSorted = useMemo(() => {
     let list = [...watchlistCoins];
 
-    if (searchQuery) {
-      list = list.filter(r =>
-        r.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (isSearching) {
+      const q = trimmedQuery.toUpperCase();
+      list = list.filter(r => r.symbol.toUpperCase().includes(q));
     }
 
     list.sort((a, b) => {
@@ -429,7 +437,7 @@ export default function Home() {
     });
 
     return list;
-  }, [watchlistCoins, searchQuery, sortKey, sortDir]);
+  }, [watchlistCoins, isSearching, trimmedQuery, sortKey, sortDir]);
 
   const entryCount = pulseCoins.filter(r => r.isEntrySignal).length;
   const exitCount = pulseCoins.filter(r => r.isExitSignal).length;
@@ -460,10 +468,19 @@ export default function Home() {
     }
   };
 
+  // 검색이 활성일 때는 결과 전체를 클라이언트 사이드로 페이지네이션.
+  // 검색 안 할 때는 백엔드 페이지네이션 그대로 (filteredAndSorted = 단일 페이지).
+  const displayList = isSearching
+    ? filteredAndSorted.slice((page - 1) * pageSize, page * pageSize)
+    : filteredAndSorted;
+  const displayTotalPages = isSearching
+    ? Math.max(1, Math.ceil(filteredAndSorted.length / pageSize))
+    : totalPages;
+
   const tfLabel =
     TIMEFRAMES.find(t => t.value === selectedInterval)?.label ??
     selectedInterval;
-  const featuredCoin = filteredAndSorted[0] ?? coins[0];
+  const featuredCoin = displayList[0] ?? coins[0];
   const featuredChange = featuredCoin?.change24h ?? 0;
   const featuredPrice = featuredCoin?.price ?? 0;
   const featuredSymbol = featuredCoin?.symbol ?? "BTCUSDT";
@@ -592,9 +609,11 @@ export default function Home() {
             subtitle={
               signalFilter
                 ? `${signalFilterLabel(signalFilter)} · ${watchlistCoins.length} of ${fullScanData?.total ?? totalCoins} coins · ${tfLabel}`
-                : coins.length > 0
-                  ? `Page ${page} of ${totalPages} · ${coins.length} coins · Bybit spot`
-                  : "Loading market data..."
+                : isSearching
+                  ? `Searching "${trimmedQuery}" · ${filteredAndSorted.length} match${filteredAndSorted.length === 1 ? "" : "es"} · ${tfLabel}`
+                  : coins.length > 0
+                    ? `Page ${page} of ${displayTotalPages} · ${coins.length} coins · Bybit spot`
+                    : "Loading market data..."
             }
             headerRight={
               <div className="flex items-center gap-2">
@@ -612,7 +631,12 @@ export default function Home() {
                   wrapperClassName="w-52"
                   placeholder="Search symbol..."
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    // 검색 시 page=1 로 reset — 검색 결과가 다른 페이지에 있어도
+                    // 첫 페이지부터 보이도록.
+                    setPage(1);
+                  }}
                 />
               </div>
             }
@@ -756,7 +780,7 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredAndSorted.map(coin => {
+                        {displayList.map(coin => {
                           const bbPos =
                             coin.indicators.bbUpper !== coin.indicators.bbLower
                               ? ((coin.price - coin.indicators.bbLower) /
@@ -1037,10 +1061,10 @@ export default function Home() {
                   </div>
                 </div>
 
-                {filteredAndSorted.length === 0 && searchQuery && (
+                {filteredAndSorted.length === 0 && isSearching && (
                   <div className="flex flex-col items-center justify-center py-8">
                     <p className="font-sans text-sm text-muted-foreground">
-                      No coins matching "{searchQuery}"
+                      No coins matching "{trimmedQuery}"
                     </p>
                   </div>
                 )}
@@ -1049,9 +1073,13 @@ export default function Home() {
                   <span className="font-sans text-[10px] text-muted-foreground">
                     {signalFilter
                       ? `Showing ${filteredAndSorted.length} ${signalFilterLabel(signalFilter).toLowerCase()}`
-                      : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} of ${totalCoins} coins`}
+                      : isSearching
+                        ? filteredAndSorted.length > 0
+                          ? `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} of ${filteredAndSorted.length} matches`
+                          : `0 matches for "${trimmedQuery}"`
+                        : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} of ${totalCoins} coins`}
                   </span>
-                  {!signalFilter && (
+                  {!signalFilter && displayTotalPages > 1 && (
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
@@ -1065,7 +1093,7 @@ export default function Home() {
                       </Button>
                       <div className="flex items-center gap-1">
                         {Array.from(
-                          { length: totalPages },
+                          { length: displayTotalPages },
                           (_, i) => i + 1
                         ).map(p => (
                           <button
@@ -1086,9 +1114,9 @@ export default function Home() {
                         variant="outline"
                         size="sm"
                         onClick={() =>
-                          setPage(p => Math.min(totalPages, p + 1))
+                          setPage(p => Math.min(displayTotalPages, p + 1))
                         }
-                        disabled={page >= totalPages || isFetching}
+                        disabled={page >= displayTotalPages || isFetching}
                         className="h-7 px-2 font-sans text-[10px]"
                       >
                         Next

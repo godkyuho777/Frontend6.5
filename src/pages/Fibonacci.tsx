@@ -20,7 +20,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { TIMEFRAMES } from "@shared/types";
 import type { CoinScanResult, TimeframeValue } from "@shared/types";
-import { useMarketScan } from "@/hooks/useMarketData";
+import { useFullMarketScan, useMarketScan } from "@/hooks/useMarketData";
 
 type SortKey = "symbol" | "price" | "change24h" | "fib" | "trendlines" | "strength";
 type SortDir = "asc" | "desc";
@@ -138,6 +138,9 @@ export default function Fibonacci() {
     error,
   } = useMarketScan(page, pageSize, selectedInterval);
 
+  // 검색 시 사용할 전체 코인 풀. lazy 하지만 page 변경과 무관하게 1회 fetch.
+  const { data: fullScanData } = useFullMarketScan(selectedInterval);
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -150,13 +153,20 @@ export default function Fibonacci() {
   const coins = scanData?.coins ?? EMPTY_COINS;
   const totalCoins = scanData?.total ?? 0;
   const totalPages = scanData?.totalPages ?? 1;
+  const fullCoins = fullScanData?.coins ?? EMPTY_COINS;
+
+  // 검색이 활성일 때는 전체 코인 풀에서 매치되도록 전체 fullScan 데이터 사용.
+  // fullScan 이 아직 안 왔으면 현재 페이지 데이터로 fallback.
+  const trimmedQuery = searchQuery.trim();
+  const isSearching = trimmedQuery.length > 0;
+  const sourceList =
+    isSearching && fullCoins.length > 0 ? fullCoins : coins;
 
   const filteredAndSorted = useMemo(() => {
-    let list = [...coins];
-    if (searchQuery) {
-      list = list.filter((r) =>
-        r.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    let list = [...sourceList];
+    if (isSearching) {
+      const q = trimmedQuery.toUpperCase();
+      list = list.filter((r) => r.symbol.toUpperCase().includes(q));
     }
     list.sort((a, b) => {
       let cmp = 0;
@@ -187,7 +197,15 @@ export default function Fibonacci() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return list;
-  }, [coins, searchQuery, sortKey, sortDir]);
+  }, [sourceList, isSearching, trimmedQuery, sortKey, sortDir]);
+
+  // 검색이 활성일 때는 결과 전체를 클라이언트 사이드로 페이지네이션.
+  const displayList = isSearching
+    ? filteredAndSorted.slice((page - 1) * pageSize, page * pageSize)
+    : filteredAndSorted;
+  const displayTotalPages = isSearching
+    ? Math.max(1, Math.ceil(filteredAndSorted.length / pageSize))
+    : totalPages;
 
   const buyCount = coins.filter((c) => deriveFibSignal(c) === "BUY").length;
   const sellCount = coins.filter((c) => deriveFibSignal(c) === "SELL").length;
@@ -250,16 +268,22 @@ export default function Fibonacci() {
       <HudPanel
         title="Fibonacci analysis"
         subtitle={
-          coins.length > 0
-            ? `Page ${page} of ${totalPages} · ${coins.length} coins · Bybit Spot`
-            : "Loading market data..."
+          isSearching
+            ? `Searching "${trimmedQuery}" · ${filteredAndSorted.length} match${filteredAndSorted.length === 1 ? "" : "es"} · ${tfLabel}`
+            : coins.length > 0
+              ? `Page ${page} of ${totalPages} · ${coins.length} coins · Bybit Spot`
+              : "Loading market data..."
         }
         headerRight={
           <SearchField
             wrapperClassName="w-48"
               placeholder="Search symbol..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                // 검색 시 page=1 reset — 결과가 다른 페이지에 있어도 첫 페이지부터 보이도록.
+                setPage(1);
+              }}
           />
         }
       >
@@ -317,7 +341,7 @@ export default function Fibonacci() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSorted.map((coin) => {
+                  {displayList.map((coin) => {
                     const zone = describeFibZone(coin);
                     const trend = deriveTrend(coin);
                     const trendlineCount =
@@ -452,57 +476,62 @@ export default function Fibonacci() {
               </table>
             </div>
 
-            {filteredAndSorted.length === 0 && searchQuery && (
+            {filteredAndSorted.length === 0 && isSearching && (
               <div className="flex flex-col items-center justify-center py-8">
                 <p className="font-sans text-sm text-muted-foreground">
-                  No coins matching "{searchQuery}"
+                  No coins matching "{trimmedQuery}"
                 </p>
               </div>
             )}
 
             <div className="flex items-center justify-between px-3 py-3 border-t border-border/20">
               <span className="font-sans text-[10px] text-muted-foreground">
-                Showing {(page - 1) * pageSize + 1}-
-                {Math.min(page * pageSize, totalCoins)} of {totalCoins} coins
+                {isSearching
+                  ? filteredAndSorted.length > 0
+                    ? `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} of ${filteredAndSorted.length} matches`
+                    : `0 matches for "${trimmedQuery}"`
+                  : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} of ${totalCoins} coins`}
               </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1 || isFetching}
-                  className="h-7 px-2 border-border/30 font-sans text-[10px]"
-                >
-                  <ChevronLeft className="h-3 w-3 mr-0.5" />
-                  PREV
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={cn(
-                        "font-sans text-[10px] w-6 h-6 rounded-sm transition-all",
-                        page === p
-                          ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ))}
+              {displayTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || isFetching}
+                    className="h-7 px-2 border-border/30 font-sans text-[10px]"
+                  >
+                    <ChevronLeft className="h-3 w-3 mr-0.5" />
+                    PREV
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: displayTotalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={cn(
+                          "font-sans text-[10px] w-6 h-6 rounded-sm transition-all",
+                          page === p
+                            ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(displayTotalPages, p + 1))}
+                    disabled={page >= displayTotalPages || isFetching}
+                    className="h-7 px-2 border-border/30 font-sans text-[10px]"
+                  >
+                    NEXT
+                    <ChevronRight className="h-3 w-3 ml-0.5" />
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages || isFetching}
-                  className="h-7 px-2 border-border/30 font-sans text-[10px]"
-                >
-                  NEXT
-                  <ChevronRight className="h-3 w-3 ml-0.5" />
-                </Button>
-              </div>
+              )}
             </div>
           </>
         )}

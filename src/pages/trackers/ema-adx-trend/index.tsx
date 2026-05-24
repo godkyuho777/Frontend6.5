@@ -92,12 +92,14 @@ export default function EmaAdxTrendListPage() {
     }
   };
 
+  const trimmedQuery = searchQuery.trim();
+  const isSearching = trimmedQuery.length > 0;
+
   const filteredAndSorted = useMemo(() => {
     let list = [...results];
-    if (searchQuery) {
-      list = list.filter(r =>
-        r.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (isSearching) {
+      const q = trimmedQuery.toUpperCase();
+      list = list.filter(r => r.symbol.toUpperCase().includes(q));
     }
     list.sort((a, b) => {
       let cmp = 0;
@@ -131,7 +133,7 @@ export default function EmaAdxTrendListPage() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return list;
-  }, [results, searchQuery, sortKey, sortDir]);
+  }, [results, isSearching, trimmedQuery, sortKey, sortDir]);
 
   const buyCount = results.filter(r => r.triggered && r.side === "LONG").length;
   const sellCount = results.filter(
@@ -226,7 +228,15 @@ export default function EmaAdxTrendListPage() {
           </p>
         )}
 
-        {results.length > 0 && (
+        {results.length > 0 && filteredAndSorted.length === 0 && isSearching && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <p className="font-mono text-sm text-muted-foreground">
+              No coins matching "{trimmedQuery}"
+            </p>
+          </div>
+        )}
+
+        {results.length > 0 && filteredAndSorted.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
