@@ -178,6 +178,29 @@ function App() {
     void import("./lib/verify-deps").then((m) => m.verifyDepsAsync());
   }, []);
 
+  // 2026-05-24: lightweight-charts idle preload — 사용자가 차트 탭 클릭하기
+  // 전에 미리 chunk 를 fetch 해 둠. 기존에는 CandleChartLW 가 처음 mount 될 때
+  // ~90KB 모듈을 동적 import → 200~500ms 대기. requestIdleCallback 으로
+  // browser 가 한가할 때만 미리 받아서 첫 chart 렌더링 즉시.
+  useEffect(() => {
+    const idle: (cb: () => void) => number =
+      typeof window !== "undefined" &&
+      typeof (window as any).requestIdleCallback === "function"
+        ? (window as any).requestIdleCallback
+        : (cb) => window.setTimeout(cb, 800);
+    const handle = idle(() => {
+      void import("lightweight-charts");
+    });
+    return () => {
+      const cancel: (h: number) => void =
+        typeof window !== "undefined" &&
+        typeof (window as any).cancelIdleCallback === "function"
+          ? (window as any).cancelIdleCallback
+          : window.clearTimeout;
+      cancel(handle as number);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">

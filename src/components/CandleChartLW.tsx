@@ -13,7 +13,7 @@
  *     (candles 의 첫 timestamp 가 바뀔 때) 에만 호출.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Candle } from "@shared/types";
 import type { Trendline } from "@/lib/fibonacci-engine";
 
@@ -132,8 +132,17 @@ export function CandleChartLW({
 
   /** 마지막으로 그린 캔들의 첫 timestamp — symbol/timeframe 전환 감지용. */
   const lastFirstTimeRef = useRef<number | null>(null);
-  /** 차트가 초기 생성되었는지 (lightweight-charts dynamic import 가 비동기). */
-  const setupCompleteRef = useRef(false);
+  /**
+   * 차트가 초기 생성되었는지 (lightweight-charts dynamic import 가 비동기).
+   *
+   * 🚨 2026-05-24 fix: 기존에는 `useRef(false)` 였으나 ref 는 변경 시 React
+   * re-render / effect 재실행을 trigger 하지 않는다. 따라서 Effects 2~7 이
+   * 첫 mount 때 `setupCompleteRef=false` 로 early return 한 뒤, async chart
+   * 생성이 끝나도 setData 가 호출되지 않아 chart 가 영원히 빈 화면.
+   * useState 로 전환하여 setupComplete=true 가 되는 순간 Effects 2~7 의
+   * deps 가 변경 감지 → 자동 재실행 → setData / overlays 적용.
+   */
+  const [setupComplete, setSetupComplete] = useState(false);
   /** lightweight-charts module 캐시. */
   const lwModuleRef = useRef<any>(null);
 
@@ -233,8 +242,11 @@ export function CandleChartLW({
         scaleMargins: { top: 0.85, bottom: 0 },
       });
 
-      setupCompleteRef.current = true;
       lastFirstTimeRef.current = null;
+      // 🚨 2026-05-24: state 로 변경 → 이 setter 가 Effects 2~7 의 deps
+      // 트리거 → setData / overlays 자동 적용. 기존 ref 방식은 effects 가
+      // 첫 run 때 false 로 early return 한 후 영원히 재실행 안 됨.
+      setSetupComplete(true);
 
       // 컨테이너 리사이즈 핸들러 (window resize 만 잡음 — 부모 컨테이너의
       // 비동기 layout 변화는 별도 ResizeObserver 로 처리).
@@ -309,15 +321,16 @@ export function CandleChartLW({
       priceLinesRef.current = [];
       currentPriceLineRef.current = null;
       simPriceLinesRef.current = [];
-      setupCompleteRef.current = false;
+      setSetupComplete(false);
     };
   }, [height]);
 
   // ── 2. Candle / Volume 데이터 갱신 ──
   // candles 가 바뀔 때 (symbol/timeframe 변경 OR live update) series.setData 로 in-place 갱신.
   // 첫 그리기 또는 symbol/timeframe 전환 (첫 캔들의 timestamp 가 바뀌었을 때) 에만 fitContent.
+  // setupComplete 를 dep 에 포함 — async chart 생성 직후 자동 setData 보장 (race fix).
   useEffect(() => {
-    if (!setupCompleteRef.current || candles.length === 0) return;
+    if (!setupComplete || candles.length === 0) return;
     const candleSeries = candleSeriesRef.current;
     const volumeSeries = volumeSeriesRef.current;
     if (!candleSeries || !volumeSeries) return;
@@ -359,11 +372,11 @@ export function CandleChartLW({
     }
     // 같은 series 내에서 새 캔들이 추가된 경우 (live tick) 는 fitContent 호출 X
     // → 사용자의 zoom/pan 상태 보존.
-  }, [candles, windowSize]);
+  }, [candles, windowSize, setupComplete]);
 
   // ── 3. Bollinger Bands 오버레이 ──
   useEffect(() => {
-    if (!setupCompleteRef.current) return;
+    if (!setupComplete) return;
     const chart = chartRef.current;
     if (!chart) return;
     const mod = lwModuleRef.current;
@@ -430,11 +443,11 @@ export function CandleChartLW({
     bbUpperRef.current = upper;
     bbMiddleRef.current = middle;
     bbLowerRef.current = lower;
-  }, [bbSeries, candles, windowSize]);
+  }, [bbSeries, candles, windowSize, setupComplete]);
 
   // ── 4. Fibonacci price lines ──
   useEffect(() => {
-    if (!setupCompleteRef.current) return;
+    if (!setupComplete) return;
     const candleSeries = candleSeriesRef.current;
     const mod = lwModuleRef.current;
     if (!candleSeries || !mod) return;
@@ -493,11 +506,11 @@ export function CandleChartLW({
         priceLinesRef.current.push(hi, lo);
       }
     }
-  }, [fibLevels]);
+  }, [fibLevels, setupComplete]);
 
   // ── 5. Trendlines ──
   useEffect(() => {
-    if (!setupCompleteRef.current) return;
+    if (!setupComplete) return;
     const chart = chartRef.current;
     const mod = lwModuleRef.current;
     if (!chart || !mod) return;
@@ -590,11 +603,11 @@ export function CandleChartLW({
         overlaysRef.current.push(series);
       }
     }
-  }, [trendlines, candles, windowSize, fibLevels, currentPrice]);
+  }, [trendlines, candles, windowSize, fibLevels, currentPrice, setupComplete]);
 
   // ── 6. Current price line — 매 ticker 갱신마다 가격만 업데이트 ──
   useEffect(() => {
-    if (!setupCompleteRef.current) return;
+    if (!setupComplete) return;
     const candleSeries = candleSeriesRef.current;
     const mod = lwModuleRef.current;
     if (!candleSeries || !mod) return;
@@ -623,7 +636,7 @@ export function CandleChartLW({
       axisLabelVisible: true,
       title: "Current",
     });
-  }, [currentPrice]);
+  }, [currentPrice, setupComplete]);
 
   // ── 7. Simulator open 포지션 + pending limit 주문 priceLine overlay ──
   //
@@ -660,7 +673,7 @@ export function CandleChartLW({
     : "";
 
   useEffect(() => {
-    if (!setupCompleteRef.current) return;
+    if (!setupComplete) return;
     const candleSeries = candleSeriesRef.current;
     const mod = lwModuleRef.current;
     if (!candleSeries || !mod) return;
@@ -725,8 +738,9 @@ export function CandleChartLW({
     }
     // positionLines / orderLines 는 closure 로 접근 — 같은 sig 면 같은 의미값이므로
     // 안전. exhaustive-deps 룰 우회 (의도된 stable key 기반 trigger).
+    // setupComplete dep 추가 — chart 생성 후 simulator overlay 자동 적용.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positionLinesSig, orderLinesSig]);
+  }, [positionLinesSig, orderLinesSig, setupComplete]);
 
   return (
     <div className="relative">
