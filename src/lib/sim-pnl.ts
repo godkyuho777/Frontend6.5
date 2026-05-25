@@ -433,3 +433,223 @@ export function applySlippage(
   const direction = side === "long" ? 1 : -1;
   return price * (1 + rate * direction);
 }
+
+// ─── PnL Time-Series Aggregation (2026-05-25) ─────────────────────
+//
+// 사용자의 closed positions 를 day/week/month 단위로 버킷팅한 PnL 시계열.
+// SimulatorPnLChart 등 시각화 컴포넌트가 소비.
+//
+// 입력: closedPositions 의 closedAt(ISO string | Date | null) + closedPnl(number | null).
+// 출력: 시간 오름차순 PnLDataPoint[].
+//
+// closedAt 가 null 또는 closedPnl 이 number 아닌 항목은 자동으로 skip.
+
+/** Granularity for PnL aggregation. */
+export type PnLGranularity = "day" | "week" | "month";
+
+/**
+ * 시계열 PnL 데이터포인트.
+ *
+ *   - `bucket`: 정렬용 ISO key (YYYY-MM-DD / YYYY-Www / YYYY-MM)
+ *   - `label`: UI 표시용 짧은 문자열 (MMM dd / Www / YYYY-MM)
+ *   - `pnl`: 해당 기간의 closed PnL 합계 (USD)
+ *   - `cumulativePnl`: 시작부터 현재까지 누적 PnL (USD)
+ *   - `tradeCount`: 해당 기간의 closed 거래 수
+ */
+export interface PnLDataPoint {
+  bucket: string;
+  label: string;
+  pnl: number;
+  cumulativePnl: number;
+  tradeCount: number;
+}
+
+/**
+ * Date → YYYY-MM-DD (UTC 기준 일자 키).
+ *
+ * Date 가 사용자 로컬 timezone 의 자정을 넘어도 안정적인 ISO 일자를 반환.
+ * 사용자 timezone offset 도 함께 반영하기 위해 toLocaleDateString 사용 (ko-KR).
+ */
+function toDayBucket(d: Date): { bucket: string; label: string } {
+  // 로컬 timezone 기준 일자 — `2026-05-15` 같은 표기는 사용자가 보는 달력과 일치해야 함.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const bucket = `${y}-${m}-${day}`;
+  // 짧은 표시 형식: "May 15" (영어) — chart x-axis 좁은 공간 대응
+  const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return { bucket, label };
+}
+
+/**
+ * Date → ISO Week (YYYY-Www).
+ *
+ * ISO 8601: 주는 월요일에 시작. 한 해의 첫 주는 첫 번째 목요일을 포함하는 주.
+ * 새해 첫 며칠은 전 해의 마지막 주에 속할 수 있음.
+ */
+function toWeekBucket(d: Date): { bucket: string; label: string } {
+  // 사본 — d 를 mutate 하지 않도록.
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // ISO weekday: 1=월, 7=일. JS Date.getDay() : 0=일, 1=월…
+  const dayNum = (target.getDay() + 6) % 7; // 0=월, 6=일
+  // 그 주의 목요일로 이동 → ISO week 정의상 그 해의 주차
+  target.setDate(target.getDate() - dayNum + 3);
+  const firstThursday = new Date(target.getFullYear(), 0, 4);
+  const firstDayNum = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(firstThursday.getDate() - firstDayNum + 3);
+  const weekNum =
+    1 +
+    Math.round(
+      (target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    );
+  const yearForWeek = target.getFullYear();
+  const ww = String(weekNum).padStart(2, "0");
+  const bucket = `${yearForWeek}-W${ww}`;
+  // 짧은 표시: "Wxx" (앞부분 연도는 month chart 이외엔 거의 동일하므로 생략)
+  const label = `W${ww}`;
+  return { bucket, label };
+}
+
+/**
+ * Date → YYYY-MM (월 버킷).
+ */
+function toMonthBucket(d: Date): { bucket: string; label: string } {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const bucket = `${y}-${m}`;
+  // "May 26" (월 + 연도 2자리) — chart x-axis 컴팩트
+  const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+  return { bucket, label };
+}
+
+/**
+ * Granularity → bucket helper 선택.
+ */
+function bucketize(
+  granularity: PnLGranularity,
+  d: Date,
+): { bucket: string; label: string } {
+  if (granularity === "week") return toWeekBucket(d);
+  if (granularity === "month") return toMonthBucket(d);
+  return toDayBucket(d);
+}
+
+/**
+ * closedAt 정규화 — null / string / Date 모두 → Date 또는 null.
+ */
+function parseClosedAt(d: string | Date | null | undefined): Date | null {
+  if (!d) return null;
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  const parsed = new Date(d);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Closed positions 의 PnL 을 granularity 단위로 버킷팅한 시계열 반환.
+ *
+ *   1. closedAt 유효 + closedPnl 이 number 인 항목만 채택
+ *   2. closedAt 오름차순 정렬
+ *   3. granularity 별로 bucket 키 생성 → 같은 bucket 끼리 PnL 합, count++
+ *   4. bucket 순서대로 cumulativePnl 누적
+ *
+ * 결과 array 의 길이는 거래가 있던 bucket 의 개수 (거래 없는 day/week 은 skip).
+ * UI 가 "거래 없는 날" 을 표시하려면 추가 보강 필요 — 본 함수는 거래가 있던
+ * bucket 만 반환하여 차트가 간결.
+ *
+ * @param positions  LocalSimPosition[] (closed 만 들어오는 것을 권장)
+ * @param granularity  "day" | "week" | "month"
+ * @returns 시간 오름차순 PnLDataPoint[].
+ */
+export function aggregatePnLByGranularity(
+  positions: Array<{
+    closedPnl: number | null;
+    closedAt: string | Date | null;
+  }>,
+  granularity: PnLGranularity,
+): PnLDataPoint[] {
+  if (positions.length === 0) return [];
+
+  // 1. 유효 항목 필터 + 정렬
+  type Row = { ts: number; pnl: number; date: Date };
+  const rows: Row[] = [];
+  for (const p of positions) {
+    if (typeof p.closedPnl !== "number" || !isFinite(p.closedPnl)) continue;
+    const date = parseClosedAt(p.closedAt);
+    if (!date) continue;
+    rows.push({ ts: date.getTime(), pnl: p.closedPnl, date });
+  }
+  if (rows.length === 0) return [];
+  rows.sort((a, b) => a.ts - b.ts);
+
+  // 2. 버킷팅 — Map<bucket, { label, pnl, tradeCount }>
+  //    insertion order 유지 → 시간 오름차순 자동 보장.
+  const buckets = new Map<
+    string,
+    { label: string; pnl: number; tradeCount: number }
+  >();
+  for (const r of rows) {
+    const { bucket, label } = bucketize(granularity, r.date);
+    const existing = buckets.get(bucket);
+    if (existing) {
+      existing.pnl += r.pnl;
+      existing.tradeCount += 1;
+    } else {
+      buckets.set(bucket, { label, pnl: r.pnl, tradeCount: 1 });
+    }
+  }
+
+  // 3. 누적 PnL 계산 + 배열로 변환
+  const result: PnLDataPoint[] = [];
+  let cumulative = 0;
+  for (const [bucket, { label, pnl, tradeCount }] of buckets) {
+    cumulative += pnl;
+    result.push({
+      bucket,
+      label,
+      pnl,
+      cumulativePnl: cumulative,
+      tradeCount,
+    });
+  }
+  return result;
+}
+
+/**
+ * PnL 시계열 summary — 차트 하단의 best/worst/avg 요약 카드용.
+ *
+ *   - totalPnl: 모든 bucket pnl 의 합 (= 최종 cumulativePnl 과 동일)
+ *   - bestPeriod: 가장 큰 양수 pnl 의 데이터포인트 (없으면 null)
+ *   - worstPeriod: 가장 작은 음수 pnl 의 데이터포인트 (없으면 null)
+ *   - avgPnl: pnl 평균 (전체 / bucket 수)
+ *   - totalTrades: 모든 bucket 의 tradeCount 합
+ */
+export interface PnLSeriesSummary {
+  totalPnl: number;
+  bestPeriod: PnLDataPoint | null;
+  worstPeriod: PnLDataPoint | null;
+  avgPnl: number;
+  totalTrades: number;
+}
+
+export function summarizePnLSeries(data: PnLDataPoint[]): PnLSeriesSummary {
+  if (data.length === 0) {
+    return {
+      totalPnl: 0,
+      bestPeriod: null,
+      worstPeriod: null,
+      avgPnl: 0,
+      totalTrades: 0,
+    };
+  }
+  let best: PnLDataPoint | null = null;
+  let worst: PnLDataPoint | null = null;
+  let totalTrades = 0;
+  for (const d of data) {
+    if (!best || d.pnl > best.pnl) best = d;
+    if (!worst || d.pnl < worst.pnl) worst = d;
+    totalTrades += d.tradeCount;
+  }
+  const totalPnl = data[data.length - 1]?.cumulativePnl ?? 0;
+  const avgPnl = totalPnl / data.length;
+  return { totalPnl, bestPeriod: best, worstPeriod: worst, avgPnl, totalTrades };
+}
