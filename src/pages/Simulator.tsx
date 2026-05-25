@@ -37,6 +37,7 @@ import {
 } from "@/components/CandleChartLW";
 import { SimulatorWelcome } from "@/components/SimulatorWelcome";
 import { SimulatorOnboarding } from "@/components/SimulatorOnboarding";
+import { SimulatorPnLChart } from "@/components/SimulatorPnLChart";
 import {
   Tooltip,
   TooltipContent,
@@ -1466,6 +1467,12 @@ export default function Simulator() {
           stats={simulatorStats}
           comparison={comparison}
         />
+      )}
+
+      {/* 📈 누적 PnL 시계열 차트 (2026-05-25) — closed trade 가 있을 때만 노출.
+           일/주/월 granularity 토글로 사용자 거래 성과 추세를 한눈에. */}
+      {simulatorStats.totalTrades > 0 && (
+        <SimulatorPnLChart positions={closedPositions} height={260} />
       )}
 
       {/* ── Main 3-column grid (md: 768px 부터) ───────────
