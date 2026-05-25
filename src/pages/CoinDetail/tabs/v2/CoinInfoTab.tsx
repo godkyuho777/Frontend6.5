@@ -15,11 +15,13 @@
  *   4. 가격 정보 (현재가 · ATH · ATL · ATH 대비)
  *   5. 프로젝트 정보 (런칭 · 합의 알고리즘)
  *   6. 공식 링크 (homepage · whitepaper · github · twitter · reddit)
- *   7. 출처 + 신선도 footer
+ *   7. 거래소 상장 정보 (tickers) — CoinGecko 기반 거래소별 가격/거래량/스프레드
+ *   8. 출처 + 신선도 footer
  */
 
 import { HudPanel, StatCard } from "@/components/HudPanel";
 import { Badge } from "@/components/ui/badge";
+import { ExchangeTickersCard } from "@/components/coin/ExchangeTickersCard";
 import { trpc } from "@/lib/trpc";
 import { useCoinMeta } from "../../hooks/useCoinMeta";
 import { useCoinDetail } from "@/hooks/useMarketData";
@@ -301,7 +303,10 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
         </HudPanel>
       )}
 
-      {/* 7. 출처 + 신선도 footer */}
+      {/* 7. 거래소 상장 정보 — CoinGecko tickers (백엔드 coin.tickers 라우트). */}
+      <ExchangeTickersCard symbol={symbol} />
+
+      {/* 8. 출처 + 신선도 footer */}
       <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-sm border border-border/20 bg-card/30 flex-wrap">
         <p className="font-mono text-[10px] text-muted-foreground">
           출처: CoinGecko Free API
