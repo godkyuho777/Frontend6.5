@@ -16,12 +16,14 @@
  *   5. 프로젝트 정보 (런칭 · 합의 알고리즘)
  *   6. 공식 링크 (homepage · whitepaper · github · twitter · reddit)
  *   7. 거래소 상장 정보 (tickers) — CoinGecko 기반 거래소별 가격/거래량/스프레드
- *   8. 출처 + 신선도 footer
+ *   8. DeFi 프로토콜 정보 (TVL · 카테고리 · 변화율) — DeFi 코인만 표시, 비-DeFi 는 숨김
+ *   9. 출처 + 신선도 footer
  */
 
 import { HudPanel, StatCard } from "@/components/HudPanel";
 import { Badge } from "@/components/ui/badge";
 import { ExchangeTickersCard } from "@/components/coin/ExchangeTickersCard";
+import { DefiStatsCard } from "@/components/coin/DefiStatsCard";
 import { trpc } from "@/lib/trpc";
 import { useCoinMeta } from "../../hooks/useCoinMeta";
 import { useCoinDetail } from "@/hooks/useMarketData";
@@ -306,7 +308,11 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       {/* 7. 거래소 상장 정보 — CoinGecko tickers (백엔드 coin.tickers 라우트). */}
       <ExchangeTickersCard symbol={symbol} />
 
-      {/* 8. 출처 + 신선도 footer */}
+      {/* 8. DeFi 프로토콜 정보 — DefiLlama TVL (백엔드 coin.defiStats 라우트).
+           DeFi 코인만 표시. 비-DeFi 코인 / 백엔드 미배포 시 null 반환 → 숨김. */}
+      <DefiStatsCard symbol={symbol} />
+
+      {/* 9. 출처 + 신선도 footer */}
       <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-sm border border-border/20 bg-card/30 flex-wrap">
         <p className="font-mono text-[10px] text-muted-foreground">
           출처: CoinGecko Free API
