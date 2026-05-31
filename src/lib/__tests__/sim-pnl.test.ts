@@ -25,6 +25,8 @@ import {
   emptySimulatorStats,
   estimateUserAvgReturnPct,
   getMarginRatioColor,
+  aggregatePnLByGranularity,
+  summarizePnLSeries,
   SLIPPAGE_PCT,
   DEFAULT_MAINTENANCE_MARGIN_RATE,
   BBDX_BASELINE,
@@ -51,6 +53,17 @@ describe("computeUnrealizedPnL", () => {
 
   test("SHORT 가격 상승 = 음수 PnL", () => {
     expect(computeUnrealizedPnL("short", 0.125, 80_000, 81_000)).toBeCloseTo(-125, 6);
+  });
+
+  test("PnL 은 leverage 곱셈 없음 — $4T 자본 폭주 버그 회귀 방지 ⭐", () => {
+    // 과거 버그: PnL 에 leverage 를 곱해 자본이 $4조까지 폭주.
+    // 헌장: 절대 PnL = size × priceΔ 단 하나의 값. leverage 는 ROE 에만 반영.
+    // 1 BTC, entry $80k, current $80.8k (+1%) → 정확히 $800 (1 × 800).
+    const pnl = computeUnrealizedPnL("long", 1, 80_000, 80_800);
+    expect(pnl).toBeCloseTo(800, 6);
+    // leverage 가 곱해졌다면 8_000(10x) / 80_000(100x) 이 나왔을 것 — 절대 아님.
+    expect(pnl).not.toBeCloseTo(8_000, 2);
+    expect(pnl).not.toBeCloseTo(80_000, 2);
   });
 
   test("size=0 → 0 반환", () => {
@@ -335,5 +348,135 @@ describe("policy constants", () => {
 
   test("MIN_TRADES_FOR_COMPARISON = 5 (통계적 의미 임계)", () => {
     expect(MIN_TRADES_FOR_COMPARISON).toBe(5);
+  });
+});
+
+// ─── aggregatePnLByGranularity ───────────────────────────────
+
+describe("aggregatePnLByGranularity", () => {
+  test("빈 array → []", () => {
+    expect(aggregatePnLByGranularity([], "day")).toEqual([]);
+  });
+
+  test("day bucket — 같은 날 거래 합산 + tradeCount", () => {
+    const positions = [
+      { closedPnl: 100, closedAt: "2026-05-15T01:00:00" },
+      { closedPnl: 50, closedAt: "2026-05-15T20:00:00" },
+      { closedPnl: -30, closedAt: "2026-05-16T10:00:00" },
+    ];
+    const out = aggregatePnLByGranularity(positions, "day");
+    expect(out).toHaveLength(2);
+    expect(out[0].bucket).toBe("2026-05-15");
+    expect(out[0].pnl).toBeCloseTo(150, 6); // 100 + 50
+    expect(out[0].tradeCount).toBe(2);
+    expect(out[1].bucket).toBe("2026-05-16");
+    expect(out[1].pnl).toBeCloseTo(-30, 6);
+    expect(out[1].tradeCount).toBe(1);
+  });
+
+  test("cumulative PnL 누적 정확", () => {
+    const positions = [
+      { closedPnl: 100, closedAt: "2026-05-15T01:00:00" },
+      { closedPnl: -30, closedAt: "2026-05-16T10:00:00" },
+      { closedPnl: 200, closedAt: "2026-05-17T10:00:00" },
+    ];
+    const out = aggregatePnLByGranularity(positions, "day");
+    expect(out.map((d) => d.cumulativePnl)).toEqual([100, 70, 270]);
+  });
+
+  test("입력이 뒤섞여도 시간 오름차순 정렬", () => {
+    const positions = [
+      { closedPnl: 200, closedAt: "2026-05-17T10:00:00" },
+      { closedPnl: 100, closedAt: "2026-05-15T01:00:00" },
+      { closedPnl: -30, closedAt: "2026-05-16T10:00:00" },
+    ];
+    const out = aggregatePnLByGranularity(positions, "day");
+    expect(out.map((d) => d.bucket)).toEqual([
+      "2026-05-15",
+      "2026-05-16",
+      "2026-05-17",
+    ]);
+  });
+
+  test("month bucket — 같은 달 합산 (YYYY-MM)", () => {
+    const positions = [
+      { closedPnl: 100, closedAt: "2026-05-01T00:00:00" },
+      { closedPnl: 50, closedAt: "2026-05-28T00:00:00" },
+      { closedPnl: -20, closedAt: "2026-06-02T00:00:00" },
+    ];
+    const out = aggregatePnLByGranularity(positions, "month");
+    expect(out).toHaveLength(2);
+    expect(out[0].bucket).toBe("2026-05");
+    expect(out[0].pnl).toBeCloseTo(150, 6);
+    expect(out[1].bucket).toBe("2026-06");
+  });
+
+  test("week bucket — ISO week 키 형식 (YYYY-Www)", () => {
+    const out = aggregatePnLByGranularity(
+      [{ closedPnl: 100, closedAt: "2026-05-15T00:00:00" }],
+      "week",
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].bucket).toMatch(/^\d{4}-W\d{2}$/);
+  });
+
+  test("closedPnl null / closedAt null 항목 skip", () => {
+    const positions = [
+      { closedPnl: 100, closedAt: "2026-05-15T00:00:00" },
+      { closedPnl: null, closedAt: "2026-05-15T00:00:00" },
+      { closedPnl: 50, closedAt: null },
+    ];
+    const out = aggregatePnLByGranularity(positions, "day");
+    expect(out).toHaveLength(1);
+    expect(out[0].pnl).toBe(100);
+    expect(out[0].tradeCount).toBe(1);
+  });
+
+  test("NaN / Infinity closedPnl skip → 유효 항목 없으면 []", () => {
+    const positions = [
+      { closedPnl: NaN, closedAt: "2026-05-15T00:00:00" },
+      { closedPnl: Infinity, closedAt: "2026-05-16T00:00:00" },
+    ];
+    expect(aggregatePnLByGranularity(positions, "day")).toEqual([]);
+  });
+
+  test("Date 객체 closedAt 도 허용", () => {
+    const out = aggregatePnLByGranularity(
+      [{ closedPnl: 100, closedAt: new Date("2026-05-15T00:00:00") }],
+      "day",
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].pnl).toBe(100);
+  });
+});
+
+// ─── summarizePnLSeries ──────────────────────────────────────
+
+describe("summarizePnLSeries", () => {
+  test("빈 array → null best/worst, 0 합계", () => {
+    const s = summarizePnLSeries([]);
+    expect(s.totalPnl).toBe(0);
+    expect(s.bestPeriod).toBeNull();
+    expect(s.worstPeriod).toBeNull();
+    expect(s.avgPnl).toBe(0);
+    expect(s.totalTrades).toBe(0);
+  });
+
+  test("best / worst / avg / totalTrades 계산", () => {
+    const data = aggregatePnLByGranularity(
+      [
+        { closedPnl: 100, closedAt: "2026-05-15T00:00:00" },
+        { closedPnl: -50, closedAt: "2026-05-16T00:00:00" },
+        { closedPnl: 200, closedAt: "2026-05-17T00:00:00" },
+      ],
+      "day",
+    );
+    const s = summarizePnLSeries(data);
+    expect(s.bestPeriod?.pnl).toBe(200);
+    expect(s.worstPeriod?.pnl).toBe(-50);
+    expect(s.totalTrades).toBe(3);
+    // totalPnl = 최종 cumulative = 100 - 50 + 200 = 250
+    expect(s.totalPnl).toBeCloseTo(250, 6);
+    expect(s.avgPnl).toBeCloseTo(250 / 3, 6);
   });
 });
