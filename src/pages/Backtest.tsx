@@ -75,7 +75,7 @@ const STRATEGY_META: Record<
   }
 > = {
   "bbdx-combined": {
-    label: "BBDX v6.6 ⭐",
+    label: "BBDX v6.6",
     description:
       "LONG + SHORT 통합 (BBDX bbdx + bbdx-short 동시 평가, 분리 메트릭 제공)",
     activeClass: "bg-foreground text-background",
@@ -118,7 +118,7 @@ const STRATEGY_META: Record<
     textClass: "text-neon-green",
   },
   "trend-follow": {
-    label: "EMA+ADX 정배열 ⭐",
+    label: "EMA+ADX 정배열",
     description:
       "5-gate (EMA 정배열 + ADX≥25 + +DI>-DI + price>SMA50 + HH) — winRate 44.8% (365d, P1 검증)",
     activeClass: "bg-foreground text-background",
@@ -269,13 +269,13 @@ function SymbolTable({ bySymbol }: { bySymbol: Record<string, any> }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border/20">
-            {th("symbol", "Symbol")}
-            {th("totalTrades", "Trades")}
-            {th("winRate", "Win Rate")}
-            {th("avgReturn", "Avg Return")}
+            {th("symbol", "심볼")}
+            {th("totalTrades", "거래 수")}
+            {th("winRate", "승률")}
+            {th("avgReturn", "평균 수익")}
             {th("sharpe", "Sharpe")}
             {th("maxDrawdown", "MDD")}
-            {th("expectancy", "Expectancy")}
+            {th("expectancy", "기댓값")}
           </tr>
         </thead>
         <tbody>
@@ -352,9 +352,9 @@ function TradeRow({ trade }: { trade: any }) {
     window_expired: "text-neon-yellow",
   };
   const exitLabels: Record<string, string> = {
-    target_hit: "Target",
-    stop_loss: "Stop",
-    window_expired: "Expired",
+    target_hit: "목표가",
+    stop_loss: "손절",
+    window_expired: "만료",
   };
 
   return (
@@ -496,10 +496,10 @@ export default function Backtest() {
       {/* Header */}
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-          Backtesting engine
+          백테스팅 엔진
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          Multi-strategy historical calibration / BBDX v6.6 · Fibonacci · VWAP ·
+          여러 전략을 과거 데이터로 검증합니다 · BBDX v6.6 · Fibonacci · VWAP ·
           Trend · EMA+ADX 정배열
         </p>
       </div>
@@ -510,27 +510,27 @@ export default function Backtest() {
             value="config"
             className="h-8 font-sans text-sm data-[state=active]:bg-foreground data-[state=active]:text-background"
           >
-            Config
+            설정
           </TabsTrigger>
           <TabsTrigger
             value="results"
             className="h-8 font-sans text-sm data-[state=active]:bg-foreground data-[state=active]:text-background"
             disabled={!result}
           >
-            Results {result ? `(${result.overall.totalTrades})` : ""}
+            결과 {result ? `(${result.overall.totalTrades})` : ""}
           </TabsTrigger>
           <TabsTrigger
             value="calibration"
             className="h-8 font-sans text-sm data-[state=active]:bg-foreground data-[state=active]:text-background"
             disabled={!result}
           >
-            Calibration
+            캘리브레이션
           </TabsTrigger>
           <TabsTrigger
             value="history"
             className="h-8 font-sans text-sm data-[state=active]:bg-foreground data-[state=active]:text-background"
           >
-            Past runs
+            실행 이력
           </TabsTrigger>
           <TabsTrigger
             value="engine_a"
@@ -555,7 +555,7 @@ export default function Backtest() {
         {/* ── Config Tab ── */}
         <TabsContent value="config" className="mt-3 space-y-3">
           <HudPanel
-            title="Backtest Configuration"
+            title="백테스트 설정"
             subtitle="시그널 전략 파라미터 설정"
           >
             <div className="space-y-4">
@@ -596,7 +596,7 @@ export default function Backtest() {
               {/* Symbol Presets */}
               <div>
                 <label className="font-mono text-[10px] text-muted-foreground tracking-wider block mb-1.5">
-                  Symbol Presets
+                  심볼 프리셋
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   {Object.entries(SYMBOL_PRESETS).map(([label, val]) => (
@@ -642,7 +642,7 @@ export default function Backtest() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div>
                   <label className="font-mono text-[10px] text-muted-foreground tracking-wider block mb-1.5">
-                    Timeframe
+                    타임프레임
                   </label>
                   <select
                     value={config.tf}
@@ -672,7 +672,7 @@ export default function Backtest() {
                 </div>
                 <div>
                   <label className="font-mono text-[10px] text-muted-foreground tracking-wider block mb-1.5">
-                    Start Date
+                    시작일
                   </label>
                   <input
                     type="date"
@@ -685,7 +685,7 @@ export default function Backtest() {
                 </div>
                 <div>
                   <label className="font-mono text-[10px] text-muted-foreground tracking-wider block mb-1.5">
-                    End Date
+                    종료일
                   </label>
                   <input
                     type="date"
@@ -780,12 +780,12 @@ export default function Backtest() {
                   {isRunning ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Running...
+                      실행 중...
                     </>
                   ) : (
                     <>
                       <Play className="h-4 w-4 mr-2" />
-                      Run backtest
+                      백테스트 실행
                     </>
                   )}
                 </Button>
@@ -868,7 +868,7 @@ export default function Backtest() {
                       STRATEGY_META[config.strategy].badgeClass
                     )}
                   >
-                    STRATEGY: {STRATEGY_META[config.strategy].label}
+                    전략: {STRATEGY_META[config.strategy].label}
                   </Badge>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     완료: {new Date(result.runAt).toLocaleString("ko-KR")}
@@ -884,7 +884,7 @@ export default function Backtest() {
                       : "text-red-400 bg-red-400/10"
                   )}
                 >
-                  {overall.expectancy > 0 ? "Positive" : "Negative"} EV
+                  기댓값 {overall.expectancy > 0 ? "양수" : "음수"}
                 </Badge>
               </div>
 
@@ -908,8 +908,8 @@ export default function Backtest() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {mbs.long && (
                       <HudPanel
-                        title="LONG side"
-                        subtitle={`BBDX bbdx · ${mbs.long.totalTrades} 시그널`}
+                        title="LONG 포지션"
+                        subtitle={`BBDX bbdx · 시그널 ${mbs.long.totalTrades}개`}
                       >
                         <div className="grid grid-cols-3 gap-2">
                           <BacktestStatCard
@@ -921,7 +921,7 @@ export default function Backtest() {
                           <BacktestStatCard
                             label="기댓값"
                             value={`${mbs.long.expectancy >= 0 ? "+" : ""}${mbs.long.expectancy.toFixed(2)}%`}
-                            sub="per trade"
+                            sub="거래당"
                             color={mbs.long.expectancy > 0 ? "cyan" : "red"}
                           />
                           <BacktestStatCard
@@ -945,8 +945,8 @@ export default function Backtest() {
                     )}
                     {mbs.short && (
                       <HudPanel
-                        title="SHORT side"
-                        subtitle={`BBDX bbdx-short · ${mbs.short.totalTrades} 시그널`}
+                        title="SHORT 포지션"
+                        subtitle={`BBDX bbdx-short · 시그널 ${mbs.short.totalTrades}개`}
                       >
                         <div className="grid grid-cols-3 gap-2">
                           <BacktestStatCard
@@ -958,7 +958,7 @@ export default function Backtest() {
                           <BacktestStatCard
                             label="기댓값"
                             value={`${mbs.short.expectancy >= 0 ? "+" : ""}${mbs.short.expectancy.toFixed(2)}%`}
-                            sub="per trade"
+                            sub="거래당"
                             color={mbs.short.expectancy > 0 ? "cyan" : "red"}
                           />
                           <BacktestStatCard
@@ -988,14 +988,14 @@ export default function Backtest() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 <div className="lg:col-span-2">
                   <HudPanel
-                    title="Equity Curve"
+                    title="자산 곡선"
                     subtitle="누적 수익률 (기준 100)"
                   >
                     <EquityChart trades={result.trades as any} />
                   </HudPanel>
                 </div>
                 <div>
-                  <HudPanel title="Exit Breakdown" subtitle="청산 사유 분포">
+                  <HudPanel title="청산 사유" subtitle="청산 사유 분포">
                     {result.trades.length > 0 ? (
                       <>
                         <ExitReasonChart trades={result.trades as any} />
@@ -1083,7 +1083,7 @@ export default function Backtest() {
               {/* Symbol Breakdown */}
               {Object.keys(result.bySymbol).length > 0 && (
                 <HudPanel
-                  title="Symbol Breakdown"
+                  title="심볼별 분석"
                   subtitle={`${Object.keys(result.bySymbol).length}개 심볼 분석 · 승률 기준 정렬`}
                 >
                   <SymbolTable bySymbol={result.bySymbol} />
@@ -1092,8 +1092,8 @@ export default function Backtest() {
 
               {/* Trade List */}
               <HudPanel
-                title="Individual Trades"
-                subtitle={`${result.trades.length}건 · 필터: `}
+                title="개별 거래"
+                subtitle={`${result.trades.length}건 · 필터`}
               >
                 {/* Filter */}
                 <div className="flex gap-2 mb-3">
@@ -1113,10 +1113,10 @@ export default function Backtest() {
                       )}
                     >
                       {f === "all"
-                        ? `All (${result.trades.length})`
+                        ? `전체 (${result.trades.length})`
                         : f === "win"
-                          ? `Win (${result.trades.filter(t => t.win).length})`
-                          : `Loss (${result.trades.filter(t => !t.win).length})`}
+                          ? `승 (${result.trades.filter(t => t.win).length})`
+                          : `패 (${result.trades.filter(t => !t.win).length})`}
                     </button>
                   ))}
                 </div>
@@ -1126,14 +1126,14 @@ export default function Backtest() {
                     <thead className="sticky top-0 bg-background/90 backdrop-blur">
                       <tr className="border-b border-border/20">
                         {[
-                          "Symbol",
-                          "Date",
-                          "W/L",
-                          "Exit",
-                          "Return",
+                          "심볼",
+                          "날짜",
+                          "승패",
+                          "청산",
+                          "수익률",
                           "RSI",
                           "ADX",
-                          "Strength",
+                          "강도",
                           "MFE",
                           "MAE",
                         ].map(h => (
@@ -1162,8 +1162,8 @@ export default function Backtest() {
 
               {/* Insight */}
               <HudPanel
-                title="다음 단계 (MD 04 Phase 1)"
-                subtitle="Trend Composite 캘리브레이션"
+                title="다음 단계"
+                subtitle="Trend Composite 캘리브레이션 (MD 04 Phase 1)"
               >
                 <div className="p-3 rounded-lg bg-neon-yellow/5">
                   <p className="font-mono text-xs text-neon-yellow mb-2">
@@ -1190,7 +1190,7 @@ export default function Backtest() {
                 아직 실행 결과가 없습니다
               </p>
               <p className="font-mono text-xs text-muted-foreground/60 mt-1">
-                Config 탭에서 설정 후 Run backtest 클릭
+                설정 탭에서 구성한 뒤 백테스트 실행을 눌러 주세요
               </p>
             </div>
           )}
@@ -1216,8 +1216,8 @@ export default function Backtest() {
         {/* ── History Tab ── */}
         <TabsContent value="history" className="mt-3">
           <HudPanel
-            title="Past Runs"
-            subtitle="saveToDb=true 로 실행된 백테스트 이력"
+            title="실행 이력"
+            subtitle="DB 저장 옵션으로 실행된 백테스트 이력"
           >
             {runsLoading ? (
               <div className="flex items-center justify-center py-12">
@@ -1264,7 +1264,7 @@ export default function Backtest() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-display text-sm font-bold text-foreground">
-                              #{run.id} {run.runName ?? "unnamed"}
+                              #{run.id} {run.runName ?? "이름 없음"}
                             </span>
                             <Badge className="font-mono text-[10px] bg-primary/10 text-primary">
                               {run.tf}
@@ -1294,7 +1294,7 @@ export default function Backtest() {
                       <div className="flex items-center gap-4 shrink-0">
                         <div className="text-right hidden sm:block">
                           <div className="font-mono text-[10px] text-muted-foreground">
-                            Trades
+                            거래 수
                           </div>
                           <div className="font-mono text-xs text-foreground">
                             {run.totalTrades}
@@ -1302,7 +1302,7 @@ export default function Backtest() {
                         </div>
                         <div className="text-right hidden sm:block">
                           <div className="font-mono text-[10px] text-muted-foreground">
-                            Win Rate
+                            승률
                           </div>
                           <div
                             className={cn(

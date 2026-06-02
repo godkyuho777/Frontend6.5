@@ -209,7 +209,7 @@ export default function EmaAdxTrendListPage() {
             wrapperClassName="w-48"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search symbol..."
+            placeholder="심볼 검색..."
           />
         }
       >

@@ -11,10 +11,12 @@ import {
   Info
 } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useMarketScan } from "@/hooks/useMarketData";
 import { cn } from "@/lib/utils";
 
 export default function TechTracker() {
+  const [, setLocation] = useLocation();
   const [interval, setInterval] = useState<"4h" | "1d">("4h");
   const { data: scanData, isLoading, refetch, isFetching } = useMarketScan(1, 20, interval);
 
@@ -25,40 +27,40 @@ export default function TechTracker() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Tech tracker (pro)
+            테크니컬 트래커 (Pro)
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            Fibonacci golden zone / trendline confluence / pro analysis
+            피보나치 골든존과 추세선 컨플루언스로 고확률 진입 구간을 찾습니다
           </p>
         </div>
         <div className="flex items-center gap-2">
           <RefreshIconButton
             onClick={() => refetch()}
-            label="Refresh technical tracker"
+            label="테크니컬 트래커 새로고침"
             isLoading={isFetching}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard label="Fibonacci signals" value={fibSignals.length} variant="positive" />
-        <StatCard label="Trendline touches" value={scanData?.coins.filter(c => c.indicators.trendlines && c.indicators.trendlines.length > 0).length || 0} />
-        <StatCard label="Scanner status" value="Active" unit="Real-time" />
+        <StatCard label="피보나치 시그널" value={fibSignals.length} variant="positive" />
+        <StatCard label="추세선 터치" value={scanData?.coins.filter(c => c.indicators.trendlines && c.indicators.trendlines.length > 0).length || 0} />
+        <StatCard label="스캐너 상태" value="작동 중" unit="실시간" />
       </div>
 
-      <HudPanel 
-        title="Fibonacci & trendline scanner" 
-        subtitle="Identifying high-probability entries at golden ratio zones"
+      <HudPanel
+        title="피보나치 · 추세선 스캐너"
+        subtitle="황금 비율 구간에서 고확률 진입 지점을 찾아냅니다"
         headerRight={
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-neon-pink/10 text-neon-pink border-neon-pink/20">Pro feature</Badge>
+            <Badge variant="outline" className="bg-neon-pink/10 text-neon-pink border-neon-pink/20">Pro 전용</Badge>
           </div>
         }
       >
         {isLoading ? (
           <div className="py-20 text-center">
             <RefreshCw className="h-8 w-8 animate-spin mx-auto text-neon-cyan opacity-50" />
-            <p className="font-sans text-sm text-muted-foreground mt-4">Analyzing market structure...</p>
+            <p className="font-sans text-sm text-muted-foreground mt-4">시장 구조를 분석하는 중...</p>
           </div>
         ) : fibSignals.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
@@ -73,17 +75,17 @@ export default function TechTracker() {
                     "font-sans text-[10px]",
                     coin.fibSignal?.type === "buy" ? "bg-neon-green/20 text-neon-green border-neon-green/30" : "bg-neon-pink/20 text-neon-pink border-neon-pink/30"
                   )}>
-                    {coin.fibSignal?.type === "buy" ? "Golden buy" : "Golden sell"}
+                    {coin.fibSignal?.type === "buy" ? "골든존 매수" : "골든존 매도"}
                   </Badge>
                 </div>
                 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-[10px] font-sans">
-                    <span className="text-muted-foreground">Fib Level</span>
+                    <span className="text-muted-foreground">피보 레벨</span>
                     <span className="text-foreground">{coin.fibSignal?.level}</span>
                   </div>
                   <div className="flex justify-between text-[10px] font-sans">
-                    <span className="text-muted-foreground">Zone Price</span>
+                    <span className="text-muted-foreground">존 가격</span>
                     <span className="text-foreground">${coin.fibSignal?.price.toFixed(4)}</span>
                   </div>
                   <div className="flex justify-between text-[10px] font-sans">
@@ -92,8 +94,15 @@ export default function TechTracker() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 font-sans text-xs h-8">
-                  View chart <Zap className="h-3 w-3 ml-2" />
+                <Button
+                  onClick={() =>
+                    setLocation(
+                      `/coin/${coin.symbol}?tracker=fibonacci&tab=chart`
+                    )
+                  }
+                  className="w-full bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 font-sans text-xs h-8"
+                >
+                  차트 보기 <Zap className="h-3 w-3 ml-2" />
                 </Button>
               </div>
             ))}
@@ -101,38 +110,38 @@ export default function TechTracker() {
         ) : (
           <div className="py-20 text-center">
             <Info className="h-8 w-8 mx-auto text-muted-foreground opacity-50" />
-            <p className="font-sans text-sm text-muted-foreground mt-4">No Fibonacci signals detected at this moment.</p>
+            <p className="font-sans text-sm text-muted-foreground mt-4">현재 감지된 피보나치 시그널이 없습니다</p>
           </div>
         )}
       </HudPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <HudPanel title="Strategy explanation" subtitle="How tech tracker works">
+        <HudPanel title="전략 설명" subtitle="테크니컬 트래커의 작동 방식">
           <div className="prose prose-invert prose-sm max-w-none font-sans text-xs text-muted-foreground space-y-4">
             <p>
-              <strong className="text-neon-cyan">Fibonacci Golden Zone:</strong> We track the 0.382 and 0.618 levels from the recent 100-candle high/low. When price enters a ±0.5% range of these levels, it triggers a signal.
+              <strong className="text-neon-cyan">피보나치 골든존:</strong> 최근 100개 캔들의 고점·저점을 기준으로 0.382, 0.618 레벨을 추적합니다. 가격이 이 레벨의 ±0.5% 범위에 진입하면 시그널이 발생합니다.
             </p>
             <p>
-              <strong className="text-neon-pink">Trendline Confluence:</strong> The system automatically draws support and resistance lines based on recent pivots. Touches at these lines while in a Fibonacci zone indicate high-probability reversal points.
+              <strong className="text-neon-pink">추세선 컨플루언스:</strong> 최근 피벗을 기반으로 지지선과 저항선을 자동으로 그립니다. 피보나치 존 안에서 이 선에 닿는 지점은 반전 확률이 높은 구간을 의미합니다.
             </p>
             <p>
-              <strong className="text-neon-green">Risk Management:</strong> Always look for RSI confirmation (Oversold for Buy, Overbought for Sell) alongside these technical markers.
+              <strong className="text-neon-green">리스크 관리:</strong> 이러한 기술적 지표와 함께 RSI 확인(매수는 과매도, 매도는 과매수)을 반드시 확인하세요.
             </p>
           </div>
         </HudPanel>
         
-        <HudPanel title="System Status" subtitle="Backend analysis engine">
+        <HudPanel title="시스템 상태" subtitle="백엔드 분석 엔진">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-sans text-xs text-muted-foreground">Data Source</span>
+              <span className="font-sans text-xs text-muted-foreground">데이터 소스</span>
               <span className="font-sans text-xs text-neon-cyan">Bybit V5 Spot API</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-sans text-xs text-muted-foreground">Analysis Frequency</span>
-              <span className="font-sans text-xs text-neon-cyan">Real-time / WebSocket</span>
+              <span className="font-sans text-xs text-muted-foreground">분석 주기</span>
+              <span className="font-sans text-xs text-neon-cyan">실시간 / WebSocket</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-sans text-xs text-muted-foreground">Indicator Latency</span>
+              <span className="font-sans text-xs text-muted-foreground">지표 지연 시간</span>
               <span className="font-sans text-xs text-neon-green">&lt; 150ms</span>
             </div>
             <div className="pt-4">
@@ -140,7 +149,7 @@ export default function TechTracker() {
                 <div className="h-full w-3/4 bg-neon-cyan animate-pulse" />
               </div>
               <p className="font-sans text-[9px] text-muted-foreground mt-2 text-center tracking-tighter">
-                Processing 100+ assets with Fibonacci & Trendline algorithms
+                피보나치 · 추세선 알고리즘으로 100개 이상 종목 분석 중
               </p>
             </div>
           </div>

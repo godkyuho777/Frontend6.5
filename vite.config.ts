@@ -4,6 +4,12 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // 빌드 시점 날짜를 주입한다. 기존 사이드바 푸터는 "build 2026.05.14" 가
+  // 하드코딩돼 빌드와 무관하게 영원히 stale 했다. 이제 실제 빌드(또는 dev 서버
+  // 기동) 날짜를 반영한다.
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

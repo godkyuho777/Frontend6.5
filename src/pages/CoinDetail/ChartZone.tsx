@@ -111,7 +111,7 @@ export function ChartZone({ symbol, interval }: ChartZoneProps) {
 
   if (isLoading || !detail) {
     return (
-      <HudPanel title="Chart" subtitle={`${symbol} · ${interval}`}>
+      <HudPanel title="차트" subtitle={`${symbol} · ${interval}`}>
         <div className="h-[400px] flex items-center justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
         </div>
@@ -168,8 +168,8 @@ export function ChartZone({ symbol, interval }: ChartZoneProps) {
     <div className="space-y-3">
       {/* ─── Main: OHLC 캔들 + BB ────────────────────────────────────── */}
       <HudPanel
-        title="Chart"
-        subtitle={`${symbol} · ${interval} · BBDX (OHLC + Bollinger Bands)`}
+        title="차트"
+        subtitle={`${symbol} · ${interval} · BBDX (OHLC + 볼린저밴드)`}
         headerRight={
           <span className="font-display text-lg font-bold text-neon-cyan">
             ${lastPrice.toFixed(lastPrice < 1 ? 6 : 2)}
@@ -262,7 +262,7 @@ export function ChartZone({ symbol, interval }: ChartZoneProps) {
       </HudPanel>
 
       {/* ─── Volume Histogram (시간축, 양봉/음봉 색 분리) ──────────────── */}
-      <HudPanel title="Volume" subtitle="시간축 거래량 — 양봉(녹) / 음봉(적)">
+      <HudPanel title="거래량" subtitle="시간축 거래량 — 양봉(녹) / 음봉(적)">
         <div className="h-[120px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
@@ -296,7 +296,7 @@ export function ChartZone({ symbol, interval }: ChartZoneProps) {
       </HudPanel>
 
       {/* ─── RSI(14) subchart ────────────────────────────────────────── */}
-      <HudPanel title="RSI (14)" subtitle="Relative Strength Index">
+      <HudPanel title="RSI (14)" subtitle="상대강도지수">
         <div className="h-[160px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
@@ -370,7 +370,7 @@ export function ChartZone({ symbol, interval }: ChartZoneProps) {
       </HudPanel>
 
       {/* ─── ADX/DI subchart ─────────────────────────────────────────── */}
-      <HudPanel title="ADX / DI" subtitle="Average Directional Index with +DI / -DI">
+      <HudPanel title="ADX / DI" subtitle="추세 강도 지표 (+DI / -DI 포함)">
         <div className="h-[160px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>

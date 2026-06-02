@@ -11,9 +11,9 @@ import type { MacroIndicatorStatus } from "@/hooks/useMacroIndicator";
 
 function fmtAge(hours: number | null): string {
   if (hours == null || !Number.isFinite(hours)) return "—";
-  if (hours < 1) return `${(hours * 60).toFixed(0)}min ago`;
-  if (hours < 24) return `${hours.toFixed(1)}h ago`;
-  return `${(hours / 24).toFixed(1)}d ago`;
+  if (hours < 1) return `${(hours * 60).toFixed(0)}분 전`;
+  if (hours < 24) return `${hours.toFixed(1)}시간 전`;
+  return `${(hours / 24).toFixed(1)}일 전`;
 }
 
 interface MacroRegimeCardProps {
@@ -37,8 +37,8 @@ export function MacroRegimeCard({
 
   return (
     <HudPanel
-      title="Current Regime"
-      subtitle="MACRO_v2 § score → regime → multiplier"
+      title="현재 레짐"
+      subtitle="점수에서 레짐, multiplier까지 산출 단계"
     >
       <div className="space-y-3">
         {/* Big regime badge */}
@@ -50,7 +50,7 @@ export function MacroRegimeCard({
         >
           <div>
             <div className="font-mono text-[10px] text-muted-foreground tracking-wider">
-              regime
+              레짐
             </div>
             <div
               className={cn(
@@ -66,7 +66,7 @@ export function MacroRegimeCard({
             </div>
             {isStub && (
               <div className="font-mono text-[10px] text-orange-300/80 mt-1">
-                STUB (default = NEUTRAL · FRED 미설정)
+                STUB (기본값 중립 · FRED 미설정)
               </div>
             )}
           </div>

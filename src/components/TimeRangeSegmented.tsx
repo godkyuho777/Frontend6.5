@@ -12,6 +12,7 @@ export function TimeRangeSegmented<T extends string>({
   className,
   itemClassName,
   inverse = false,
+  ariaLabel = "범위 선택",
 }: {
   options: SegmentOption<T>[];
   value: T;
@@ -19,9 +20,13 @@ export function TimeRangeSegmented<T extends string>({
   className?: string;
   itemClassName?: string;
   inverse?: boolean;
+  /** 그룹의 접근성 라벨 (예: "타임프레임 선택"). 스크린리더가 컨트롤의 목적을 안내. */
+  ariaLabel?: string;
 }) {
   return (
     <div
+      role="group"
+      aria-label={ariaLabel}
       className={cn(
         "inline-flex w-fit items-center rounded-full p-[3px]",
         inverse ? "bg-white/10" : "bg-card",
@@ -34,9 +39,11 @@ export function TimeRangeSegmented<T extends string>({
           <button
             key={option.value}
             type="button"
+            aria-pressed={active}
             onClick={() => onChange(option.value)}
             className={cn(
               "h-7 rounded-full px-3 font-mono text-[11px] font-bold transition-all",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               inverse
                 ? active
                   ? "bg-white text-black"

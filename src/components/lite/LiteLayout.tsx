@@ -5,7 +5,8 @@ import { SignInDialog } from "@/components/SignInDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -37,8 +38,22 @@ export default function LiteLayout({
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // <title> 동기화 — /lite/coin/:symbol 은 심볼을, 그 외에는 활성 탭 라벨을 사용.
+  const docTitle = useMemo(() => {
+    const coin = location.match(/^\/lite\/coin\/([^/?#]+)/);
+    if (coin) return decodeURIComponent(coin[1]).replace("USDT", "/USDT");
+    return navItems.find(item => isLiteItemActive(location, item))?.label;
+  }, [location]);
+  useDocumentTitle(docTitle);
+
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-2 focus:z-[60] focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-background"
+      >
+        본문으로 건너뛰기
+      </a>
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-5 border-b border-border bg-card px-4 lg:px-5">
         <Button
           variant="ghost"
@@ -87,6 +102,7 @@ export default function LiteLayout({
               <Link
                 key={item.path}
                 href={item.path}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 font-sans text-[11px] font-bold transition-all",
                   isActive
@@ -105,11 +121,10 @@ export default function LiteLayout({
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Notifications"
-            className="relative"
+            aria-label="알림 설정"
+            onClick={() => setLocation("/lite/alerts")}
           >
             <Bell className="size-5" />
-            <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
           </Button>
           <ModeSwitchControl mode="lite" className="hidden md:flex" />
           {user ? (
@@ -139,7 +154,13 @@ export default function LiteLayout({
         }}
       />
 
-      <main className="max-w-5xl mx-auto px-4 pb-5 pt-[76px]">{children}</main>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="max-w-5xl mx-auto px-4 pb-5 pt-[76px] outline-none"
+      >
+        {children}
+      </main>
 
       <footer className="max-w-5xl mx-auto mt-8 border-t border-border px-4 pb-8 pt-4">
         <p className="flex gap-2 font-sans text-[10px] leading-relaxed text-muted-foreground/80">

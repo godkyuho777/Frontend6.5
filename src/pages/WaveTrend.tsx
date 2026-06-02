@@ -149,7 +149,7 @@ export default function WaveTrend() {
   const [symbol, setSymbol] = useState<string>("BTCUSDT");
   const [interval, setSelectedInterval] = useState<WaveTimeframe>("4h");
 
-  const { data: detail, isLoading, error } = useCoinDetail(symbol, interval, 120);
+  const { data: detail, isLoading, error, refetch } = useCoinDetail(symbol, interval, 120);
   const candles = detail?.candles ?? [];
   const indicators = detail?.indicators;
 
@@ -294,11 +294,10 @@ export default function WaveTrend() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Trend analysis
+            추세 분석
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            {symbol.replace("USDT", "")} · {tfLabel} · FIBONACCI + TRENDLINE
-            ANALYSIS
+            {symbol.replace("USDT", "")} · {tfLabel} · 피보나치 되돌림과 추세선으로 위치를 분석합니다
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -312,7 +311,7 @@ export default function WaveTrend() {
               onChange={(e) => setSymbolInput(e.target.value)}
               list="wave-tracker-symbols"
               className="h-6 w-28 px-1 font-sans text-[10px] bg-background/50 border-border/30"
-              placeholder="Symbol"
+              placeholder="심볼"
             />
             <datalist id="wave-tracker-symbols">
               {TOP_COINS.map((s) => (
@@ -325,7 +324,7 @@ export default function WaveTrend() {
               variant="outline"
               className="h-6 px-2 font-sans text-[10px] border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10"
             >
-              Go
+              조회
             </Button>
           </form>
           {/* Timeframe selector */}
@@ -339,11 +338,11 @@ export default function WaveTrend() {
 
       {/* Top stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Current Price" value={`$${formatPrice(currentPrice)}`} />
-        <StatCard label="Fib Low" value={`$${formatPrice(fibLow)}`} />
-        <StatCard label="Fib High" value={`$${formatPrice(fibHigh)}`} />
+        <StatCard label="현재가" value={`$${formatPrice(currentPrice)}`} />
+        <StatCard label="피보 저점" value={`$${formatPrice(fibLow)}`} />
+        <StatCard label="피보 고점" value={`$${formatPrice(fibHigh)}`} />
         <StatCard
-          label="Range"
+          label="구간 폭"
           value={`${
             fibLow > 0 ? (((fibHigh - fibLow) / fibLow) * 100).toFixed(1) : "0"
           }%`}
@@ -353,33 +352,30 @@ export default function WaveTrend() {
 
       {/* Loading / error states */}
       {isLoading && (
-        <HudPanel title="Loading">
+        <HudPanel title="불러오는 중">
           <div className="flex items-center justify-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-neon-pink" />
             <span className="font-sans text-sm text-muted-foreground">
-              Fetching {symbol} {tfLabel} candles...
+              {symbol} {tfLabel} 캔들을 불러오는 중...
             </span>
           </div>
         </HudPanel>
       )}
 
       {error && !isLoading && (
-        <HudPanel title="Error" variant="danger">
+        <HudPanel title="오류" variant="danger">
           <div className="flex flex-col items-center gap-2 py-8">
             <p className="font-sans text-sm text-neon-red">
-              Failed to load {symbol}
+              {symbol} 데이터를 불러오지 못했습니다
             </p>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                // Force refetch by toggling the symbol back and forth.
-                setSymbol((prev) => prev);
-              }}
+              onClick={() => refetch()}
               className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-xs"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              RETRY
+              다시 시도
             </Button>
           </div>
         </HudPanel>
@@ -389,8 +385,8 @@ export default function WaveTrend() {
         <>
           {/* Chart — TradingView Lightweight Charts with fib levels + trendlines + volume */}
           <HudPanel
-            title="Price Chart"
-            subtitle={`${candles.length} candles · 10 fib levels · ${chartTrendlines.length} trendlines`}
+            title="가격 차트"
+            subtitle={`캔들 ${candles.length}개 · 피보 레벨 10개 · 추세선 ${chartTrendlines.length}개`}
             variant="highlight"
           >
             <CandleChartLW
@@ -405,15 +401,15 @@ export default function WaveTrend() {
 
           {/* Trend Analysis Engine v2.0 — 멀티 TF + 추세선 + EMA + ADX + HH/HL + 브레이크아웃 */}
           <HudPanel
-            title="Multi-TF Trend Engine v2.0"
-            subtitle="추세선 + EMA + ADX + 거래량 + HH/HL — 4 TF 종합"
+            title="멀티 TF 추세 엔진 v2.0"
+            subtitle="추세선 + EMA + ADX + 거래량 + HH/HL — 4개 TF 종합"
           >
             <MultiTFTrendPanel symbol={symbol} />
           </HudPanel>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Fibonacci panel */}
-            <HudPanel title="Fibonacci Levels" subtitle="10 RETRACEMENT + EXTENSION">
+            <HudPanel title="피보나치 레벨" subtitle="되돌림 + 확장 10개 레벨">
               <div className="space-y-1 max-h-72 overflow-y-auto">
                 {fibLevels.map((f) => {
                   const distance =
@@ -451,32 +447,32 @@ export default function WaveTrend() {
             </HudPanel>
 
             {/* Trendline panel */}
-            <HudPanel title="Trendlines" subtitle="Strength + anchoring">
+            <HudPanel title="추세선" subtitle="강도와 기준점">
               <div className="space-y-3">
                 <TrendlineSummary
                   trendline={upTrend}
                   type="support"
-                  noneLabel="No support trendline detected"
+                  noneLabel="지지 추세선이 감지되지 않았습니다"
                 />
                 <TrendlineSummary
                   trendline={downTrend}
                   type="resistance"
-                  noneLabel="No resistance trendline detected"
+                  noneLabel="저항 추세선이 감지되지 않았습니다"
                 />
               </div>
             </HudPanel>
 
             {/* Trade signals panel */}
-            <HudPanel title="Trade signals" subtitle="Buy / sell criteria">
+            <HudPanel title="트레이드 시그널" subtitle="매수·매도 기준">
               <div className="space-y-3">
                 <SignalChecklist
-                  title="Buy"
+                  title="매수"
                   items={tradeSignals.buy}
                   strength={tradeSignals.buyStrength}
                   positive
                 />
                 <SignalChecklist
-                  title="Sell"
+                  title="매도"
                   items={tradeSignals.sell}
                   strength={tradeSignals.sellStrength}
                 />
@@ -509,16 +505,16 @@ function TrendlineSummary({
     <div className="space-y-0.5 font-sans text-[11px]">
       <div className={cn("flex items-center gap-1 font-bold", colorClass)}>
         {type === "support" ? "↑" : "↓"}{" "}
-        {type === "support" ? "Support" : "Resistance"}
+        {type === "support" ? "지지선" : "저항선"}
       </div>
-      <Row label="Start" value={`$${formatPrice(trendline.startPrice)}`} />
-      <Row label="End" value={`$${formatPrice(trendline.endPrice)}`} />
+      <Row label="시작" value={`$${formatPrice(trendline.startPrice)}`} />
+      <Row label="끝" value={`$${formatPrice(trendline.endPrice)}`} />
       <Row
-        label="Slope"
-        value={`${trendline.slope >= 0 ? "+" : ""}${trendline.slope.toFixed(4)} / candle`}
+        label="기울기"
+        value={`${trendline.slope >= 0 ? "+" : ""}${trendline.slope.toFixed(4)} / 캔들`}
       />
       <Row
-        label="Strength"
+        label="강도"
         value={
           <span className={s.color}>
             {trendline.strength.toFixed(0)}% · {s.label}
@@ -566,7 +562,7 @@ function SignalChecklist({
         ))}
       </div>
       <div className="font-sans text-[10px] text-muted-foreground pt-1">
-        Confidence:{" "}
+        신뢰도:{" "}
         <span
           className={cn(
             strength >= 66

@@ -28,7 +28,7 @@ export function DimensionBreakdown({ signal, vwapDetail }: DimensionBreakdownPro
       {signal?.dimensions ? (
         <div className="space-y-3">
           <p className="font-mono text-xs text-muted-foreground">
-            7-dimension breakdown · v6.5 dimensions
+            7차원 세부 분석 · v6.5 dimensions
           </p>
           {Object.entries(signal.dimensions).map(([key, value]) => (
             <div key={key} className="flex items-center gap-3">
@@ -50,11 +50,11 @@ export function DimensionBreakdown({ signal, vwapDetail }: DimensionBreakdownPro
       ) : (
         <div className="flex flex-col items-center justify-center py-8 gap-2 border border-border/20 rounded-sm bg-card/30">
           <p className="font-mono text-xs text-muted-foreground">
-            7차원 breakdown
+            7차원 세부 분석
           </p>
           <p className="font-mono text-[10px] text-muted-foreground/70 max-w-md text-center leading-relaxed">
             현재 시그널 엔진은 BBDX-PATTERN v6.1 (5차원). v6.5 머지 후 onchain ·
-            macro 차원이 추가되면 multiplier 별 막대그래프가 자동 표시됩니다.
+            macro 차원이 추가되면 차원별 가중치 막대그래프가 자동 표시됩니다.
           </p>
         </div>
       )}
@@ -151,7 +151,7 @@ function DimMarketStructureCard({ detail }: { detail: VwapDetailLite }) {
           <span className={cn(pbStatus.cls)}>{pbStatus.label}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Touched</span>
+          <span className="text-muted-foreground">터치 라인</span>
           <span className="text-foreground">
             {pb.touchedLine ? pb.touchedLine.toUpperCase() : "—"}
           </span>
@@ -161,7 +161,7 @@ function DimMarketStructureCard({ detail }: { detail: VwapDetailLite }) {
           <span className={cn(align.cls)}>{align.label}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Multiplier</span>
+          <span className="text-muted-foreground">가중치</span>
           <span className="text-neon-cyan">×{mt.multiplier.toFixed(2)}</span>
         </div>
       </div>

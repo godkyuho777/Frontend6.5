@@ -80,7 +80,7 @@ function describeFibZone(coin: CoinScanResult): { label: string; isGolden: boole
     const lvl = coin.fibSignal.level;
     const isGolden = lvl === 0.382 || lvl === 0.618;
     return {
-      label: `Fib ${(lvl * 100).toFixed(1)}%${isGolden ? " (Golden)" : ""}`,
+      label: `Fib ${(lvl * 100).toFixed(1)}%${isGolden ? " (황금비)" : ""}`,
       isGolden,
     };
   }
@@ -101,7 +101,7 @@ function describeFibZone(coin: CoinScanResult): { label: string; isGolden: boole
       };
     }
   }
-  return { label: "Out of range", isGolden: false };
+  return { label: "범위 밖", isGolden: false };
 }
 
 /**
@@ -225,10 +225,10 @@ export default function Fibonacci() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Fibonacci &amp; trendline
+            피보나치 · 추세선
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            {tfLabel} timeframe / Fibonacci retracement + trendline analysis / Bybit data
+            피보나치 되돌림과 추세선으로 지지·저항 구간을 분석합니다 · {tfLabel}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -250,34 +250,34 @@ export default function Fibonacci() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <StatCard label="Total coins" value={totalCoins} unit="tracked" />
+        <StatCard label="전체 코인" value={totalCoins} unit="개" />
         <StatCard
-          label="Buy signals"
+          label="매수 시그널"
           value={buyCount}
           variant={buyCount > 0 ? "positive" : "default"}
         />
         <StatCard
-          label="Sell signals"
+          label="매도 시그널"
           value={sellCount}
           variant={sellCount > 0 ? "negative" : "default"}
         />
-        <StatCard label="Avg strength" value={`${avgStrength}%`} />
-        <StatCard label="Timeframe" value={tfLabel} unit="candles" />
+        <StatCard label="평균 강도" value={`${avgStrength}%`} />
+        <StatCard label="타임프레임" value={tfLabel} unit="캔들" />
       </div>
 
       <HudPanel
-        title="Fibonacci analysis"
+        title="피보나치 분석"
         subtitle={
           isSearching
-            ? `Searching "${trimmedQuery}" · ${filteredAndSorted.length} match${filteredAndSorted.length === 1 ? "" : "es"} · ${tfLabel}`
+            ? `"${trimmedQuery}" 검색 · ${filteredAndSorted.length}개 일치 · ${tfLabel}`
             : coins.length > 0
-              ? `Page ${page} of ${totalPages} · ${coins.length} coins · Bybit Spot`
-              : "Loading market data..."
+              ? `${totalPages}페이지 중 ${page} · 코인 ${coins.length}개 · Bybit 현물`
+              : "시장 데이터를 불러오는 중..."
         }
         headerRight={
           <SearchField
             wrapperClassName="w-48"
-              placeholder="Search symbol..."
+              placeholder="심볼 검색..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -290,7 +290,7 @@ export default function Fibonacci() {
         {error && !scanData && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <AlertCircle className="h-8 w-8 text-neon-red" />
-            <p className="font-sans text-sm text-neon-red">Failed to load market data</p>
+            <p className="font-sans text-sm text-neon-red">시장 데이터를 불러오지 못했습니다</p>
             <Button
               variant="outline"
               size="sm"
@@ -298,7 +298,7 @@ export default function Fibonacci() {
               className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-xs mt-2"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              Retry
+              다시 시도
             </Button>
           </div>
         )}
@@ -307,7 +307,7 @@ export default function Fibonacci() {
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-neon-pink" />
             <p className="font-sans text-sm text-foreground">
-              Loading {pageSize} coins on {tfLabel}...
+              {tfLabel} 코인 {pageSize}개 불러오는 중...
             </p>
           </div>
         )}
@@ -318,7 +318,7 @@ export default function Fibonacci() {
               <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-cyan/5 border-b border-neon-cyan/20">
                 <Loader2 className="h-3 w-3 animate-spin text-neon-cyan" />
                 <span className="font-sans text-[10px] text-neon-cyan">
-                  Updating data...
+                  데이터 갱신 중...
                 </span>
               </div>
             )}
@@ -326,17 +326,17 @@ export default function Fibonacci() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border/30">
-                    <SortHeader label="Symbol" sortKeyVal="symbol" className="text-left" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="Price" sortKeyVal="price" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="심볼" sortKeyVal="symbol" className="text-left" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="가격" sortKeyVal="price" sortKey={sortKey} onSort={handleSort} />
                     <SortHeader label="24h" sortKeyVal="change24h" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="Fib Zone" sortKeyVal="fib" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="피보 존" sortKeyVal="fib" sortKey={sortKey} onSort={handleSort} />
                     <th className="hidden whitespace-nowrap px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground md:table-cell">
-                      Trend
+                      추세
                     </th>
-                    <SortHeader label="Trendlines" sortKeyVal="trendlines" className="hidden md:table-cell" sortKey={sortKey} onSort={handleSort} />
-                    <SortHeader label="Strength" sortKeyVal="strength" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="추세선" sortKeyVal="trendlines" className="hidden md:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <SortHeader label="강도" sortKeyVal="strength" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
                     <th className="whitespace-nowrap px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground">
-                      Signal
+                      시그널
                     </th>
                   </tr>
                 </thead>
@@ -409,23 +409,23 @@ export default function Fibonacci() {
                           {trend === "up" ? (
                             <span className="inline-flex items-center gap-1 font-sans text-sm text-neon-green">
                               <TrendingUp className="h-3 w-3" />
-                              Up
+                              상승
                             </span>
                           ) : trend === "down" ? (
                             <span className="inline-flex items-center gap-1 font-sans text-sm text-neon-red">
                               <TrendingDown className="h-3 w-3" />
-                              Down
+                              하락
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 font-sans text-sm text-muted-foreground">
                               <Minus className="h-3 w-3" />
-                              Side
+                              횡보
                             </span>
                           )}
                         </td>
                         <td className={cn("hidden whitespace-nowrap px-4 py-4 text-left font-sans text-sm text-foreground transition-colors md:table-cell", rowBgClass)}>
                           {trendlineCount > 0 ? (
-                            <span className="text-neon-cyan">{trendlineCount} active</span>
+                            <span className="text-neon-cyan">{trendlineCount}개 활성</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -458,12 +458,12 @@ export default function Fibonacci() {
                           {sig === "BUY" ? (
                             <Badge className="bg-neon-green/20 text-neon-green border-neon-green/40 font-sans text-[10px]">
                               <TrendingUp className="h-2.5 w-2.5 mr-0.5" />
-                              Buy
+                              매수
                             </Badge>
                           ) : sig === "SELL" ? (
                             <Badge className="bg-neon-red/20 text-neon-red border-neon-red/40 font-sans text-[10px]">
                               <TrendingDown className="h-2.5 w-2.5 mr-0.5" />
-                              Sell
+                              매도
                             </Badge>
                           ) : (
                             <span className="font-sans text-[10px] text-muted-foreground">—</span>
@@ -479,7 +479,7 @@ export default function Fibonacci() {
             {filteredAndSorted.length === 0 && isSearching && (
               <div className="flex flex-col items-center justify-center py-8">
                 <p className="font-sans text-sm text-muted-foreground">
-                  No coins matching "{trimmedQuery}"
+                  "{trimmedQuery}"에 일치하는 코인이 없습니다
                 </p>
               </div>
             )}
@@ -488,9 +488,9 @@ export default function Fibonacci() {
               <span className="font-sans text-[10px] text-muted-foreground">
                 {isSearching
                   ? filteredAndSorted.length > 0
-                    ? `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} of ${filteredAndSorted.length} matches`
-                    : `0 matches for "${trimmedQuery}"`
-                  : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} of ${totalCoins} coins`}
+                    ? `${filteredAndSorted.length}개 일치 중 ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} 표시`
+                    : `"${trimmedQuery}" 일치 0개`
+                  : `${totalCoins}개 코인 중 ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} 표시`}
               </span>
               {displayTotalPages > 1 && (
                 <div className="flex items-center gap-2">
@@ -502,7 +502,7 @@ export default function Fibonacci() {
                     className="h-7 px-2 border-border/30 font-sans text-[10px]"
                   >
                     <ChevronLeft className="h-3 w-3 mr-0.5" />
-                    PREV
+                    이전
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from({ length: displayTotalPages }, (_, i) => i + 1).map((p) => (
@@ -527,7 +527,7 @@ export default function Fibonacci() {
                     disabled={page >= displayTotalPages || isFetching}
                     className="h-7 px-2 border-border/30 font-sans text-[10px]"
                   >
-                    NEXT
+                    다음
                     <ChevronRight className="h-3 w-3 ml-0.5" />
                   </Button>
                 </div>

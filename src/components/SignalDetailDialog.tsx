@@ -33,10 +33,10 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
         <DialogHeader>
           <DialogTitle className="font-display tracking-wider flex items-center gap-2">
             <Activity className="h-4 w-4 text-neon-cyan" />
-            {symbol} Signal Detail
+            {symbol} 시그널 상세
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
-            BBDX-PATTERN v6.1 decision breakdown
+            BBDX-PATTERN v6.1 결정 분석
           </DialogDescription>
         </DialogHeader>
 
@@ -44,13 +44,13 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
           {/* STOP — highest priority, surface first */}
           {(coin.isStopLossHit ?? false) && (
             <Section
-              title="Stop Loss Triggered"
+              title="손절 발동"
               icon={<ShieldAlert className="h-4 w-4 text-neon-red" />}
               variant="danger"
             >
-              <Row label="Stop Price" value={`$${formatPrice(coin.stopLossPrice)}`} />
-              <Row label="Current Price" value={`$${formatPrice(coin.price)}`} />
-              <Row label="Rule" value="BB lower × 0.97" />
+              <Row label="손절가" value={`$${formatPrice(coin.stopLossPrice)}`} />
+              <Row label="현재가" value={`$${formatPrice(coin.price)}`} />
+              <Row label="규칙" value="BB lower × 0.97" />
             </Section>
           )}
 
@@ -62,8 +62,8 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
               variant="positive"
             >
               <div className="font-sans text-xs text-muted-foreground mb-1">
-                Path: <span className="text-neon-green">{coin.entryDecision.path}</span> ·
-                Strength: <span className="text-foreground">{coin.signalStrength}</span>
+                경로: <span className="text-neon-green">{coin.entryDecision.path}</span> ·
+                강도: <span className="text-foreground">{coin.signalStrength}</span>
               </div>
               <div className="space-y-1">
                 {coin.entryDecision.reasons.map((reason, i) => (
@@ -74,11 +74,11 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
                 ))}
               </div>
               {coin.entryDecision.bbStructure && (
-                <Row label="BB Structure" value={formatBBStructure(coin.entryDecision.bbStructure)} />
+                <Row label="BB 구조" value={formatBBStructure(coin.entryDecision.bbStructure)} />
               )}
               {coin.entryDecision.patterns && coin.entryDecision.patterns.length > 0 && (
                 <Row
-                  label="Patterns"
+                  label="패턴"
                   value={coin.entryDecision.patterns
                     .map((p) => `${formatPatternName(p.name)} (${p.candlesAgo}↩)`)
                     .join(", ")}
@@ -95,16 +95,16 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
             <Section
               title={
                 coin.exitDecision.relaxedToBearish
-                  ? "EXIT (약세 패턴)"
-                  : `EXIT ${coin.exitDecision.conditionsMet}/4`
+                  ? "청산 (약세 패턴)"
+                  : `청산 ${coin.exitDecision.conditionsMet}/4`
               }
               icon={<TrendingDown className="h-4 w-4 text-neon-yellow" />}
               variant="warning"
             >
               <Row
-                label="Conditions"
+                label="충족 조건"
                 value={`${coin.exitDecision.conditionsMet}/${coin.exitDecision.total}${
-                  coin.exitDecision.relaxedToBearish ? " (relaxed by bearish pattern)" : ""
+                  coin.exitDecision.relaxedToBearish ? " (약세 패턴으로 완화)" : ""
                 }`}
               />
               <div className="grid grid-cols-2 gap-1 mt-1">
@@ -118,39 +118,39 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
 
           {/* No active signal */}
           {!coin.entryDecision && !coin.exitDecision && !(coin.isStopLossHit ?? false) && (
-            <Section title="No Active Signal" icon={<Activity className="h-4 w-4 text-muted-foreground" />}>
+            <Section title="활성 시그널 없음" icon={<Activity className="h-4 w-4 text-muted-foreground" />}>
               <p className="font-sans text-[11px] text-muted-foreground">
-                None of the NUM / PTN / BB entry conditions are satisfied, and no
-                exit threshold has been crossed.
+                NUM / PTN / BB 진입 조건 중 충족된 것이 없으며, 청산 임계값도
+                넘지 않았습니다.
               </p>
               {(coin.isFallingKnife ?? false) && (
                 <p className="font-sans text-[11px] text-neon-red mt-2">
-                  ⚠ Falling Knife filter active (-DI &gt; +DI AND ADX &gt; 25). Entry blocked.
+                  ⚠ Falling Knife 필터 활성 (-DI &gt; +DI AND ADX &gt; 25). 진입 차단.
                 </p>
               )}
             </Section>
           )}
 
           {/* Indicator snapshot (always shown) */}
-          <Section title="Indicators" icon={<Activity className="h-4 w-4 text-neon-cyan" />}>
+          <Section title="지표" icon={<Activity className="h-4 w-4 text-neon-cyan" />}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <Row label="RSI(14)" value={coin.indicators.rsi.toFixed(1)} />
               <Row label="ADX(14)" value={coin.indicators.adx.toFixed(1)} />
               <Row label="+DI" value={coin.indicators.plusDi.toFixed(1)} />
               <Row label="-DI" value={coin.indicators.minusDi.toFixed(1)} />
-              <Row label="BB Middle" value={`$${formatPrice(coin.indicators.bbMiddle)}`} />
-              <Row label="BB Lower" value={`$${formatPrice(coin.indicators.bbLower)}`} />
-              <Row label="Pressure" value={formatPressure(coin.pressure ?? "NEUTRAL")} />
-              <Row label="Reversal Prob" value={`${(coin.reversalProb ?? 0).toFixed(0)}%`} />
-              <Row label="Volume Ratio" value={(coin.volumeRatio ?? 1).toFixed(2)} />
-              <Row label="Stop Loss" value={`$${formatPrice(coin.stopLossPrice ?? 0)}`} />
+              <Row label="BB 중심선" value={`$${formatPrice(coin.indicators.bbMiddle)}`} />
+              <Row label="BB 하단" value={`$${formatPrice(coin.indicators.bbLower)}`} />
+              <Row label="압력" value={formatPressure(coin.pressure ?? "NEUTRAL")} />
+              <Row label="반전 확률" value={`${(coin.reversalProb ?? 0).toFixed(0)}%`} />
+              <Row label="거래량 비율" value={(coin.volumeRatio ?? 1).toFixed(2)} />
+              <Row label="손절가" value={`$${formatPrice(coin.stopLossPrice ?? 0)}`} />
             </div>
           </Section>
 
           {/* PATTERN_SYSTEM_AUDIT 권고 적용 합산 카드 — multi + 거래량 + 추세 + TF */}
           {coin.patternConfluence && (
             <Section
-              title="Pattern Confluence (audit v1)"
+              title="패턴 컨플루언스 (audit v1)"
               icon={<Layers className="h-4 w-4 text-neon-cyan" />}
             >
               <PatternConfluenceCard summary={coin.patternConfluence} />
@@ -159,7 +159,7 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
 
           {/* Patterns (raw 매치 리스트) */}
           {(coin.candlePatterns ?? []).length > 0 && (
-            <Section title="Detected Patterns (raw)" icon={<Activity className="h-4 w-4 text-neon-pink" />}>
+            <Section title="감지된 패턴 (raw)" icon={<Activity className="h-4 w-4 text-neon-pink" />}>
               <div className="space-y-1">
                 {(coin.candlePatterns ?? []).map((p, i) => (
                   <div
@@ -181,10 +181,10 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
                       {p.bias === "bullish" ? "↑" : "↓"} {formatPatternName(p.name)}
                     </Badge>
                     <span className="text-muted-foreground">
-                      {p.candlesAgo === 0 ? "current" : `${p.candlesAgo} candle${p.candlesAgo > 1 ? "s" : ""} ago`}
+                      {p.candlesAgo === 0 ? "현재" : `${p.candlesAgo}캔들 전`}
                     </span>
                     <span className="text-muted-foreground ml-auto">
-                      strength {p.strength}
+                      강도 {p.strength}
                     </span>
                   </div>
                 ))}
@@ -250,7 +250,7 @@ const MODIFIER_DEFS: Array<{
   range: string;
   beta?: boolean;
 }> = [
-  { key: "vwapMult", label: "VWAP", dimension: "5 structure", range: "0.85~1.15" },
+  { key: "vwapMult", label: "VWAP", dimension: "5 구조", range: "0.85~1.15" },
 ];
 
 function ModifierBreakdown({
@@ -276,10 +276,10 @@ function ModifierBreakdown({
     <div className="mt-3 pt-3 border-t border-border/30">
       <div className="flex items-center justify-between mb-2">
         <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-          Additional Modifiers (audit 03)
+          추가 모디파이어 (audit 03)
         </span>
         <span className="font-mono text-[10px] text-neon-cyan">
-          {present.length} active
+          {present.length}개 활성
         </span>
       </div>
 
@@ -398,14 +398,14 @@ function formatBBStructure(s: string): string {
 function formatPressure(p: string): string {
   switch (p) {
     case "BULL_PRESSURE":
-      return "Bull ↑ (strong)";
+      return "매수 ↑ (강)";
     case "WEAK_BULL":
-      return "Bull ↑ (weak)";
+      return "매수 ↑ (약)";
     case "BEAR_PRESSURE":
-      return "Bear ↓ (strong)";
+      return "매도 ↓ (강)";
     case "WEAK_BEAR":
-      return "Bear ↓ (weak)";
+      return "매도 ↓ (약)";
     default:
-      return "Neutral";
+      return "중립";
   }
 }

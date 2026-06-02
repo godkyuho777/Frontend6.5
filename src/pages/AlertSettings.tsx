@@ -20,28 +20,28 @@ export default function AlertSettings() {
 
   const upsertMutation = trpc.alerts.upsert.useMutation({
     onSuccess: () => {
-      toast.success("Alert setting saved");
+      toast.success("알림 설정을 저장했습니다");
       refetch();
     },
-    onError: () => toast.error("Failed to save alert setting"),
+    onError: () => toast.error("알림 설정 저장에 실패했습니다"),
   });
 
   const deleteMutation = trpc.alerts.delete.useMutation({
     onSuccess: () => {
-      toast.success("Alert setting deleted");
+      toast.success("알림 설정을 삭제했습니다");
       refetch();
     },
-    onError: () => toast.error("Failed to delete"),
+    onError: () => toast.error("삭제에 실패했습니다"),
   });
 
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Bell className="h-10 w-10 text-muted-foreground/30" />
-        <p className="font-sans text-muted-foreground">Sign in to configure alerts</p>
+        <p className="font-sans text-muted-foreground">알림을 설정하려면 로그인하세요</p>
         <SignInDialog>
           <Button className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30">
-            CONNECT
+            로그인
           </Button>
         </SignInDialog>
       </div>
@@ -53,10 +53,10 @@ export default function AlertSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Alert config
+            알림 설정
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            CUSTOM THRESHOLDS // NOTIFICATION RULES
+            나만의 진입·청산 조건과 알림 규칙을 설정합니다
           </p>
         </div>
         <Button
@@ -79,43 +79,43 @@ export default function AlertSettings() {
           className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-sans text-xs"
         >
           <Plus className="h-3 w-3 mr-1" />
-          NEW RULE
+          규칙 추가
         </Button>
       </div>
 
       {/* Default Strategy Info */}
-      <HudPanel title="Strategy Parameters" subtitle="Default entry & exit conditions">
+      <HudPanel title="전략 파라미터" subtitle="기본 진입·청산 조건">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h4 className="font-display text-xs font-bold tracking-wider text-neon-green mb-3 uppercase">
-              Entry Conditions (Long)
+              진입 조건 (LONG)
             </h4>
             <div className="space-y-2 font-sans text-xs">
               <div className="flex justify-between p-2 bg-neon-green/5 rounded-sm border border-neon-green/10">
-                <span className="text-muted-foreground">RSI Range</span>
+                <span className="text-muted-foreground">RSI 범위</span>
                 <span className="text-neon-green">30 ~ 35</span>
               </div>
               <div className="flex justify-between p-2 bg-neon-green/5 rounded-sm border border-neon-green/10">
-                <span className="text-muted-foreground">BB Position</span>
-                <span className="text-neon-green">Near Lower Band</span>
+                <span className="text-muted-foreground">BB 위치</span>
+                <span className="text-neon-green">하단 밴드 근접</span>
               </div>
               <div className="flex justify-between p-2 bg-neon-green/5 rounded-sm border border-neon-green/10">
-                <span className="text-muted-foreground">ADX Threshold</span>
+                <span className="text-muted-foreground">ADX 임계값</span>
                 <span className="text-neon-green">&le; 30</span>
               </div>
             </div>
           </div>
           <div>
             <h4 className="font-display text-xs font-bold tracking-wider text-neon-cyan mb-3 uppercase">
-              Exit Conditions (Target)
+              청산 조건 (목표)
             </h4>
             <div className="space-y-2 font-sans text-xs">
               <div className="flex justify-between p-2 bg-neon-cyan/5 rounded-sm border border-neon-cyan/10">
-                <span className="text-muted-foreground">BB Middle Line</span>
-                <span className="text-neon-cyan">Price &ge; BB Mid</span>
+                <span className="text-muted-foreground">BB 중심선</span>
+                <span className="text-neon-cyan">가격 &ge; BB 중심</span>
               </div>
               <div className="flex justify-between p-2 bg-neon-cyan/5 rounded-sm border border-neon-cyan/10">
-                <span className="text-muted-foreground">RSI Target</span>
+                <span className="text-muted-foreground">RSI 목표</span>
                 <span className="text-neon-cyan">&ge; 70</span>
               </div>
               <div className="flex justify-between p-2 bg-neon-cyan/5 rounded-sm border border-neon-cyan/10">
@@ -128,7 +128,7 @@ export default function AlertSettings() {
       </HudPanel>
 
       {/* Custom Alert Rules */}
-      <HudPanel title="Custom Rules" subtitle={`${alerts?.length ?? 0} rules configured`}>
+      <HudPanel title="맞춤 규칙" subtitle={`${alerts?.length ?? 0}개 설정됨`}>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
@@ -136,9 +136,9 @@ export default function AlertSettings() {
         ) : !alerts?.length ? (
           <div className="text-center py-8">
             <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-sans text-sm text-muted-foreground">No custom rules yet</p>
+            <p className="font-sans text-sm text-muted-foreground">아직 맞춤 규칙이 없습니다</p>
             <p className="font-sans text-xs text-muted-foreground/60 mt-1">
-              Create a rule to customize signal detection thresholds
+              규칙을 추가하면 시그널 감지 임계값을 직접 설정할 수 있습니다
             </p>
           </div>
         ) : (
@@ -188,7 +188,7 @@ function AlertRuleCard({
         <div className="flex items-center gap-3">
           <Switch checked={enabled} onCheckedChange={setEnabled} />
           <Input
-            placeholder="All coins (leave empty)"
+            placeholder="전체 코인 (비워두기)"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
             className="w-40 h-7 font-sans text-xs bg-background/50 border-border/30"
@@ -214,7 +214,7 @@ function AlertRuleCard({
             className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-[10px]"
           >
             <Save className="h-3 w-3 mr-1" />
-            SAVE
+            저장
           </Button>
           <Button
             variant="outline"
@@ -230,7 +230,7 @@ function AlertRuleCard({
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div>
-          <Label className="font-sans text-[10px] text-muted-foreground">RSI Low</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">RSI 하한</Label>
           <Input
             type="number"
             value={rsiLow}
@@ -239,7 +239,7 @@ function AlertRuleCard({
           />
         </div>
         <div>
-          <Label className="font-sans text-[10px] text-muted-foreground">RSI High</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">RSI 상한</Label>
           <Input
             type="number"
             value={rsiHigh}
@@ -248,7 +248,7 @@ function AlertRuleCard({
           />
         </div>
         <div>
-          <Label className="font-sans text-[10px] text-muted-foreground">ADX Threshold</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">ADX 임계값</Label>
           <Input
             type="number"
             value={adxThreshold}
@@ -257,7 +257,7 @@ function AlertRuleCard({
           />
         </div>
         <div>
-          <Label className="font-sans text-[10px] text-muted-foreground">Target RSI</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">목표 RSI</Label>
           <Input
             type="number"
             value={targetRsi}
@@ -266,7 +266,7 @@ function AlertRuleCard({
           />
         </div>
         <div>
-          <Label className="font-sans text-[10px] text-muted-foreground">Target ADX</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">목표 ADX</Label>
           <Input
             type="number"
             value={targetAdx}
@@ -275,7 +275,7 @@ function AlertRuleCard({
           />
         </div>
         <div>
-          <Label className="font-sans text-[10px] text-muted-foreground">Target +DI</Label>
+          <Label className="font-sans text-[10px] text-muted-foreground">목표 +DI</Label>
           <Input
             type="number"
             value={targetPlusDi}

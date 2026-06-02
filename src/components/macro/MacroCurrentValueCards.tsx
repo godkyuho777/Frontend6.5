@@ -59,8 +59,8 @@ export function MacroCurrentValueCards({
 
   return (
     <HudPanel
-      title="Current Values"
-      subtitle="snapshot 시점 핵심 수치"
+      title="현재 수치"
+      subtitle="스냅샷 시점의 핵심 지표"
       variant="highlight"
     >
       <div className={cn("grid gap-3", cols)}>

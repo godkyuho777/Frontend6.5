@@ -74,8 +74,8 @@ export function ShortSignalCard({
   if (inactiveNote) {
     return (
       <HudPanel
-        title="Short Signal"
-        subtitle="v6.6 BBDX SHORT"
+        title="SHORT 시그널"
+        subtitle="BBDX v6.6 공매도 진입 신호"
         variant="default"
       >
         <p className="font-mono text-[11px] text-muted-foreground py-3">
@@ -89,12 +89,12 @@ export function ShortSignalCard({
   if (!short || !short.triggered) {
     return (
       <HudPanel
-        title="Short Signal"
-        subtitle="v6.6 BBDX SHORT"
+        title="SHORT 시그널"
+        subtitle="BBDX v6.6 공매도 진입 신호"
         variant="default"
       >
         <p className="font-mono text-[11px] text-muted-foreground py-3">
-          SHORT 진입 시그널 미발생
+          아직 SHORT 진입 시그널이 없습니다.
         </p>
         {short && (
           <p className="font-mono text-[10px] text-muted-foreground/70 mt-1">
@@ -115,8 +115,8 @@ export function ShortSignalCard({
 
   return (
     <HudPanel
-      title="Short Signal"
-      subtitle={conflict ? "CONFLICT — 방향 불명" : "BBDX v6.6 SHORT ENTRY"}
+      title="SHORT 시그널"
+      subtitle={conflict ? "방향 충돌 — 진입 보류" : "BBDX v6.6 SHORT 진입 신호"}
       variant={conflict ? "default" : "danger"}
       headerRight={
         short.path ? (
@@ -134,7 +134,7 @@ export function ShortSignalCard({
         {/* Path label */}
         <div>
           <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            Path
+            진입 경로
           </div>
           <div className="font-display text-2xl font-bold tracking-wider text-neon-red">
             SHORT • {path}
@@ -150,7 +150,7 @@ export function ShortSignalCard({
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-              Score / Threshold
+              점수 / 임계값
             </span>
             <span className="font-mono text-xs text-neon-red">
               {short.finalScore.toFixed(1)} / {short.thresholdUsed.toFixed(1)}
@@ -182,7 +182,7 @@ export function ShortSignalCard({
         <div className="grid grid-cols-2 gap-2">
           <div>
             <div className="font-mono text-[9px] text-muted-foreground uppercase">
-              Entry
+              진입가
             </div>
             <div className="font-mono text-xs text-foreground">
               {entryPrice != null
@@ -208,7 +208,7 @@ export function ShortSignalCard({
         {/* 5 modifier multiplier chips */}
         <div>
           <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-1">
-            Weights (calibrated, source={short.weightsSource})
+            가중치 (calibrated, source={short.weightsSource})
           </div>
           <div className="flex flex-wrap gap-1">
             {WEIGHT_KEYS.map(({ key, label }) => {
@@ -231,7 +231,7 @@ export function ShortSignalCard({
         {short.reasons.length > 0 && (
           <div>
             <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-1">
-              Reasons
+              근거
             </div>
             <ul className="space-y-0.5">
               {short.reasons.slice(0, 4).map((r, i) => (

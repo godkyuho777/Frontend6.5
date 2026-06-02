@@ -133,16 +133,16 @@ export default function SectorPulse() {
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-neon-cyan" />
-            Sector Pulse
+            섹터 동향
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            암호화폐 12 섹터 · 24h 평균 변동률 + 코인 drill-down
+            섹터별 24시간 등락과 자금 흐름을 한눈에 봅니다
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end">
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
-              Market Pulse
+              시장 평균
             </span>
             <span
               className={cn(
@@ -169,9 +169,9 @@ export default function SectorPulse() {
         </span>
         {(
           [
-            { id: "performance", label: "Performance ▼" },
-            { id: "volatility", label: "Volatility (abs)" },
-            { id: "default", label: "Default" },
+            { id: "performance", label: "등락률 ▼" },
+            { id: "volatility", label: "변동성" },
+            { id: "default", label: "기본" },
           ] as { id: SortMode; label: string }[]
         ).map((tab) => (
           <button
@@ -192,7 +192,7 @@ export default function SectorPulse() {
       {/* Error banner */}
       {error && (
         <div className="rounded-md border border-neon-red/40 bg-neon-red/10 px-3 py-2 font-mono text-xs text-neon-red">
-          Failed to load sector data — {error}
+          섹터 데이터를 불러오지 못했습니다 — {error}
         </div>
       )}
 
@@ -321,7 +321,7 @@ function SectorCard({
 
       {/* Volume (subtle) */}
       <div className="mt-1 font-mono text-[9px] text-muted-foreground">
-        24h Vol ${(totalVolume24h / 1e6).toFixed(1)}M
+        24h 거래대금 ${(totalVolume24h / 1e6).toFixed(1)}M
       </div>
 
       {/* Trend icon (absolute, top-right) */}
@@ -364,7 +364,7 @@ function SectorDrillDown({
             className="h-7 px-2 font-mono text-[10px]"
           >
             <X className="h-3 w-3 mr-1" />
-            Close
+            닫기
           </Button>
         </div>
       }
@@ -379,10 +379,10 @@ function SectorDrillDown({
             <thead>
               <tr className="border-b border-border/20 font-mono text-[10px] text-muted-foreground uppercase">
                 <th className="text-left px-2 py-1.5">#</th>
-                <th className="text-left px-2 py-1.5">Symbol</th>
-                <th className="text-right px-2 py-1.5">Price</th>
+                <th className="text-left px-2 py-1.5">심볼</th>
+                <th className="text-right px-2 py-1.5">가격</th>
                 <th className="text-right px-2 py-1.5">24h %</th>
-                <th className="text-right px-2 py-1.5">24h Vol</th>
+                <th className="text-right px-2 py-1.5">24h 거래대금</th>
                 <th className="px-2 py-1.5"></th>
               </tr>
             </thead>
@@ -408,7 +408,7 @@ function SectorDrillDown({
           color={row.avgChange24h >= 0 ? "text-neon-green" : "text-neon-red"}
         />
         <SummaryStat
-          label="Top"
+          label="최고"
           value={row.topPerformer ? row.topPerformer.symbol.replace("USDT", "") : "—"}
           sub={
             row.topPerformer
@@ -418,7 +418,7 @@ function SectorDrillDown({
           color="text-neon-green"
         />
         <SummaryStat
-          label="Bottom"
+          label="최저"
           value={
             row.bottomPerformer ? row.bottomPerformer.symbol.replace("USDT", "") : "—"
           }

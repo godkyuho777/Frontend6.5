@@ -227,8 +227,8 @@ export default function EngineBTab() {
   return (
     <div className="space-y-4">
       <HudPanel
-        title="Engine B — Multi-Strategy Templates"
-        subtitle="Phase 1 stub · DSL editor deferred to Phase 2"
+        title="Engine B — 멀티 전략 템플릿"
+        subtitle="Phase 1 stub · DSL 에디터는 Phase 2 로 연기"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {TEMPLATES.map(t => {
@@ -265,7 +265,7 @@ export default function EngineBTab() {
 
       {validation && (
         <HudPanel
-          title="Charter Validation"
+          title="헌장 검증"
           subtitle="R3 매핑 검증 (백테스트 실행 전)"
           variant={validation.passed ? "highlight" : "danger"}
         >
@@ -284,9 +284,9 @@ export default function EngineBTab() {
               {validation.passed ? "헌장 매핑 통과" : "헌장 매핑 실패"}
             </div>
             <div className="font-mono text-[10px]">
-              <span className="text-muted-foreground">Covered: </span>
+              <span className="text-muted-foreground">충족: </span>
               {validation.covered.length === 0 ? (
-                <span className="text-muted-foreground">none</span>
+                <span className="text-muted-foreground">없음</span>
               ) : (
                 validation.covered.map((d: string) => (
                   <Badge
@@ -300,7 +300,7 @@ export default function EngineBTab() {
             </div>
             {validation.missing.length > 0 && (
               <div className="font-mono text-[10px]">
-                <span className="text-muted-foreground">Missing: </span>
+                <span className="text-muted-foreground">미충족: </span>
                 {validation.missing.map((d: string) => (
                   <Badge
                     key={d}
@@ -322,10 +322,10 @@ export default function EngineBTab() {
         </HudPanel>
       )}
 
-      <HudPanel title="Run Config" subtitle="symbol · tf · date range">
+      <HudPanel title="실행 설정" subtitle="심볼 · TF · 기간">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <Label>Symbol</Label>
+            <Label>심볼</Label>
             <Input
               value={symbol}
               onChange={e => setSymbol(e.target.value)}
@@ -333,7 +333,7 @@ export default function EngineBTab() {
             />
           </div>
           <div>
-            <Label>Timeframe</Label>
+            <Label>TF</Label>
             <Select
               value={tf}
               onValueChange={v => setTf(v as "4h" | "1d" | "1w")}
@@ -355,7 +355,7 @@ export default function EngineBTab() {
             </Select>
           </div>
           <div>
-            <Label>Start Date</Label>
+            <Label>시작일</Label>
             <Input
               type="date"
               value={startDate}
@@ -364,7 +364,7 @@ export default function EngineBTab() {
             />
           </div>
           <div>
-            <Label>End Date</Label>
+            <Label>종료일</Label>
             <Input
               type="date"
               value={endDate}
@@ -390,7 +390,7 @@ export default function EngineBTab() {
       </HudPanel>
 
       {errorDetail && (
-        <HudPanel title="Error" variant="danger">
+        <HudPanel title="오류" variant="danger">
           <div className="font-mono text-xs text-red-400">{errorDetail}</div>
         </HudPanel>
       )}
@@ -405,11 +405,11 @@ export default function EngineBTab() {
       )}
 
       {result && (
-        <HudPanel title="Result Summary" variant="highlight">
+        <HudPanel title="결과 요약" variant="highlight">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Metric label="Signals" value={result.total_signals.toString()} />
+            <Metric label="시그널 수" value={result.total_signals.toString()} />
             <Metric
-              label="Win Rate"
+              label="승률"
               value={`${(result.win_rate * 100).toFixed(1)}%`}
               color={
                 result.win_rate >= 0.5 ? "text-neon-green" : "text-red-400"
@@ -424,7 +424,7 @@ export default function EngineBTab() {
           </div>
           {result.charter_validation && !result.charter_validation.passed && (
             <div className="mt-3 px-3 py-2 rounded-lg bg-red-500/15 font-mono text-xs text-red-400">
-              헌장 매핑 실패 — Missing dimensions:{" "}
+              헌장 매핑 실패 — 미충족 차원:{" "}
               {result.charter_validation.missing.join(", ")}
             </div>
           )}

@@ -99,19 +99,19 @@ function WaveGauge({ score, label }: { score: number; label: string }) {
 
   const getLabelText = () => {
     switch (label) {
-      case "WAVE_LIKELY": return "Wave likely";
-      case "IMMINENT": return "Imminent";
-      case "BUILDING": return "Building";
-      default: return "Sideways";
+      case "WAVE_LIKELY": return "파동 임박";
+      case "IMMINENT": return "파동 징후";
+      case "BUILDING": return "에너지 축적";
+      default: return "횡보 구간";
     }
   };
 
   const getLabelKo = () => {
     switch (label) {
-      case "WAVE_LIKELY": return "파동 임박";
-      case "IMMINENT": return "파동 징후";
-      case "BUILDING": return "에너지 축적";
-      default: return "횡보 구간";
+      case "WAVE_LIKELY": return "변동성 분출 가능성 높음";
+      case "IMMINENT": return "변동성 분출 조짐";
+      case "BUILDING": return "변동성 축적 중";
+      default: return "방향성 미정";
     }
   };
 
@@ -277,10 +277,10 @@ export default function WaveSentiment() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Sentiment & matrix
+            투자심리 매트릭스
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            BTC perpetual / OI · long/short · funding · liquidations / Bybit data
+            BTC 무기한 선물 · OI · 롱·숏 비율 · 펀딩 · 청산 압력 (Bybit)
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -303,9 +303,9 @@ export default function WaveSentiment() {
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-neon-pink" />
           <div className="text-center">
-            <p className="font-sans text-sm text-foreground">Loading BTC derivatives data...</p>
+            <p className="font-sans text-sm text-foreground">BTC 파생 데이터를 불러오는 중...</p>
             <p className="font-mono text-xs text-muted-foreground mt-1">
-              Fetching OI, Long/Short Ratio, Funding Rate from Bybit
+              Bybit에서 OI · 롱·숏 비율 · 펀딩을 불러오는 중
             </p>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function WaveSentiment() {
       {error && !snapshot && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <AlertTriangle className="h-8 w-8 text-neon-red" />
-          <p className="font-sans text-sm text-neon-red">Failed to load data</p>
+          <p className="font-sans text-sm text-neon-red">데이터를 불러오지 못했습니다</p>
           <Button
             variant="outline"
             size="sm"
@@ -323,7 +323,7 @@ export default function WaveSentiment() {
             className="border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-xs mt-2"
           >
             <RefreshCw className="h-3 w-3 mr-1" />
-            Retry
+            다시 시도
           </Button>
         </div>
       )}
@@ -337,21 +337,21 @@ export default function WaveSentiment() {
           {/* BTC Price Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <StatCard
-              label="BTC Price"
+              label="BTC 가격"
               value={`$${snapshot.price.toLocaleString()}`}
               change={snapshot.change24h}
             />
             <StatCard
-              label="Open Interest"
+              label="OI"
               value={formatNumber(snapshot.openInterest, 0)}
               unit="BTC"
             />
             <StatCard
-              label="OI Value"
+              label="OI 평가액"
               value={`$${formatNumber(snapshot.openInterestValue)}`}
             />
             <StatCard
-              label="24h Volume"
+              label="24h 거래량"
               value={formatNumber(snapshot.volume24h, 0)}
               unit="BTC"
             />
@@ -361,7 +361,7 @@ export default function WaveSentiment() {
               variant={snapshot.fundingRate > 0.0001 ? "negative" : snapshot.fundingRate < -0.0001 ? "positive" : "default"}
             />
             <StatCard
-              label="OI Change"
+              label="OI 변화"
               value={`${analysis.oiChangeRate >= 0 ? "+" : ""}${analysis.oiChangeRate.toFixed(2)}%`}
               variant={analysis.oiChangeRate > 2 ? "positive" : analysis.oiChangeRate < -2 ? "negative" : "default"}
             />
@@ -371,8 +371,8 @@ export default function WaveSentiment() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Wave Gauge */}
             <HudPanel
-              title="Wave Score"
-              subtitle="OI + LS ratio + funding composite"
+              title="파동 점수"
+              subtitle="OI + 롱·숏 비율 + 펀딩 종합"
               variant="highlight"
             >
               <div className="flex flex-col items-center py-4">
@@ -382,8 +382,8 @@ export default function WaveSentiment() {
 
             {/* Liquidation Pressure */}
             <HudPanel
-              title="Liquidation Pressure"
-              subtitle="Estimated from long/short ratio"
+              title="청산 압력"
+              subtitle="롱·숏 비율 기반 추정"
             >
               <div className="py-4">
                 <LiquidationPressureBar
@@ -396,8 +396,8 @@ export default function WaveSentiment() {
 
             {/* Analysis Reasons */}
             <HudPanel
-              title="Analysis Detail"
-              subtitle="Wave detection reasons"
+              title="분석 상세"
+              subtitle="파동 감지 근거"
             >
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {analysis.reasons.map((reason, i) => (
@@ -418,8 +418,8 @@ export default function WaveSentiment() {
 
           {/* OI History Chart */}
           <HudPanel
-            title="Open Interest History"
-            subtitle={`BTCUSDT perp · ${oiInterval.toUpperCase()} interval · ${oiHistory.length} data points`}
+            title="OI 추이"
+            subtitle={`BTCUSDT 무기한 · ${oiInterval.toUpperCase()} 간격 · 데이터 ${oiHistory.length}개`}
           >
             {oiChartData.length > 0 ? (
               <ChartContainer config={oiChartConfig} className="h-[250px] w-full">
@@ -468,15 +468,15 @@ export default function WaveSentiment() {
               </ChartContainer>
             ) : (
               <div className="flex items-center justify-center h-[250px] text-muted-foreground font-sans text-sm">
-                No OI data available
+                OI 데이터가 없습니다
               </div>
             )}
           </HudPanel>
 
           {/* Long/Short Ratio Chart */}
           <HudPanel
-            title="Long / Short Ratio"
-            subtitle={`Account ratio · ${oiInterval.toUpperCase()} interval`}
+            title="롱 · 숏 비율"
+            subtitle={`계정 비율 · ${oiInterval.toUpperCase()} 간격`}
           >
             {lsChartData.length > 0 ? (
               <ChartContainer config={lsChartConfig} className="h-[250px] w-full">
@@ -534,15 +534,15 @@ export default function WaveSentiment() {
               </ChartContainer>
             ) : (
               <div className="flex items-center justify-center h-[250px] text-muted-foreground font-sans text-sm">
-                No Long/Short data available
+                롱·숏 데이터가 없습니다
               </div>
             )}
           </HudPanel>
 
           {/* Funding Rate Chart */}
           <HudPanel
-            title="Funding Rate History"
-            subtitle="8H interval · BTCUSDT perp"
+            title="Funding Rate 추이"
+            subtitle="8시간 간격 · BTCUSDT 무기한"
           >
             {fundingChartData.length > 0 ? (
               <ChartContainer config={fundingChartConfig} className="h-[200px] w-full">
@@ -582,7 +582,7 @@ export default function WaveSentiment() {
               </ChartContainer>
             ) : (
               <div className="flex items-center justify-center h-[200px] text-muted-foreground font-sans text-sm">
-                No Funding Rate data available
+                Funding Rate 데이터가 없습니다
               </div>
             )}
           </HudPanel>
@@ -590,7 +590,7 @@ export default function WaveSentiment() {
           {/* Last updated */}
           {lastUpdated && (
             <div className="text-center font-sans text-[10px] text-muted-foreground">
-              Last updated: {new Date(lastUpdated).toLocaleTimeString()} · Data from Bybit V5 API
+              마지막 갱신: {new Date(lastUpdated).toLocaleTimeString()} · 데이터: Bybit V5 API
             </div>
           )}
         </>

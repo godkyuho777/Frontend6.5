@@ -53,16 +53,16 @@ Provide specific, actionable insights with numbers and clear reasoning.`,
     <div className="space-y-4 h-[calc(100vh-6rem)]">
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-          AI analyst
+          AI 애널리스트
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          LLM-POWERED MARKET INTELLIGENCE
+          AI가 RSI·BB·ADX와 시장 맥락을 함께 분석합니다
         </p>
       </div>
 
       <HudPanel
-        title="Trading Assistant"
-        subtitle="Ask about market conditions, signals, or strategies"
+        title="트레이딩 어시스턴트"
+        subtitle="시장 상황·시그널·전략에 대해 무엇이든 물어보세요"
         variant="highlight"
         className="flex-1"
       >

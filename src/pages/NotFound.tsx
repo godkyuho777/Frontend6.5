@@ -6,43 +6,36 @@ import { useLocation } from "wouter";
 export default function NotFound() {
   const [, setLocation] = useLocation();
 
-  const handleGoHome = () => {
-    setLocation("/");
-  };
-
+  // 디자인 시스템 토큰 사용 (이전엔 slate/blue/white 하드코딩으로 앱과 동떨어진
+  // 오프-브랜드 화면이었음). 레이아웃 <main> 안에 렌더되므로 min-h-screen 대신
+  // min-h-[60vh] 로 과도한 높이 방지.
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="pt-8 pb-8 text-center">
-          <div className="flex justify-center mb-6">
+    <div className="flex min-h-[60vh] w-full items-center justify-center">
+      <Card className="mx-4 w-full max-w-lg">
+        <CardContent className="px-6 py-10 text-center">
+          <div className="mb-6 flex justify-center">
             <div className="relative">
-              <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse" />
-              <AlertCircle className="relative h-16 w-16 text-red-500" />
+              <div className="absolute inset-0 animate-pulse rounded-full bg-destructive/10" />
+              <AlertCircle className="relative h-16 w-16 text-destructive" />
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
+          <h1 className="mb-2 text-4xl font-bold text-foreground">404</h1>
 
-          <h2 className="text-xl font-semibold text-slate-700 mb-4">
-            Page Not Found
+          <h2 className="mb-4 text-xl font-semibold text-foreground">
+            페이지를 찾을 수 없어요
           </h2>
 
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Sorry, the page you are looking for doesn't exist.
+          <p className="mb-8 leading-relaxed text-muted-foreground">
+            요청하신 페이지가 존재하지 않습니다.
             <br />
-            It may have been moved or deleted.
+            이동되었거나 삭제되었을 수 있어요.
           </p>
 
-          <div
-            id="not-found-button-group"
-            className="flex flex-col sm:flex-row gap-3 justify-center"
-          >
-            <Button
-              onClick={handleGoHome}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Go Home
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Button onClick={() => setLocation("/")}>
+              <Home className="mr-2 h-4 w-4" />
+              홈으로
             </Button>
           </div>
         </CardContent>

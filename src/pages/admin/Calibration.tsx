@@ -56,19 +56,19 @@ export default function CalibrationAdmin() {
       <div>
         <h1 className="font-display text-2xl font-bold tracking-wider text-neon-pink glow-pink flex items-center gap-2">
           <Settings2 className="h-6 w-6" />
-          CALIBRATION ADMIN
+          캘리브레이션 관리
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          BBDX v6.6 WEIGHT / THRESHOLD CALIBRATION OPS
+          BBDX v6.6 가중치 / 임계값 캘리브레이션 운영
         </p>
       </div>
 
       {/* Selector */}
-      <HudPanel title="Target" subtitle="(symbol, tf, path, side) 조합 선택">
+      <HudPanel title="대상" subtitle="(symbol, tf, path, side) 조합 선택">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
             <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Symbol
+              심볼
             </label>
             <div className="flex flex-wrap gap-1">
               {SYMBOLS.map((s) => (
@@ -89,7 +89,7 @@ export default function CalibrationAdmin() {
           </div>
           <div>
             <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Timeframe
+              TF
             </label>
             <div className="flex gap-1">
               {TFS.map((t) => (
@@ -131,7 +131,7 @@ export default function CalibrationAdmin() {
           </div>
           <div>
             <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Side
+              방향
             </label>
             <div className="flex gap-1">
               {(["long", "short"] as const).map((s) => (
@@ -157,7 +157,7 @@ export default function CalibrationAdmin() {
 
       {/* Manual triggers */}
       <HudPanel
-        title="Manual Re-calibration"
+        title="수동 재캘리브레이션"
         subtitle="대상 (symbol, tf, path, side) 의 가중치/임계 즉시 재calibration"
       >
         <div className="flex flex-wrap gap-2">
@@ -171,7 +171,7 @@ export default function CalibrationAdmin() {
             ) : (
               <RefreshCw className="h-3 w-3 mr-1.5" />
             )}
-            RE-CALIBRATE WEIGHTS
+            가중치 재캘리브레이션
           </Button>
           <Button
             onClick={handleTriggerThreshold}
@@ -183,49 +183,49 @@ export default function CalibrationAdmin() {
             ) : (
               <RefreshCw className="h-3 w-3 mr-1.5" />
             )}
-            RE-CALIBRATE THRESHOLD
+            임계값 재캘리브레이션
           </Button>
         </div>
         {/* Result feedback */}
         {triggerWeightsMutation.data && (
           <div className="mt-3 font-mono text-[11px] text-neon-green border border-neon-green/30 bg-neon-green/5 rounded-sm px-2 py-1.5">
-            ✓ Weights — status:{" "}
+            ✓ 가중치 — status:{" "}
             {JSON.stringify(triggerWeightsMutation.data)}
           </div>
         )}
         {triggerThresholdMutation.data && (
           <div className="mt-3 font-mono text-[11px] text-neon-pink border border-neon-pink/30 bg-neon-pink/5 rounded-sm px-2 py-1.5">
-            ✓ Threshold — status:{" "}
+            ✓ 임계값 — status:{" "}
             {JSON.stringify(triggerThresholdMutation.data)}
           </div>
         )}
         {triggerWeightsMutation.error && (
           <div className="mt-3 font-mono text-[11px] text-neon-red border border-neon-red/30 bg-neon-red/5 rounded-sm px-2 py-1.5">
-            ✗ Weights error: {triggerWeightsMutation.error.message}
+            ✗ 가중치 오류: {triggerWeightsMutation.error.message}
           </div>
         )}
       </HudPanel>
 
       {/* History */}
       <HudPanel
-        title="Calibration History"
+        title="캘리브레이션 이력"
         subtitle={`${symbol} · ${tf} · ${path} · ${side}`}
         headerRight={
           <Badge className="bg-card/60 text-muted-foreground border-border/30 font-mono text-[10px]">
             <History className="h-2.5 w-2.5 mr-0.5" />
-            {historyQuery.data?.length ?? 0} rows
+            {historyQuery.data?.length ?? 0}건
           </Badge>
         }
       >
         {historyQuery.isLoading && (
           <div className="flex items-center gap-2 py-3 font-mono text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Loading history...
+            이력 불러오는 중...
           </div>
         )}
         {historyQuery.error && (
           <div className="font-mono text-xs text-neon-red py-3">
-            Error: {historyQuery.error.message}
+            오류: {historyQuery.error.message}
           </div>
         )}
         {historyQuery.data && historyQuery.data.length === 0 && (
@@ -240,10 +240,10 @@ export default function CalibrationAdmin() {
               <thead>
                 <tr className="border-b border-border/30">
                   <th className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2 text-left">
-                    Calibrated At
+                    캘리브레이션 시각
                   </th>
                   <th className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2">
-                    Source
+                    소스
                   </th>
                   <th className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2">
                     MOM
@@ -267,7 +267,7 @@ export default function CalibrationAdmin() {
                     n
                   </th>
                   <th className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider py-2 px-2">
-                    Status
+                    상태
                   </th>
                 </tr>
               </thead>

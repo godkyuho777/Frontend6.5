@@ -67,7 +67,7 @@ function PlaceholderBacktest({ strategy }: { strategy: BacktestStrategyMeta }) {
   return (
     <HudPanel
       title={`${strategy.label} 백테스트`}
-      subtitle="STRATEGY-SPECIFIC BACKTEST"
+      subtitle="전략별 단일 코인 백테스트"
     >
       <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
         <Info className="h-6 w-6 text-neon-yellow" />
@@ -98,19 +98,19 @@ export function CoinBacktestTab({ symbol, tracker = "bbdx" }: CoinBacktestTabPro
   if (!strategy.wired) {
     return (
       <div className="space-y-4">
-        <HudPanel title="전략 정보" subtitle="STRATEGY METADATA">
+        <HudPanel title="전략 정보" subtitle="전략 메타데이터">
           <dl className="space-y-1.5 font-mono text-xs">
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">전략 라벨</dt>
+              <dt className="text-muted-foreground">전략 이름</dt>
               <dd className="text-neon-cyan">{strategy.label}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">백엔드 strategy ID</dt>
+              <dt className="text-muted-foreground">백엔드 전략 ID</dt>
               <dd className="text-foreground">{strategy.id}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Wire 상태</dt>
-              <dd className="text-neon-yellow">PENDING (placeholder)</dd>
+              <dt className="text-muted-foreground">연동 상태</dt>
+              <dd className="text-neon-yellow">준비 중 (placeholder)</dd>
             </div>
           </dl>
         </HudPanel>
@@ -121,19 +121,19 @@ export function CoinBacktestTab({ symbol, tracker = "bbdx" }: CoinBacktestTabPro
 
   return (
     <div className="space-y-4">
-      <HudPanel title="전략 정보" subtitle="STRATEGY METADATA">
+      <HudPanel title="전략 정보" subtitle="전략 메타데이터">
         <dl className="space-y-1.5 font-mono text-xs">
           <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">전략 라벨</dt>
+            <dt className="text-muted-foreground">전략 이름</dt>
             <dd className="text-neon-cyan">{strategy.label}</dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">백엔드 strategy ID</dt>
+            <dt className="text-muted-foreground">백엔드 전략 ID</dt>
             <dd className="text-foreground">{strategy.id}</dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">Wire 상태</dt>
-            <dd className="text-neon-green">FULL (trpc.backtest.run + trpc.winRate.rolling)</dd>
+            <dt className="text-muted-foreground">연동 상태</dt>
+            <dd className="text-neon-green">완전 연동 (trpc.backtest.run + trpc.winRate.rolling)</dd>
           </div>
         </dl>
       </HudPanel>

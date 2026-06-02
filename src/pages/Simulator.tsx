@@ -3173,18 +3173,18 @@ function BBDXComparisonOneLiner({
   let border: string;
 
   if (winRateDiff > 2) {
-    icon = <span>🎯</span>;
+    icon = <TrendingUp className="h-4 w-4" />;
     color = "text-neon-green";
     border = "border-neon-green/40 bg-neon-green/5";
     text = (
       <>
         당신의 Win Rate{" "}
         <span className="font-bold">{userWinRatePct.toFixed(1)}%</span> — BBDX 시스템 ({baselineWinRatePct.toFixed(1)}%) 대비{" "}
-        <span className="font-bold">+{winRateDiff.toFixed(1)}pp 우수</span> ⭐
+        <span className="font-bold">+{winRateDiff.toFixed(1)}pp 우수</span>
       </>
     );
   } else if (winRateDiff < -2) {
-    icon = <span>📉</span>;
+    icon = <TrendingDown className="h-4 w-4" />;
     color = "text-neon-red";
     border = "border-neon-red/40 bg-neon-red/5";
     text = (
@@ -3239,7 +3239,7 @@ function BBDXComparisonCard({
       <div className="flex items-center gap-2 text-[10px] font-mono">
         <BarChart3 className="h-3.5 w-3.5 text-neon-pink" />
         <span className="font-display font-bold text-foreground uppercase tracking-wide">
-          📊 BBDX 시스템 vs 내 거래
+          BBDX 시스템 vs 내 거래
         </span>
         <span className="ml-auto text-muted-foreground hidden md:inline">
           baseline: {BBDX_BASELINE.period}

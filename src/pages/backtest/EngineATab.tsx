@@ -232,21 +232,21 @@ function ResultMetrics({ r }: { r: SingleIndicatorResult }) {
   const suf = sufficiencyMeta(r.sample_sufficiency);
   return (
     <HudPanel
-      title="Result Metrics"
+      title="결과 지표"
       subtitle="Wilson 95% CI · binomial p-value"
       variant="highlight"
     >
       <div className="space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          <Metric label="Signals" value={r.total_signals.toString()} />
+          <Metric label="시그널 수" value={r.total_signals.toString()} />
           <Metric
-            label="Win Rate"
+            label="승률"
             value={`${(r.win_rate * 100).toFixed(1)}%`}
             sub={`CI [${(r.ci[0] * 100).toFixed(1)}, ${(r.ci[1] * 100).toFixed(1)}]`}
             color={r.win_rate >= 0.5 ? "text-neon-green" : "text-red-400"}
           />
           <Metric
-            label="Avg Return"
+            label="평균 수익"
             value={`${r.avg_return_pct >= 0 ? "+" : ""}${r.avg_return_pct.toFixed(2)}%`}
             color={r.avg_return_pct >= 0 ? "text-neon-cyan" : "text-red-400"}
           />
@@ -337,9 +337,9 @@ function DistributionChart({ result }: { result: SingleIndicatorResult }) {
 
   if (data.length === 0) {
     return (
-      <HudPanel title="Distribution by Indicator Value">
+      <HudPanel title="지표 값별 분포">
         <div className="py-6 text-center font-mono text-xs text-muted-foreground">
-          분포 데이터 없음 (signals = {result.total_signals})
+          아직 분포 데이터가 없습니다 (시그널 = {result.total_signals})
         </div>
       </HudPanel>
     );
@@ -347,7 +347,7 @@ function DistributionChart({ result }: { result: SingleIndicatorResult }) {
 
   return (
     <HudPanel
-      title="Distribution by Indicator Value"
+      title="지표 값별 분포"
       subtitle="bucket 별 승률 + Wilson 95% CI"
     >
       <ResponsiveContainer width="100%" height={280}>
@@ -371,7 +371,7 @@ function DistributionChart({ result }: { result: SingleIndicatorResult }) {
               fill: "#7a7a7a",
             }}
             label={{
-              value: "Win Rate %",
+              value: "승률 %",
               angle: -90,
               position: "insideLeft",
               style: {
@@ -395,7 +395,7 @@ function DistributionChart({ result }: { result: SingleIndicatorResult }) {
                 const p = item.payload;
                 return [
                   `${v.toFixed(1)}% (n=${p.n}, CI [${p.ciLo.toFixed(1)}, ${p.ciHi.toFixed(1)}])`,
-                  "Win Rate",
+                  "승률",
                 ];
               }
               return [v, name];
@@ -430,17 +430,17 @@ function AlphaCard({ r }: { r: SingleIndicatorResult }) {
   const significant = r.alpha_significant;
   return (
     <HudPanel
-      title="Alpha Significance"
-      subtitle="baseline vs result · binomial p-value"
+      title="알파 유의성"
+      subtitle="기준 vs 결과 · binomial p-value"
     >
       <div className="space-y-3">
         <div className="grid grid-cols-3 gap-2">
           <Metric
-            label="Baseline Win Rate"
+            label="기준 승률"
             value={`${(r.baseline_winrate * 100).toFixed(1)}%`}
           />
           <Metric
-            label="Result Win Rate"
+            label="결과 승률"
             value={`${(r.win_rate * 100).toFixed(1)}%`}
             color={
               r.win_rate >= r.baseline_winrate
@@ -512,7 +512,7 @@ export default function EngineATab() {
   return (
     <div className="space-y-4">
       {/* Example scenario */}
-      <HudPanel title="예시 시나리오" subtitle="hypothesis-driven backtest">
+      <HudPanel title="예시 시나리오" subtitle="가설 기반 백테스트">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="font-mono text-xs text-muted-foreground leading-relaxed flex-1 min-w-[260px]">
             BTC 4H 에서 RSI &lt; 30 매수, 3% 익절 / 30 캔들 시간 손절. 1년치
@@ -531,14 +531,14 @@ export default function EngineATab() {
 
       {/* Form */}
       <HudPanel
-        title="Engine A — Single Indicator Config"
-        subtitle="단일 지표 + 단순 entry/exit → alpha 측정"
+        title="Engine A — 단일 지표 설정"
+        subtitle="단일 지표 + 단순 진입/청산 → 알파 측정"
       >
         <div className="space-y-4">
           {/* Indicator + Entry */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div>
-              <Label>Indicator</Label>
+              <Label>지표</Label>
               <Select
                 value={form.indicator}
                 onValueChange={v => setField("indicator", v)}
@@ -574,7 +574,7 @@ export default function EngineATab() {
               )}
             </div>
             <div>
-              <Label>Entry Condition</Label>
+              <Label>진입 조건</Label>
               <div className="flex gap-2">
                 <Select
                   value={form.entryType}
@@ -602,7 +602,7 @@ export default function EngineATab() {
                   value={form.entryThreshold}
                   onChange={e => setField("entryThreshold", e.target.value)}
                   className="h-9 font-mono text-xs bg-muted"
-                  placeholder="threshold"
+                  placeholder="임계값"
                 />
                 {form.entryType === "between" && (
                   <Input
@@ -610,13 +610,13 @@ export default function EngineATab() {
                     value={form.entryThresholdHi}
                     onChange={e => setField("entryThresholdHi", e.target.value)}
                     className="h-9 font-mono text-xs bg-muted"
-                    placeholder="hi"
+                    placeholder="상한"
                   />
                 )}
               </div>
             </div>
             <div>
-              <Label>Symbol / TF</Label>
+              <Label>심볼 / TF</Label>
               <div className="flex gap-2">
                 <Input
                   value={form.symbol}
@@ -650,7 +650,7 @@ export default function EngineATab() {
           {/* Exit + Dates */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div>
-              <Label>Exit Type</Label>
+              <Label>청산 유형</Label>
               <Select
                 value={form.exitType}
                 onValueChange={v => setField("exitType", v as ExitType)}
@@ -672,7 +672,7 @@ export default function EngineATab() {
               </Select>
             </div>
             <div>
-              <Label>Exit Params</Label>
+              <Label>청산 파라미터</Label>
               <div className="flex gap-2 items-center">
                 {form.exitType === "fixed_return" && (
                   <>
@@ -681,7 +681,7 @@ export default function EngineATab() {
                       value={form.exitTargetPct}
                       onChange={e => setField("exitTargetPct", e.target.value)}
                       className="h-9 font-mono text-xs bg-muted"
-                      placeholder="target %"
+                      placeholder="익절 %"
                     />
                     <span className="font-mono text-[10px] text-muted-foreground">
                       %
@@ -695,7 +695,7 @@ export default function EngineATab() {
                       value={form.exitStopPct}
                       onChange={e => setField("exitStopPct", e.target.value)}
                       className="h-9 font-mono text-xs bg-muted"
-                      placeholder="stop %"
+                      placeholder="손절 %"
                     />
                     <span className="font-mono text-[10px] text-muted-foreground">
                       %
@@ -707,15 +707,15 @@ export default function EngineATab() {
                   value={form.exitMaxBars}
                   onChange={e => setField("exitMaxBars", e.target.value)}
                   className="h-9 font-mono text-xs bg-muted"
-                  placeholder="max bars"
+                  placeholder="최대 캔들"
                 />
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  bars
+                  캔들
                 </span>
               </div>
             </div>
             <div>
-              <Label>Date Range</Label>
+              <Label>기간</Label>
               <div className="flex gap-2">
                 <Input
                   type="date"
@@ -752,7 +752,7 @@ export default function EngineATab() {
       </HudPanel>
 
       {errorDetail && (
-        <HudPanel title="Error" variant="danger">
+        <HudPanel title="오류" variant="danger">
           <div className="font-mono text-xs text-red-400">{errorDetail}</div>
         </HudPanel>
       )}
@@ -761,7 +761,7 @@ export default function EngineATab() {
         <div className="py-12 flex flex-col items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <div className="font-mono text-xs text-muted-foreground">
-            Engine A 실행 중 — Timeline 빌드 + signal 재생 + bucketing...
+            Engine A 실행 중 — 타임라인 빌드 + 시그널 재생 + bucketing...
           </div>
         </div>
       )}

@@ -18,10 +18,10 @@ export function TradeHistoryTab({ symbol }: TradeHistoryTabProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-2">
         <p className="font-sans text-xs text-muted-foreground">
-          Trade history empty
+          아직 거래 기록이 없습니다.
         </p>
         <p className="font-sans text-[10px] text-muted-foreground/70">
-          BACKTEST 탭에서 RUN 클릭하면 여기에 trade 가 표시됩니다.
+          백테스트 탭에서 백테스트를 실행하면 거래 내역이 여기에 표시됩니다.
         </p>
       </div>
     );

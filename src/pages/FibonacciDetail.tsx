@@ -45,7 +45,7 @@ export default function FibonacciDetail() {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <RefreshCw className="h-8 w-8 text-neon-cyan animate-spin" />
         <p className="font-sans text-sm text-muted-foreground">
-          Analyzing {symbol} Fibonacci levels ({tfLabel})...
+          {symbol} 피보나치 레벨 분석 중 ({tfLabel})...
         </p>
       </div>
     );
@@ -54,12 +54,12 @@ export default function FibonacciDetail() {
   if (error || !analysis) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="font-sans text-sm text-neon-red">{error || "Analysis failed"}</p>
+        <p className="font-sans text-sm text-neon-red">{error || "분석에 실패했습니다"}</p>
         <button
           onClick={() => setLocation("/fibonacci")}
           className="text-neon-cyan text-sm underline font-sans"
         >
-          Back to Fibonacci scanner
+          피보나치 스캐너로 돌아가기
         </button>
       </div>
     );
@@ -82,7 +82,7 @@ export default function FibonacciDetail() {
             {symbol.replace("USDT", "")} / USDT
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            FIBONACCI + TRENDLINE · {tfLabel} CHART
+            피보나치 + 추세선 · {tfLabel} 차트
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -93,7 +93,7 @@ export default function FibonacciDetail() {
           />
           <RefreshIconButton
             onClick={refetch}
-            label={`Refresh ${symbol.replace("USDT", "")} Fibonacci analysis`}
+            label={`${symbol.replace("USDT", "")} 피보나치 분석 새로고침`}
           />
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function FibonacciDetail() {
       {/* Signal Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <HudPanel
-          title="Signal"
+          title="시그널"
           variant={
             analysis.signal.type === "BUY"
               ? "highlight"
@@ -124,7 +124,7 @@ export default function FibonacciDetail() {
               {analysis.signal.type}
             </div>
             <div className="flex-1">
-              <div className="font-sans text-xs text-muted-foreground mb-1">Strength</div>
+              <div className="font-sans text-xs text-muted-foreground mb-1">강도</div>
               <div className="w-full h-2 bg-border/30 rounded-full overflow-hidden">
                 <div
                   className={cn(
@@ -145,16 +145,16 @@ export default function FibonacciDetail() {
           </div>
         </HudPanel>
 
-        <HudPanel title="Current Zone">
+        <HudPanel title="현재 구간">
           <div className="font-sans text-sm text-neon-cyan mb-2">{analysis.currentZone}</div>
           <div className="font-sans text-xs text-muted-foreground">
-            Price: $
+            가격: $
             {currentPrice < 1
               ? currentPrice.toPrecision(4)
               : currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
           <div className="font-mono text-xs text-muted-foreground mt-1">
-            Trend:{" "}
+            추세:{" "}
             <span
               className={cn(
                 analysis.trend === "UP"
@@ -169,7 +169,7 @@ export default function FibonacciDetail() {
           </div>
         </HudPanel>
 
-        <HudPanel title="Analysis Reasons">
+        <HudPanel title="분석 근거">
           <div className="space-y-1.5">
             {analysis.signal.reasons.map((reason, i) => (
               <div key={i} className="flex items-start gap-2">
@@ -185,8 +185,8 @@ export default function FibonacciDetail() {
 
       {/* Candlestick Chart with Fibonacci + Trendlines */}
       <HudPanel
-        title="Fibonacci Chart"
-        subtitle={`${symbol} · ${tfLabel} (TF: ${fibTf}) · ${candles.length} candles · ${analysis.fibLevels.length} fib levels · ${analysis.trendlines.filter((t) => t.isValid).length} trendlines`}
+        title="피보나치 차트"
+        subtitle={`${symbol} · ${tfLabel} (TF: ${fibTf}) · 캔들 ${candles.length}개 · fib 레벨 ${analysis.fibLevels.length}개 · 추세선 ${analysis.trendlines.filter((t) => t.isValid).length}개`}
       >
         <CandleChartLW
           candles={candles}
@@ -197,12 +197,12 @@ export default function FibonacciDetail() {
       </HudPanel>
 
       {/* Fibonacci Levels Table */}
-      <HudPanel title="Fibonacci Levels" subtitle="±0.5% tolerance zones">
+      <HudPanel title="피보나치 레벨" subtitle="±0.5% 허용 구간">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/30">
-                {["Level", "Price", "Zone Low (-0.5%)", "Zone High (+0.5%)", "Status"].map(
+                {["레벨", "가격", "구간 하단 (-0.5%)", "구간 상단 (+0.5%)", "상태"].map(
                   (h, i) => (
                     <th
                       key={h}
@@ -257,7 +257,7 @@ export default function FibonacciDetail() {
                     <td className="py-2 px-3 text-center">
                       {inZone ? (
                         <span className="text-xs font-sans text-neon-yellow font-bold">
-                          ● IN ZONE
+                          ● 구간 내
                         </span>
                       ) : (
                         <span className="text-xs font-sans text-muted-foreground">-</span>
@@ -273,12 +273,12 @@ export default function FibonacciDetail() {
 
       {/* Trendlines */}
       <HudPanel
-        title="Detected Trendlines"
-        subtitle={`${analysis.trendlines.filter((t) => t.isValid).length} valid trendlines found`}
+        title="감지된 추세선"
+        subtitle={`유효 추세선 ${analysis.trendlines.filter((t) => t.isValid).length}개 발견`}
       >
         {analysis.trendlines.length === 0 ? (
           <p className="font-sans text-xs text-muted-foreground text-center py-4">
-            No significant trendlines detected
+            아직 유의미한 추세선이 없습니다
           </p>
         ) : (
           <div className="space-y-3">
@@ -325,21 +325,21 @@ function TrendlineCard({
               trendline.type === "support" ? "text-neon-green" : "text-neon-red"
             )}
           >
-            {trendline.type === "support" ? "▲ SUPPORT" : "▼ RESISTANCE"}
+            {trendline.type === "support" ? "▲ 지지" : "▼ 저항"}
           </span>
           {trendline.isValid && (
             <span className="text-[10px] font-sans text-neon-cyan bg-neon-cyan/10 px-1.5 py-0.5 rounded">
-              VALID
+              유효
             </span>
           )}
         </div>
         <span className="font-sans text-xs text-muted-foreground">
-          {trendline.touchCount} touches · {trendline.durationDays.toFixed(0)} days
+          터치 {trendline.touchCount}회 · {trendline.durationDays.toFixed(0)}일
         </span>
       </div>
       <div className="grid grid-cols-3 gap-4 text-xs font-sans">
         <div>
-          <span className="text-muted-foreground">Current Level:</span>
+          <span className="text-muted-foreground">현재 레벨:</span>
           <div className="text-foreground">
             $
             {trendline.currentPrice < 1
@@ -348,20 +348,20 @@ function TrendlineCard({
           </div>
         </div>
         <div>
-          <span className="text-muted-foreground">Distance:</span>
+          <span className="text-muted-foreground">이격:</span>
           <div className={cn(distance >= 0 ? "text-neon-green" : "text-neon-red")}>
             {distance >= 0 ? "+" : ""}
             {distance.toFixed(2)}%
           </div>
         </div>
         <div>
-          <span className="text-muted-foreground">Slope:</span>
+          <span className="text-muted-foreground">기울기:</span>
           <div className={cn(trendline.slope >= 0 ? "text-neon-green" : "text-neon-red")}>
             {trendline.slope >= 0 ? "↑" : "↓"} $
             {Math.abs(trendline.slope) < 1
               ? Math.abs(trendline.slope).toPrecision(4)
               : Math.abs(trendline.slope).toFixed(2)}
-            /candle
+            /캔들
           </div>
         </div>
       </div>

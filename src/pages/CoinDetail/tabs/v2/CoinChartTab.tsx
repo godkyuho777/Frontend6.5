@@ -101,14 +101,14 @@ function BbdxChartContent({
         interval={interval}
         setInterval={setInterval}
         legend={[
-          { color: "bg-neon-cyan", label: "Close" },
-          { color: "bg-muted-foreground", label: "BB Upper/Mid/Lower" },
+          { color: "bg-neon-cyan", label: "종가" },
+          { color: "bg-muted-foreground", label: "BB 상단/중단/하단" },
           { color: "bg-neon-yellow", label: "RSI (14)" },
           { color: "bg-neon-pink", label: "ADX / ±DI" },
         ]}
       />
       <ChartZone symbol={symbol} interval={interval} />
-      <HudPanel title="차트 가이드" subtitle="HOW TO READ — BBDX">
+      <HudPanel title="차트 가이드" subtitle="BBDX 차트 읽는 법">
         <ul className="space-y-1.5 font-mono text-xs text-foreground/80">
           <li>
             · <span className="text-neon-cyan">BB Lower 근접 + RSI &lt; 38</span> = BBDX NUM path 진입 후보 (LONG)
@@ -152,25 +152,25 @@ function FibonacciChartContent({
         interval={interval}
         setInterval={setInterval}
         legend={[
-          { color: "bg-neon-cyan", label: "Candle" },
-          { color: "bg-yellow-400", label: "Fib 61.8 (Golden)" },
-          { color: "bg-neon-pink", label: "Fib 38.2 (Golden)" },
-          { color: "bg-neon-green", label: "Support Trendline" },
-          { color: "bg-neon-red", label: "Resistance Trendline" },
+          { color: "bg-neon-cyan", label: "캔들" },
+          { color: "bg-yellow-400", label: "Fib 61.8 (황금비)" },
+          { color: "bg-neon-pink", label: "Fib 38.2 (황금비)" },
+          { color: "bg-neon-green", label: "지지 추세선" },
+          { color: "bg-neon-red", label: "저항 추세선" },
         ]}
       />
       {isLoading && (
-        <HudPanel title="Fibonacci Chart" subtitle={`${symbol} · ${interval.toUpperCase()}`}>
+        <HudPanel title="Fibonacci 차트" subtitle={`${symbol} · ${interval.toUpperCase()}`}>
           <div className="h-[400px] flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-neon-cyan" />
             <span className="font-mono text-xs text-muted-foreground">
-              Fibonacci 차트 로딩 중...
+              Fibonacci 차트 불러오는 중...
             </span>
           </div>
         </HudPanel>
       )}
       {error && !isLoading && (
-        <HudPanel title="Fibonacci Chart" subtitle="ERROR" variant="danger">
+        <HudPanel title="Fibonacci 차트" subtitle="오류" variant="danger">
           <div className="flex items-center gap-2 py-6">
             <AlertCircle className="h-4 w-4 text-neon-red" />
             <span className="font-mono text-xs text-neon-red">{error}</span>
@@ -179,8 +179,8 @@ function FibonacciChartContent({
       )}
       {analysis && !isLoading && (
         <HudPanel
-          title="Fibonacci Chart"
-          subtitle={`${symbol} · ${interval.toUpperCase()} (TF: ${fibTf}) · ${candles.length} candles · ${fibLevelCount} fib levels · ${validTrendlines.length} trendlines`}
+          title="Fibonacci 차트"
+          subtitle={`${symbol} · ${interval.toUpperCase()} (TF: ${fibTf}) · 캔들 ${candles.length}개 · Fib 레벨 ${fibLevelCount}개 · 추세선 ${validTrendlines.length}개`}
         >
           <CandleChartLW
             candles={candles}
@@ -190,7 +190,7 @@ function FibonacciChartContent({
           />
         </HudPanel>
       )}
-      <HudPanel title="차트 가이드" subtitle="HOW TO READ — FIBONACCI">
+      <HudPanel title="차트 가이드" subtitle="Fibonacci 차트 읽는 법">
         <ul className="space-y-1.5 font-mono text-xs text-foreground/80">
           <li>
             · <span className="text-yellow-400">Fib 61.8% (Golden Ratio)</span> = 강한 지지/저항 — 진입 후보
@@ -236,11 +236,11 @@ function VwapChartContent({
         interval={interval}
         setInterval={setInterval}
         legend={[
-          { color: "bg-white", label: "Close" },
+          { color: "bg-white", label: "종가" },
           { color: "bg-neon-yellow", label: "VWAP" },
           { color: "bg-neon-cyan", label: "EMA(9)" },
           { color: "bg-neon-pink", label: "POC (VP)" },
-          { color: "bg-muted-foreground", label: "±1/2/3σ Bands" },
+          { color: "bg-muted-foreground", label: "±1/2/3σ 밴드" },
         ]}
       />
       {fallbackNote && (
@@ -249,21 +249,21 @@ function VwapChartContent({
         </div>
       )}
       {isLoading && (
-        <HudPanel title="VWAP Chart" subtitle="LOADING...">
+        <HudPanel title="VWAP 차트" subtitle="불러오는 중...">
           <div className="h-[400px] flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-neon-cyan" />
             <span className="font-mono text-xs text-muted-foreground">
-              VWAP 차트 로딩 중...
+              VWAP 차트 불러오는 중...
             </span>
           </div>
         </HudPanel>
       )}
       {isError && !isLoading && (
-        <HudPanel title="VWAP Chart" subtitle="ERROR" variant="danger">
+        <HudPanel title="VWAP 차트" subtitle="오류" variant="danger">
           <div className="flex items-center gap-2 py-6">
             <AlertCircle className="h-4 w-4 text-neon-red" />
             <span className="font-mono text-xs text-neon-red">
-              VWAP detail 조회 실패 — 백엔드 vwap.detail 라우트 확인 필요.
+              VWAP 상세를 불러오지 못했습니다. 백엔드 vwap.detail 라우트를 확인하세요.
             </span>
           </div>
         </HudPanel>
@@ -271,20 +271,20 @@ function VwapChartContent({
       {detail && (
         <>
           <HudPanel
-            title="VWAP Chart"
+            title="VWAP 차트"
             subtitle={`${symbol} · ${vwapTf.toUpperCase()} · VWAP + EMA(9) + ±σ`}
           >
             <VwapChartPanel detail={detail} />
           </HudPanel>
           <HudPanel
-            title="Volume Profile"
+            title="거래량 프로파일"
             subtitle="POC · HVN · LVN · Value Area"
           >
             <VolumeProfilePanel profile={detail.volumeProfile} />
           </HudPanel>
         </>
       )}
-      <HudPanel title="차트 가이드" subtitle="HOW TO READ — VWAP">
+      <HudPanel title="차트 가이드" subtitle="VWAP 차트 읽는 법">
         <ul className="space-y-1.5 font-mono text-xs text-foreground/80">
           <li>
             · <span className="text-neon-yellow">VWAP</span> = 거래량 가중 평균가 (anchor)

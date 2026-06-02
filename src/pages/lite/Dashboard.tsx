@@ -207,7 +207,7 @@ function CoinRecommendationCard({
                 ? "caution"
                 : "default"
         }
-        onClick={() => {}}
+        interactive
       >
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-2 flex-wrap">

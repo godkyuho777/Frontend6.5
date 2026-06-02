@@ -196,7 +196,7 @@ function CalibrationCard({ item }: { item: HistoryCalibrationItem }) {
   const diff = item.weight_after - item.weight_before;
   return (
     <div className="flex items-center gap-3 flex-wrap font-mono text-xs">
-      <span className="text-muted-foreground">Weight:</span>
+      <span className="text-muted-foreground">가중치:</span>
       <span className="tabular-nums">{item.weight_before.toFixed(2)}</span>
       <ArrowRight className="h-3 w-3 text-muted-foreground" />
       <span
@@ -268,7 +268,7 @@ export function HistoryTab({
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          Type:
+          유형:
         </span>
         {allTypes.map((t) => {
           const isActive = active.includes(t);
@@ -293,15 +293,15 @@ export function HistoryTab({
       </div>
 
       <HudPanel
-        title="Timeline"
-        subtitle={isLoading ? "LOADING..." : `${filtered.length} items`}
+        title="타임라인"
+        subtitle={isLoading ? "불러오는 중..." : `${filtered.length}개 항목`}
         headerRight={<History className="h-4 w-4 text-neon-cyan" />}
       >
         {filtered.length === 0 ? (
           <div className="py-6">
             {emptyState ?? (
               <p className="font-mono text-xs text-muted-foreground italic">
-                기록 없음
+                아직 기록이 없습니다
               </p>
             )}
           </div>

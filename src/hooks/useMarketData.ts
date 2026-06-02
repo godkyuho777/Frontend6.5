@@ -508,6 +508,8 @@ export function useCoinDetail(
   const [data, setData] = useState<CoinDetailPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // refetch 용 nonce — 같은 symbol/interval 로 강제 재조회 (에러 후 RETRY 등).
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (!symbol) return;
@@ -563,7 +565,12 @@ export function useCoinDetail(
     return () => {
       cancelled = true;
     };
+  }, [symbol, interval, limit, nonce]);
+
+  const refetch = useCallback(() => {
+    if (symbol) detailCache.delete(detailKey(symbol, interval, limit));
+    setNonce(n => n + 1);
   }, [symbol, interval, limit]);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch };
 }

@@ -90,35 +90,35 @@ const REGIME_META: Record<
   { label: string; color: string; bg: string; border: string; icon: typeof TrendingUp }
 > = {
   strong_accumulation: {
-    label: "Strong accumulation",
+    label: "강한 매집",
     color: "text-neon-green glow-green",
     bg: "bg-neon-green/10",
     border: "border-neon-green/40",
     icon: TrendingUp,
   },
   accumulation: {
-    label: "Accumulation",
+    label: "매집",
     color: "text-neon-green",
     bg: "bg-neon-green/5",
     border: "border-neon-green/30",
     icon: TrendingUp,
   },
   neutral: {
-    label: "Neutral",
+    label: "중립",
     color: "text-muted-foreground",
     bg: "bg-muted/10",
     border: "border-border/40",
     icon: Database,
   },
   distribution: {
-    label: "Distribution",
+    label: "분산",
     color: "text-neon-red",
     bg: "bg-neon-red/5",
     border: "border-neon-red/30",
     icon: TrendingDown,
   },
   strong_distribution: {
-    label: "Strong distribution",
+    label: "강한 분산",
     color: "text-neon-red glow-red",
     bg: "bg-neon-red/10",
     border: "border-neon-red/40",
@@ -183,10 +183,10 @@ export default function Onchain() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Onchain data
+            온체인 데이터
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            7-DIMENSION MODIFIERS · BBDX WEIGHTING ONLY · 단독 시그널 X
+            7개 온체인 차원으로 BBDX 시그널의 가중치를 계산합니다 (단독 신호 아님)
           </p>
         </div>
         <form
@@ -198,7 +198,7 @@ export default function Onchain() {
             onChange={(e) => setSymbolInput(e.target.value)}
             list="onchain-symbols"
             className="h-6 w-32 px-1 font-sans text-[10px] bg-background/50 border-border/30"
-            placeholder="Symbol"
+            placeholder="심볼"
           />
           <datalist id="onchain-symbols">
             {TOP_COINS.map((s) => (
@@ -211,14 +211,14 @@ export default function Onchain() {
             variant="outline"
             className="h-6 px-2 font-sans text-[10px] border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10"
           >
-            Fetch
+            조회
           </Button>
         </form>
       </div>
 
       {/* Loading */}
       {isLoading && !data && (
-        <HudPanel title="Loading">
+        <HudPanel title="불러오는 중">
           <div className="flex items-center justify-center py-8 gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
             <span className="font-sans text-xs text-muted-foreground">
@@ -229,7 +229,7 @@ export default function Onchain() {
       )}
 
       {scoreQuery.error && (
-        <HudPanel title="Error" variant="danger">
+        <HudPanel title="오류" variant="danger">
           <div className="flex items-center gap-2 py-4">
             <AlertTriangle className="h-4 w-4 text-neon-red" />
             <span className="font-sans text-xs text-neon-red">
@@ -242,7 +242,7 @@ export default function Onchain() {
               className="ml-auto h-6 border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 font-sans text-[10px]"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              RETRY
+              다시 시도
             </Button>
           </div>
         </HudPanel>
@@ -252,7 +252,7 @@ export default function Onchain() {
         <>
           {/* Regime + Score (overall) */}
           <HudPanel
-            title="Onchain Regime"
+            title="온체인 국면"
             subtitle={`${data.symbol} · 계산: ${new Date(data.computedAt).toLocaleString("ko-KR")}`}
             variant="highlight"
           >
@@ -271,7 +271,7 @@ export default function Onchain() {
                 </div>
                 <div className="text-right">
                   <div className="font-sans text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Score
+                    점수
                   </div>
                   <div className={cn("tl-market-number text-3xl leading-none", valueColor(data.score))}>
                     {fmtValue(data.score)}
@@ -295,16 +295,16 @@ export default function Onchain() {
                 />
               </div>
               <div className="flex items-center justify-between font-sans text-[9px] text-muted-foreground">
-                <span>-1.0 strong distribution</span>
-                <span>0 neutral</span>
-                <span>+1.0 strong accumulation</span>
+                <span>-1.0 강한 분산</span>
+                <span>0 중립</span>
+                <span>+1.0 강한 매집</span>
               </div>
             </div>
           </HudPanel>
 
           {/* 7-modifier breakdown */}
           <HudPanel
-            title="Modifier Breakdown"
+            title="모디파이어 세부"
             subtitle="각 modifier 는 -0.25 ~ +0.20 범위. status=ok 는 진짜 데이터, stub 은 키 미설정"
           >
             <div className="space-y-1.5">
@@ -353,10 +353,10 @@ export default function Onchain() {
                             )}
                           >
                             {isStub
-                              ? "Data source pending"
+                              ? "데이터 소스 대기"
                               : isMock
                                 ? "Mock"
-                                : "Error"}
+                                : "오류"}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent
@@ -437,7 +437,7 @@ export default function Onchain() {
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Base Strength (BBDX 0~100)
+                      기본 강도 (BBDX 0~100)
                     </label>
                     <input
                       type="range"
@@ -486,7 +486,7 @@ export default function Onchain() {
                       <div className="flex items-center gap-2 text-neon-red">
                         <XCircle className="h-5 w-5" />
                         <span className="font-display text-sm tracking-wider">
-                          ENTRY BLOCKED
+                          진입 차단
                         </span>
                       </div>
                       <p className="font-sans text-[11px] text-neon-red/90">
@@ -498,25 +498,25 @@ export default function Onchain() {
                       <div className="flex items-center gap-2 text-neon-cyan">
                         <Zap className="h-5 w-5" />
                         <span className="font-display text-sm tracking-wider">
-                          ENTRY ALLOWED
+                          진입 허용
                         </span>
                       </div>
                       <div className="font-sans text-[11px] text-foreground space-y-0.5">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Base Strength</span>
+                          <span className="text-muted-foreground">기본 강도</span>
                           <span>{adjusted.baseStrength.toFixed(1)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Onchain Multiplier</span>
+                          <span className="text-muted-foreground">온체인 배수</span>
                           <span className={valueColor(adjusted.multiplier - 1)}>
                             ×{adjusted.multiplier.toFixed(3)}
                           </span>
                         </div>
                         <div className="flex justify-between border-t border-border/30 pt-1 mt-1">
-                          <span className="text-muted-foreground">Final Strength</span>
+                          <span className="text-muted-foreground">최종 강도</span>
                           <span className="font-bold text-neon-cyan">
                             {adjusted.finalStrength.toFixed(1)}
-                            {adjusted.finalStrength === 100 && " (capped)"}
+                            {adjusted.finalStrength === 100 && " (상한 도달)"}
                           </span>
                         </div>
                       </div>
@@ -530,8 +530,8 @@ export default function Onchain() {
           {/* Disclaimer */}
           <div className="bg-yellow-300/5 border border-yellow-300/30 rounded-sm px-3 py-2 font-sans text-[10px] text-yellow-300/80 flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5" />
-            ⚠️ 백테스트 통계. 미래 보장 X. 자기책임. 온체인 점수는 BBDX 시그널의
-            가중치로만 사용되며 단독 매매 신호로 사용하지 마세요.
+            백테스트 통계이며 미래 수익을 보장하지 않습니다. 투자 판단은 본인 책임입니다.
+            온체인 점수는 BBDX 시그널의 가중치로만 사용되며 단독 매매 신호로 사용하지 마세요.
           </div>
         </>
       )}

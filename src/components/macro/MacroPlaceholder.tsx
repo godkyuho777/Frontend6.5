@@ -46,11 +46,11 @@ export function MacroPlaceholder({
               variant="outline"
               className="font-mono text-[10px] border-orange-400/60 text-orange-300 bg-orange-500/10"
             >
-              COMING SOON
+              준비 중
             </Badge>
           </div>
           <p className="text-xs font-mono text-muted-foreground mt-1">
-            Macro liquidity tracker · placeholder
+            매크로 유동성 트래커 · 준비 중인 페이지
           </p>
         </div>
       </div>
@@ -82,9 +82,10 @@ export function MacroPlaceholder({
             </div>
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
-                본 modifier 는 헌장 규칙 3 (modifier-only) 에 따라 BBDX 시그널의
-                신뢰도 multiplier 로만 작동합니다. 단독 매매 신호 발행 X. 현재는
-                백엔드 데이터 통합 + 임계값 calibration 대기 중.
+                이 보조 지표는 헌장 규칙 3 (가중치 전용)에 따라 BBDX 시그널의
+                신뢰도 multiplier로만 작동합니다. 단독 매매 신호는 발행하지
+                않습니다. 현재는 백엔드 데이터 통합과 임계값 캘리브레이션을
+                준비하고 있습니다.
               </p>
             </div>
           </div>

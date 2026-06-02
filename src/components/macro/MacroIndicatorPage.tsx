@@ -72,7 +72,7 @@ export function MacroIndicatorPage({
         </div>
         <RefreshIconButton
           onClick={refetch}
-          label={`Refresh ${meta.title}`}
+          label={`${meta.title} 새로고침`}
           isLoading={isLoading}
         />
       </div>
@@ -83,7 +83,7 @@ export function MacroIndicatorPage({
           <div className="py-12 flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
             <span className="ml-3 font-mono text-xs text-muted-foreground">
-              snapshot 로딩 중...
+              스냅샷을 불러오는 중...
             </span>
           </div>
         </HudPanel>
@@ -134,11 +134,11 @@ export function MacroIndicatorPage({
             <AlertCircle className="h-5 w-5 text-neon-yellow mt-0.5 shrink-0" />
             <div className="flex-1">
               <div className="font-display text-sm font-bold text-neon-yellow">
-                STALE — 데이터 경과 48h 초과
+                데이터 경과 48시간 초과 (STALE)
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                FRED 응답은 수신했으나 snapshot 이 오래됨. freshness multiplier
-                가 자동 적용되어 BBDX 영향이 감쇄됩니다.
+                FRED 응답은 받았지만 스냅샷이 오래되었습니다. 신선도 multiplier가
+                자동 적용되어 BBDX 영향이 감쇄됩니다.
               </p>
             </div>
           </div>

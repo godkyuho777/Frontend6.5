@@ -217,7 +217,7 @@ function FibonacciSignalContent({
           {analysis && !isLoading && (
             <>
               <HudPanel
-                title="Fibonacci Signal"
+                title="Fibonacci 신호"
                 subtitle={`${symbol} · ${interval.toUpperCase()}`}
                 variant={
                   analysis.signal.type === "BUY"
@@ -242,11 +242,11 @@ function FibonacciSignalContent({
                         </Badge>
                       ) : (
                         <Badge className="bg-muted/30 text-muted-foreground border-border/40 font-mono text-xs px-2 py-0.5">
-                          NONE
+                          관망
                         </Badge>
                       )}
                       <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
-                        Trend:{" "}
+                        추세:{" "}
                         <span
                           className={cn(
                             analysis.trend === "UP"
@@ -283,7 +283,7 @@ function FibonacciSignalContent({
                   <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/20">
                     <div>
                       <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                        Current Zone
+                        현재 구간
                       </div>
                       <div className="font-mono text-sm text-neon-cyan">
                         {analysis.currentZone}
@@ -291,7 +291,7 @@ function FibonacciSignalContent({
                     </div>
                     <div>
                       <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                        Active Trendlines
+                        활성 추세선
                       </div>
                       <div className="font-mono text-sm text-foreground">
                         <span className="text-neon-green">{supportLines.length}↑</span>
@@ -323,7 +323,7 @@ function FibonacciSignalContent({
               </HudPanel>
 
               {/* Fibonacci levels list */}
-              <HudPanel title="Fibonacci Levels" subtitle="±0.5% tolerance zones">
+              <HudPanel title="Fib 레벨" subtitle="±0.5% 허용 구간">
                 <div className="space-y-1">
                   {analysis.fibLevels.map((level) => {
                     const inZone = inZoneLevel?.ratio === level.ratio;
@@ -351,7 +351,7 @@ function FibonacciSignalContent({
                           {level.label}
                           {isGolden && (
                             <span className="ml-1 text-[9px] text-muted-foreground">
-                              GOLDEN
+                              황금비
                             </span>
                           )}
                         </span>
@@ -360,7 +360,7 @@ function FibonacciSignalContent({
                         </span>
                         {inZone && (
                           <span className="font-mono text-[10px] text-neon-yellow font-bold">
-                            IN ZONE
+                            구간 진입
                           </span>
                         )}
                       </div>
@@ -371,8 +371,8 @@ function FibonacciSignalContent({
 
               {/* Trendlines */}
               <HudPanel
-                title="Detected Trendlines"
-                subtitle={`${validTrendlines.length} valid · ${analysis.trendlines.length - validTrendlines.length} weak`}
+                title="감지된 추세선"
+                subtitle={`유효 ${validTrendlines.length}개 · 약함 ${analysis.trendlines.length - validTrendlines.length}개`}
               >
                 {validTrendlines.length === 0 ? (
                   <p className="font-mono text-xs text-muted-foreground py-4 text-center">
@@ -399,10 +399,10 @@ function FibonacciSignalContent({
                               tl.type === "support" ? "text-neon-green" : "text-neon-red"
                             )}
                           >
-                            {tl.type === "support" ? "▲ SUPPORT" : "▼ RESISTANCE"}
+                            {tl.type === "support" ? "▲ 지지" : "▼ 저항"}
                           </span>
                           <span className="font-mono text-[10px] text-muted-foreground">
-                            {tl.touchCount} touch · {tl.durationDays.toFixed(0)}d
+                            {tl.touchCount}회 터치 · {tl.durationDays.toFixed(0)}일
                           </span>
                           <span
                             className={cn(
@@ -469,7 +469,7 @@ function VwapSignalContent({
         <div className="md:col-span-8 space-y-3">
           {/* VwapMult chip — 헌장 규칙 3 (BBDX multiplier) */}
           {detail && (
-            <HudPanel title="VWAP Multiplier" subtitle="BBDX 진입 신뢰도 가중치">
+            <HudPanel title="VWAP 가중치" subtitle="BBDX 진입 신뢰도 가중치">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <VwapMultChip vwapMult={detail.vwapMult} />
                 <span className="font-mono text-[10px] text-muted-foreground">
@@ -481,11 +481,11 @@ function VwapSignalContent({
 
           {/* Loading state */}
           {isLoading && (
-            <HudPanel title="VWAP Signal v2" subtitle="LOADING...">
+            <HudPanel title="VWAP 신호 v2" subtitle="불러오는 중...">
               <div className="flex items-center justify-center gap-2 py-8">
                 <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
                 <span className="font-mono text-xs text-muted-foreground">
-                  VWAP detail 조회 중...
+                  VWAP 상세 불러오는 중...
                 </span>
               </div>
             </HudPanel>
@@ -493,11 +493,11 @@ function VwapSignalContent({
 
           {/* Error state */}
           {isError && !isLoading && (
-            <HudPanel title="VWAP Signal v2" subtitle="ERROR" variant="danger">
+            <HudPanel title="VWAP 신호 v2" subtitle="오류" variant="danger">
               <div className="flex items-center gap-2 py-4">
                 <AlertCircle className="h-4 w-4 text-neon-red" />
                 <span className="font-mono text-xs text-neon-red">
-                  VWAP detail 조회 실패 — 백엔드 vwap.detail 라우트 확인 필요.
+                  VWAP 상세를 불러오지 못했습니다. 백엔드 vwap.detail 라우트를 확인하세요.
                 </span>
               </div>
             </HudPanel>
@@ -511,7 +511,7 @@ function VwapSignalContent({
                 <PullbackQualityCard pullback={detail.pullbackV2} />
                 <AlignmentCard alignment={detail.multiTfAlignment} />
               </div>
-              <HudPanel title="Volume Profile" subtitle="POC · HVN · LVN · Value Area">
+              <HudPanel title="거래량 프로파일" subtitle="POC · HVN · LVN · Value Area">
                 <VolumeProfilePanel profile={detail.volumeProfile} />
               </HudPanel>
             </>

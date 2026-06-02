@@ -54,18 +54,18 @@ export function WinRateTab({ symbol, tf = "4h" }: WinRateTabProps) {
             className="p-4 rounded-sm border border-border/20 bg-card/40"
           >
             <div className="font-sans text-[10px] text-muted-foreground uppercase tracking-wider">
-              Last {w.windowDays} days
+              최근 {w.windowDays}일
             </div>
             <div className="tl-market-number mt-1 text-3xl leading-none text-primary">
               {pct}%
             </div>
             <div className="font-sans text-[10px] text-muted-foreground mt-0.5">
-              {w.trades} trades
+              {w.trades}건 거래
             </div>
             <div className="mt-3">
               <div className="flex items-center justify-between font-sans text-[9px] text-muted-foreground mb-1">
                 <span>{ciLowPct.toFixed(1)}%</span>
-                <span>95% CI</span>
+                <span>95% 신뢰구간</span>
                 <span>{ciHighPct.toFixed(1)}%</span>
               </div>
               <div className="relative h-1.5 bg-muted/30 rounded-sm overflow-hidden">

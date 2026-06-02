@@ -14,6 +14,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface PresetState {
   buyAlert: boolean;
@@ -22,17 +23,32 @@ interface PresetState {
   moodAlert: boolean;
 }
 
+const ALERT_PREFS_KEY = "tradelab.lite.alertPrefs";
+
+const DEFAULT_PREFS: PresetState = {
+  buyAlert: true,
+  pnlAlert: true,
+  pnlThreshold: 5,
+  moodAlert: false,
+};
+
+function loadPrefs(): PresetState {
+  if (typeof window === "undefined") return DEFAULT_PREFS;
+  try {
+    const raw = window.localStorage.getItem(ALERT_PREFS_KEY);
+    if (!raw) return DEFAULT_PREFS;
+    return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<PresetState>) };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
 export default function LiteAlerts() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const isLoggedIn = !!user;
 
-  const [state, setState] = useState<PresetState>({
-    buyAlert: true,
-    pnlAlert: true,
-    pnlThreshold: 5,
-    moodAlert: false,
-  });
+  const [state, setState] = useState<PresetState>(loadPrefs);
 
   if (!isLoggedIn) {
     return (
@@ -112,8 +128,19 @@ export default function LiteAlerts() {
 
       <Button
         onClick={() => {
-          // TODO: trpc.alerts.upsert 호출로 실제 저장. v1 stub.
-          alert("알림 설정이 저장됐어요 (v1: 데모 — 실제 알림 발송은 다음 릴리스).");
+          // 선택한 프리셋을 이 기기에 저장한다 (localStorage). 서버 측 알림
+          // 발송은 다음 릴리스이며, 토스트에 그 사실을 정직하게 안내한다.
+          // TODO: trpc.alerts.upsert 로 계정에 동기화 + 실제 발송.
+          try {
+            window.localStorage.setItem(ALERT_PREFS_KEY, JSON.stringify(state));
+          } catch {
+            // localStorage 차단 환경 — 저장 실패를 알린다.
+            toast.error("이 브라우저에서는 설정을 저장할 수 없어요.");
+            return;
+          }
+          toast.success("알림 설정을 이 기기에 저장했어요.", {
+            description: "실제 알림 발송은 다음 릴리스에 켜집니다.",
+          });
         }}
         className="w-full bg-neon-pink/20 hover:bg-neon-pink/30 text-neon-pink border border-neon-pink/40 font-sans text-sm"
       >

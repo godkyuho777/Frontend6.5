@@ -88,8 +88,8 @@ export function MacroTimeSeriesChart({
 
   return (
     <HudPanel
-      title="Time Series"
-      subtitle={`FRED ${period.toUpperCase()} · ${series.length}개 시리즈`}
+      title="시계열"
+      subtitle={`FRED ${period.toUpperCase()} · 시리즈 ${series.length}개`}
       headerRight={
         <Select value={period} onValueChange={v => onPeriodChange(v as MacroPeriod)}>
           <SelectTrigger className="h-7 w-[80px] font-mono text-[10px]">
@@ -149,7 +149,7 @@ export function MacroTimeSeriesChart({
           className="flex items-center justify-center font-mono text-xs text-red-400"
           style={{ height }}
         >
-          FRED fetch 에러 — 시계열 표시 불가
+          FRED 데이터를 불러오지 못해 시계열을 표시할 수 없습니다
         </div>
       ) : allStub || !hasData ? (
         <div
@@ -157,10 +157,10 @@ export function MacroTimeSeriesChart({
           style={{ height }}
         >
           <div className="font-mono text-xs text-muted-foreground">
-            시계열 데이터 없음
+            아직 시계열 데이터가 없습니다
           </div>
           <div className="font-mono text-[10px] text-orange-300/80">
-            FRED_API_KEY 등록 후 자동 표시됩니다
+            FRED_API_KEY를 등록하면 자동으로 표시됩니다
           </div>
         </div>
       ) : (
@@ -251,8 +251,8 @@ export function MacroTimeSeriesChart({
       {allStub && (
         <div className="mt-3 rounded-md border border-orange-500/30 bg-orange-500/5 p-2">
           <div className="font-mono text-[10px] text-orange-300/90 leading-relaxed">
-            FRED_API_KEY 가 설정되지 않아 모든 시리즈가 stub 입니다. Railway env
-            에 키를 등록하면 자동으로 실데이터가 표시됩니다 ({" "}
+            FRED_API_KEY가 설정되지 않아 모든 시리즈가 STUB 상태입니다. Railway
+            환경변수에 키를 등록하면 실데이터가 자동으로 표시됩니다 ({" "}
             <a
               href="https://fred.stlouisfed.org/docs/api/api_key.html"
               target="_blank"

@@ -156,7 +156,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
 
   if (isLoading) {
     return (
-      <HudPanel title="Wave Tracker — Sentiment & Matrix" subtitle="loading 4 signals...">
+      <HudPanel title="웨이브 트래커 — 투자심리 & 매트릭스" subtitle="4개 신호 불러오는 중...">
         <div className="flex items-center justify-center py-8 gap-3">
           <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
           <span className="font-mono text-xs text-muted-foreground">
@@ -169,7 +169,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
 
   if (error || !data) {
     return (
-      <HudPanel title="Wave Tracker — Error" variant="danger">
+      <HudPanel title="웨이브 트래커 — 오류" variant="danger">
         <div className="flex items-center gap-2 py-4">
           <AlertTriangle className="h-4 w-4 text-neon-red" />
           <span className="font-mono text-xs text-neon-red">
@@ -277,7 +277,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
       {sourceHealth && (
         <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono px-3 py-2 rounded-sm border border-border/30 bg-card/30">
           <span className="text-muted-foreground uppercase tracking-wider">
-            data sources:
+            데이터 소스:
           </span>
           <span className={cn("flex items-center gap-1", sourceColor(sourceHealth.fearGreed.status))}>
             {sourceDot(sourceHealth.fearGreed.status)} F&G ({ageStr(sourceHealth.fearGreed.ageSec)})
@@ -292,7 +292,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
             {sourceDot(sourceHealth.bybitLongShort.status)} L/S ({ageStr(sourceHealth.bybitLongShort.ageSec)})
           </span>
           <span className="ml-auto text-muted-foreground">
-            health {sourceHealth.healthScore}/4
+            상태 {sourceHealth.healthScore}/4
           </span>
         </div>
       )}
@@ -322,7 +322,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
                     MACRO_STANCE_META[macroStance.stance].textClass
                   )}
                 >
-                  MACRO STANCE: {MACRO_STANCE_META[macroStance.stance].title}
+                  거시 스탠스: {MACRO_STANCE_META[macroStance.stance].title}
                 </span>
                 <span aria-hidden className="text-base">
                   {MACRO_STANCE_META[macroStance.stance].icon}
@@ -334,7 +334,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
                   MACRO_STANCE_META[macroStance.stance].badgeClass
                 )}
               >
-                stance conf {macroStance.stanceConfidence}%
+                스탠스 신뢰도 {macroStance.stanceConfidence}%
               </span>
             </div>
             <div className="font-mono text-xs text-foreground/90 leading-relaxed mb-1.5">
@@ -392,8 +392,8 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
 
       {/* ── 2. Wave Matrix Panel ───────────────────────── */}
       <HudPanel
-        title="Wave Matrix"
-        subtitle="4-SIGNAL CONFLUENCE · 24h 기준"
+        title="웨이브 매트릭스"
+        subtitle="4-신호 컨플루언스 · 24h 기준"
         variant={matrix.overallBias === "neutral" ? "default" : "highlight"}
       >
         <div className="space-y-1">
@@ -413,7 +413,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
             signal={matrix.fundingSignal}
           />
           <SignalRow
-            label="L/S Ratio"
+            label="L/S 비율"
             value={`${matrix.longRatio.toFixed(1)}% / ${matrix.shortRatio.toFixed(1)}%`}
             signal={matrix.lsSignal}
           />
@@ -489,7 +489,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
           <div className="mt-3 p-2 bg-background/40 border border-border/30 rounded-sm space-y-1.5">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">
-                Multi-Period (v4.3)
+                멀티-기간 (v4.3)
               </span>
               {oiDivergence && oiDivergence !== "CHOPPY" && (
                 <span
@@ -548,8 +548,8 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
 
       {/* ── 3. Sentiment Detail ────────────────────────── */}
       <HudPanel
-        title="Sentiment Detail"
-        subtitle="COMPOSITE ANALYSIS BREAKDOWN"
+        title="투자심리 상세"
+        subtitle="종합 분석 세부"
       >
         <div className="space-y-1.5">
           {sentiment.reasons.map((r, i) => (
@@ -566,7 +566,7 @@ export function WaveMatrixCard({ symbol = "BTCUSDT" }: Props) {
           <Stat label="Funding" value={fmtPct(matrix.fundingRateAvg, 4)} />
           <Stat label="Long" value={`${matrix.longRatio.toFixed(1)}%`} />
           <Stat label="Short" value={`${matrix.shortRatio.toFixed(1)}%`} />
-          <Stat label="Price 24h" value={fmtPct(matrix.priceChange24h)} />
+          <Stat label="가격 24h" value={fmtPct(matrix.priceChange24h)} />
         </div>
       </HudPanel>
     </div>

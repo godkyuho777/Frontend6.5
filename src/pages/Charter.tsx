@@ -281,7 +281,7 @@ export default function Charter() {
 
       {/* 7-차원 grid */}
       <HudPanel
-        title="7 Dimensions"
+        title="7 차원"
         subtitle="헌장 1~7 차원 — 측정 각도가 서로 다른 독립 입력"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -323,7 +323,7 @@ export default function Charter() {
 
       {/* 3 헌장 규칙 */}
       <HudPanel
-        title="Charter Rules"
+        title="헌장 규칙"
         subtitle="모든 modifier 가 따라야 할 3 규칙 — 위반 시 부팅 거부"
         variant="highlight"
       >
@@ -351,7 +351,7 @@ export default function Charter() {
 
       {/* 3 Layer 시간 척도 */}
       <HudPanel
-        title="Time Scale · 3 Layers"
+        title="시간 척도 · 3 레이어"
         subtitle="modifier 는 시간 척도에 따라 Signal/Wave/Macro 로 분류"
       >
         <div className="space-y-4">
@@ -359,7 +359,7 @@ export default function Charter() {
             <div className="flex items-center gap-2 mb-3">
               <Layers className="h-4 w-4 text-neon-cyan" />
               <span className="font-display text-xs font-bold tracking-wider uppercase text-neon-cyan">
-                Time Scale Diagram
+                시간 척도 다이어그램
               </span>
               {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
             </div>

@@ -75,19 +75,19 @@ export default function Positions() {
 
   const createMutation = trpc.positions.create.useMutation({
     onSuccess: () => {
-      toast.success("Position created");
+      toast.success("포지션을 등록했습니다");
       setOpenDialog(false);
       refetch();
     },
-    onError: () => toast.error("Failed to create position"),
+    onError: () => toast.error("포지션 등록에 실패했습니다"),
   });
 
   const closeMutation = trpc.positions.close.useMutation({
     onSuccess: () => {
-      toast.success("Position closed");
+      toast.success("포지션을 종료했습니다");
       refetch();
     },
-    onError: () => toast.error("Failed to close position"),
+    onError: () => toast.error("포지션 종료에 실패했습니다"),
   });
 
   const openPositions = useMemo(
@@ -108,10 +108,10 @@ export default function Positions() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="font-sans text-muted-foreground">Sign in to track positions</p>
+        <p className="font-sans text-muted-foreground">포지션을 추적하려면 로그인하세요</p>
         <SignInDialog>
           <Button className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30">
-            CONNECT
+            로그인
           </Button>
         </SignInDialog>
       </div>
@@ -128,10 +128,10 @@ export default function Positions() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Positions
+            내 포지션
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            PORTFOLIO TRACKING // REAL-TIME PNL
+            보유 포지션과 실시간 손익을 추적합니다
           </p>
         </div>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -142,13 +142,13 @@ export default function Positions() {
               className="border-neon-green/30 text-neon-green hover:bg-neon-green/10 font-sans text-xs"
             >
               <Plus className="h-3 w-3 mr-1" />
-              NEW POSITION
+              포지션 추가
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border/50">
             <DialogHeader>
               <DialogTitle className="font-display tracking-wider text-neon-cyan">
-                Open Position
+                포지션 등록
               </DialogTitle>
             </DialogHeader>
             <NewPositionForm
@@ -161,26 +161,26 @@ export default function Positions() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Open Positions" value={openPositions.length} />
+        <StatCard label="진행 중 포지션" value={openPositions.length} />
         <StatCard
-          label="Total PnL"
+          label="총 손익"
           value={`$${totalPnl.toFixed(2)}`}
           variant={totalPnl >= 0 ? "positive" : "negative"}
         />
         <StatCard
-          label="Avg PnL %"
+          label="평균 손익률"
           value={`${totalPnlPercent.toFixed(2)}%`}
           variant={totalPnlPercent >= 0 ? "positive" : "negative"}
         />
-        <StatCard label="Total" value={displayPositions.length} unit="positions" />
+        <StatCard label="전체" value={displayPositions.length} unit="개" />
       </div>
 
       {/* Filter */}
       <div className="flex gap-2">
         {[
-          { label: "All", value: undefined },
-          { label: "Open", value: "open" as const },
-          { label: "Closed", value: "closed" as const },
+          { label: "전체", value: undefined },
+          { label: "진행 중", value: "open" as const },
+          { label: "종료", value: "closed" as const },
         ].map((f) => (
           <Button
             key={f.label}
@@ -200,14 +200,14 @@ export default function Positions() {
       </div>
 
       {/* Positions List */}
-      <HudPanel title="Position List">
+      <HudPanel title="포지션 목록">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
           </div>
         ) : displayPositions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="font-sans text-sm text-muted-foreground">No positions found</p>
+            <p className="font-sans text-sm text-muted-foreground">아직 등록된 포지션이 없습니다</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -236,13 +236,13 @@ export default function Positions() {
                       </Badge>
                     </div>
                     <div className="font-sans text-[10px] text-muted-foreground mt-0.5">
-                      Entry: {formatPrice(pos.entryPrice)} | Target: {formatPrice(pos.targetPrice)}
+                      진입가: {formatPrice(pos.entryPrice)} | 목표가: {formatPrice(pos.targetPrice)}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <div className="font-sans text-xs text-muted-foreground">Current</div>
+                    <div className="font-sans text-xs text-muted-foreground">현재가</div>
                     <div className="font-sans text-sm text-foreground">{formatPrice(pos.currentPrice)}</div>
                   </div>
                   <div className="text-right">
@@ -268,7 +268,7 @@ export default function Positions() {
                       className="border-neon-red/30 text-neon-red hover:bg-neon-red/10 font-sans text-[10px]"
                     >
                       <X className="h-3 w-3 mr-0.5" />
-                      CLOSE
+                      종료
                     </Button>
                   )}
                 </div>
@@ -303,7 +303,7 @@ function NewPositionForm({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="font-sans text-xs text-muted-foreground">Symbol</Label>
+        <Label className="font-sans text-xs text-muted-foreground">심볼</Label>
         <Input
           placeholder="BTCUSDT"
           value={symbol}
@@ -313,7 +313,7 @@ function NewPositionForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="font-sans text-xs text-muted-foreground">Entry Price</Label>
+          <Label className="font-sans text-xs text-muted-foreground">진입가</Label>
           <Input
             type="number"
             step="any"
@@ -324,7 +324,7 @@ function NewPositionForm({
           />
         </div>
         <div>
-          <Label className="font-sans text-xs text-muted-foreground">Target Price</Label>
+          <Label className="font-sans text-xs text-muted-foreground">목표가</Label>
           <Input
             type="number"
             step="any"
@@ -337,7 +337,7 @@ function NewPositionForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="font-sans text-xs text-muted-foreground">Quantity</Label>
+          <Label className="font-sans text-xs text-muted-foreground">수량</Label>
           <Input
             type="number"
             step="any"
@@ -348,7 +348,7 @@ function NewPositionForm({
           />
         </div>
         <div>
-          <Label className="font-sans text-xs text-muted-foreground">Leverage</Label>
+          <Label className="font-sans text-xs text-muted-foreground">레버리지</Label>
           <Input
             type="number"
             min="1"
@@ -362,7 +362,7 @@ function NewPositionForm({
       <Button
         onClick={() => {
           if (!symbol || !entryPrice || !quantity) {
-            toast.error("Fill in required fields");
+            toast.error("필수 항목을 입력하세요");
             return;
           }
           onSubmit({
@@ -377,7 +377,7 @@ function NewPositionForm({
         className="w-full bg-neon-green/20 border border-neon-green text-neon-green hover:bg-neon-green/30 font-sans"
       >
         {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TrendingUp className="h-4 w-4 mr-2" />}
-        OPEN LONG POSITION
+        LONG 포지션 등록
       </Button>
     </div>
   );

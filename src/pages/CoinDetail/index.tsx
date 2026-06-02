@@ -62,7 +62,7 @@ export default function CoinDetailPage() {
   if (!symbol) {
     return (
       <div className="text-center py-20 font-mono text-muted-foreground">
-        Symbol 이 지정되지 않았습니다.
+        심볼이 지정되지 않았습니다.
       </div>
     );
   }
@@ -90,11 +90,11 @@ export default function CoinDetailPage() {
       headerRight={
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            Tracker
+            트래커
           </span>
           <Select value={tracker} onValueChange={handleTrackerChange}>
             <SelectTrigger className="h-8 w-[200px] font-mono text-xs border-neon-pink/40 bg-card/60">
-              <SelectValue placeholder="Select tracker" />
+              <SelectValue placeholder="트래커 선택" />
             </SelectTrigger>
             <SelectContent>
               {TRACKER_VALUES.filter((v) => v !== "jeon-in-gu").map((v) => (

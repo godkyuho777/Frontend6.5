@@ -285,7 +285,19 @@
     position: relative;
     border-radius: var(--radius);
     background: var(--card);
-    box-shadow: none;
+    box-shadow: var(--sh-1);
+  }
+
+  /* 카드 표면 분리 보강 — 다수의 콘텐츠 패널이 `rounded-* bg-card` 만 갖고
+     border/shadow 가 없어, 회색 배경(bg-muted #f5f5f5)과 흰 카드(#fff)가 4%
+     명도차로만 구분돼 평평하게 묻혔다. Upbit 식으로 은은한 1px hairline + 아주
+     옅은 그림자를 기본 부여해 카드가 유기적으로 떠 보이게 한다. `:where()` 로
+     0-specificity 라 명시적 border/shadow 유틸(border-0, shadow-none, 색 border
+     등)은 그대로 우선한다. 사이드바/탑바는 rounded 가 없어 매칭되지 않으며 자체
+     border-r/border-b 를 유지한다. */
+  :where([class*="rounded"].bg-card) {
+    border: 1px solid var(--border);
+    box-shadow: var(--sh-1);
   }
 
   .signal-pulse {
@@ -332,34 +344,32 @@
     line-height: 34px !important;
   }
 
-  .border,
-  .border-0,
-  .border-2,
-  .border-t,
-  .border-r,
-  .border-b,
-  .border-l,
-  .border-x,
-  .border-y,
-  [class*="border-border"],
-  [class*="border-neon"],
-  [class*="border-primary"],
-  [class*="border-destructive"],
-  [class*="border-emerald"],
-  [class*="border-red"],
-  [class*="border-yellow"],
-  [class*="border-sidebar"] {
-    border-color: transparent !important;
-  }
+  /* 구(舊) 네온 스킨 제거를 위해 모든 border/shadow 를 일괄 무력화하던 잔재를
+     제거. 디자인 토큰 시스템(base layer 의 `* { border-border }` + --border #ececec)이
+     이미 깨끗한 hairline 분리를 의도하고 있으므로, 중립 border 는 그대로 렌더링되게
+     둔다. 이로써 카드·사이드바·테이블·인풋이 Upbit 식 은은한 1px 경계로 구분된다.
+     네온 잔재 중 garish 하게 보일 수 있는 것은 아래 arbitrary-shadow 차단으로만 처리. */
 
-  .shadow,
-  .shadow-xs,
-  .shadow-sm,
-  .shadow-md,
-  .shadow-lg,
-  .shadow-xl,
-  .shadow-2xl,
-  [class*="shadow"] {
+  /* 구 네온 스킨의 glow 그림자(arbitrary `shadow-[0_0_20px_...]` 값)만 차단.
+     명명된 Tailwind 그림자(shadow-sm/md/lg)는 살려 둬 카드/오버레이가
+     깔끔한 elevation 을 갖도록 한다 (dialog·popover·dropdown 등). */
+  [class*="shadow-["] {
     box-shadow: none !important;
+  }
+}
+
+/* prefers-reduced-motion — OS 에서 "동작 줄이기"를 켠 사용자(전정기관 장애·멀미
+   민감 등)에게 앱 전역 애니메이션/트랜지션을 사실상 제거 (WCAG 2.3.3 Animation
+   from Interactions). 사이트에 animate-pulse, 다수 transition, AI 오버레이 모션
+   등이 많아 필요. 사용자가 명시적으로 켰을 때만 적용 → 일반 UX 영향 없음.
+   @layer 밖이라 레이어드 유틸보다 우선 + !important 로 확실히 무력화. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

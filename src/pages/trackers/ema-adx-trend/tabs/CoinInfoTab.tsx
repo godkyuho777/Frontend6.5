@@ -51,7 +51,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       {/* 용도 / 목적 */}
       <HudPanel
         title="용도 / 목적"
-        subtitle="Purpose — 이 코인이 해결하는 문제"
+        subtitle="이 코인이 해결하는 문제"
       >
         <div className="flex items-start gap-2">
           <Target className="h-4 w-4 mt-1 text-neon-yellow shrink-0" />
@@ -64,7 +64,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       {/* 비전 */}
       <HudPanel
         title="비전"
-        subtitle="Vision — 장기 목표 / 생태계 위치"
+        subtitle="장기 목표 / 생태계 위치"
       >
         <div className="flex items-start gap-2">
           <Compass className="h-4 w-4 mt-1 text-neon-pink shrink-0" />
@@ -78,7 +78,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       {info.useCases.length > 0 && (
         <HudPanel
           title="주요 활용 사례"
-          subtitle={`Use Cases · ${info.useCases.length}개`}
+          subtitle={`활용 사례 · ${info.useCases.length}개`}
         >
           <ul className="space-y-2">
             {info.useCases.map((u, i) => (
@@ -98,7 +98,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       {info.techHighlights && info.techHighlights.length > 0 && (
         <HudPanel
           title="핵심 기술 / 차별점"
-          subtitle="Tech Highlights"
+          subtitle="기술 요약"
         >
           <div className="flex items-start gap-2">
             <Wrench className="h-4 w-4 mt-1 text-neon-cyan shrink-0" />

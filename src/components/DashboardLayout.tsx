@@ -11,7 +11,6 @@ import {
   BarChart2,
   BarChart3,
   Bell,
-  CheckCircle2,
   Coins,
   Copy,
   Database,
@@ -38,6 +37,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { useLocation } from "wouter";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { BackendBranchIndicator } from "./BackendBranchIndicator";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { ModeSwitchControl } from "./ModeSwitchControl";
@@ -68,113 +68,93 @@ type AiExchange = {
 const workspaceItems: MenuItem[] = [
   {
     icon: Activity,
-    label: "Signal scanner",
+    label: "시그널 스캐너",
     path: "/",
     children: [
-      { icon: BarChart3, label: "RSI / BB / ADX", path: "/" },
-      { icon: Ruler, label: "Fibonacci & trendline", path: "/fibonacci" },
-      { icon: TrendingUp, label: "VWAP strategy", path: "/vwap" },
+      { icon: BarChart3, label: "RSI · BB · ADX", path: "/" },
+      { icon: Ruler, label: "피보나치 · 추세선", path: "/fibonacci" },
+      { icon: TrendingUp, label: "VWAP 전략", path: "/vwap" },
       {
         icon: TrendingUp,
-        label: "EMA + ADX 정배열",
+        label: "EMA · ADX 정배열",
         path: "/trackers/ema-adx-trend",
       },
       {
         icon: Megaphone,
-        label: "전인구 시그널 (Beta)",
+        label: "전인구 시그널 (베타)",
         path: "/trackers/jeon-in-gu",
       },
     ],
   },
   {
     icon: Waves,
-    label: "Wave tracker",
+    label: "웨이브 트래커",
     path: "/wave",
     children: [
-      { icon: Waves, label: "Sentiment & matrix", path: "/wave/sentiment" },
-      { icon: TrendingUp, label: "Trend analysis", path: "/wave/trend" },
+      { icon: Waves, label: "투자심리 · 매트릭스", path: "/wave/sentiment" },
+      { icon: TrendingUp, label: "추세 분석", path: "/wave/trend" },
     ],
   },
   {
     icon: BarChart2,
-    label: "Macro liquidity tracker",
+    label: "매크로 유동성",
     path: "/macro",
     children: [
-      { icon: Activity, label: "Overview", path: "/macro" },
-      { icon: TrendingUp, label: "SOFR-IORB spread", path: "/macro/sofr" },
-      { icon: TrendingUp, label: "Yield curve", path: "/macro/yield-curve" },
-      { icon: Database, label: "Fed balance sheet", path: "/macro/walcl" },
-      { icon: BarChart3, label: "DXY / VIX", path: "/macro/dxy-vix" },
-      { icon: TrendingUp, label: "Real rate", path: "/macro/real-rate" },
+      { icon: Activity, label: "개요", path: "/macro" },
+      { icon: TrendingUp, label: "SOFR-IORB 스프레드", path: "/macro/sofr" },
+      { icon: TrendingUp, label: "수익률 곡선", path: "/macro/yield-curve" },
+      { icon: Database, label: "Fed 대차대조표", path: "/macro/walcl" },
+      { icon: BarChart3, label: "DXY · VIX", path: "/macro/dxy-vix" },
+      { icon: TrendingUp, label: "실질 금리", path: "/macro/real-rate" },
     ],
   },
-  { icon: BarChart3, label: "Tech tracker (Pro)", path: "/tech-tracker" },
-  { icon: FlaskConical, label: "Backtesting", path: "/backtest" },
+  { icon: BarChart3, label: "테크니컬 트래커 (Pro)", path: "/tech-tracker" },
+  { icon: FlaskConical, label: "백테스팅", path: "/backtest" },
   {
     icon: Wallet,
-    label: "Investment Simulator 💰",
+    label: "모의 투자",
     path: "/simulator",
     children: [
-      { icon: Wallet, label: "Trading", path: "/simulator" },
-      { icon: Trophy, label: "Leaderboard 🏆", path: "/simulator/leaderboard" },
+      { icon: Wallet, label: "거래", path: "/simulator" },
+      { icon: Trophy, label: "리더보드", path: "/simulator/leaderboard" },
     ],
   },
-  { icon: Database, label: "Onchain data", path: "/onchain" },
-  { icon: Radar, label: "Sector Pulse ✨", path: "/sectors" },
+  { icon: Database, label: "온체인 데이터", path: "/onchain" },
+  { icon: Radar, label: "섹터 동향", path: "/sectors" },
 ];
 
 const accountItems: MenuItem[] = [
-  { icon: Target, label: "Positions", path: "/positions" },
-  { icon: History, label: "Signal history", path: "/history" },
-  { icon: Bell, label: "Alert settings", path: "/alerts" },
-  { icon: Sparkles, label: "Charter / vision", path: "/charter" },
-  { icon: HeartPulse, label: "Admin / health", path: "/admin/health" },
+  { icon: Target, label: "내 포지션", path: "/positions" },
+  { icon: History, label: "시그널 기록", path: "/history" },
+  { icon: Bell, label: "알림 설정", path: "/alerts" },
+  { icon: Sparkles, label: "헌장 · 비전", path: "/charter" },
+  { icon: HeartPulse, label: "시스템 상태", path: "/admin/health" },
   {
     icon: Settings2,
-    label: "Admin / calibration",
+    label: "캘리브레이션",
     path: "/admin/calibration",
   },
 ];
 
 const menuSections = [
-  { title: "Workspace", items: workspaceItems },
-  { title: "Account", items: accountItems },
+  { title: "워크스페이스", items: workspaceItems },
+  { title: "계정", items: accountItems },
 ];
 
 const menuItems: MenuItem[] = menuSections.flatMap(section => section.items);
 
 const aiSuggestedQuestions = [
-  "Analyze the current BTC market setup",
-  "What does low ADX mean for a BB strategy?",
-  "Compare RSI and BB signals across the watchlist",
-  "Summarize the strongest risk in the current market",
+  "현재 BTC 시장 상황을 분석해주세요",
+  "ADX가 낮을 때 볼린저밴드 전략의 효과는?",
+  "관심 종목의 RSI·볼린저밴드 시그널을 비교해주세요",
+  "지금 시장에서 가장 큰 리스크를 요약해주세요",
 ];
 
-const initialNotifications: NotificationItem[] = [
-  {
-    id: "signal-btc",
-    icon: TrendingUp,
-    header: "BTC signal update",
-    content:
-      "RSI / BB / ADX conditions are approaching the entry range on the 4h timeframe.",
-    date: "Today, 09:42",
-  },
-  {
-    id: "wave-risk",
-    icon: Waves,
-    header: "Wave pressure building",
-    content:
-      "Open interest and long/short ratio moved into a higher volatility band.",
-    date: "Today, 08:15",
-  },
-  {
-    id: "backend-ok",
-    icon: CheckCircle2,
-    header: "Backend health checked",
-    content: "Market scan and pattern audit endpoints responded normally.",
-    date: "Yesterday, 18:06",
-  },
-];
+// 알림은 실시간 시그널 백엔드가 붙기 전까지 비워 둔다. 과거에는 고정 타임스탬프
+// ("Today, 09:42") 가 박힌 가짜 시장 알림 3개가 항상 노출돼, 실제 시장 이벤트가
+// 발생한 것처럼 사용자를 오인시켰다 (정보 정확성 위반). 빈 상태 UI 가 이미 있으므로
+// 가짜 데이터를 제거하고 정직한 "No notifications" 상태를 보여준다.
+const initialNotifications: NotificationItem[] = [];
 
 function isItemActive(location: string, item: MenuItem) {
   if (item.children?.some(child => location === child.path)) return true;
@@ -210,12 +190,31 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       .find(item => item.path === location);
     if (child) return child.label;
     return (
-      menuItems.find(item => isItemActive(location, item))?.label ?? "Markets"
+      menuItems.find(item => isItemActive(location, item))?.label ?? "마켓"
     );
   }, [location]);
 
+  // <title> 동기화 — 동적 상세 라우트(/coin/:symbol 등)는 심볼을 우선 노출하고,
+  // 그 외에는 활성 메뉴 라벨을 사용한다. 레이아웃 한 곳에서만 계산해 race 방지.
+  const docTitle = useMemo(() => {
+    const detail = location.match(
+      /^\/(?:coin|fibonacci|vwap|trackers\/ema-adx-trend)\/([^/?#]+)/
+    );
+    if (detail) {
+      return decodeURIComponent(detail[1]).replace("USDT", "/USDT");
+    }
+    return activeLabel;
+  }, [location, activeLabel]);
+  useDocumentTitle(docTitle);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-2 focus:z-[60] focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-background"
+      >
+        본문으로 건너뛰기
+      </a>
       <TopBar
         user={user}
         mobileMenuOpen={mobileMenuOpen}
@@ -233,17 +232,21 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="relative z-10 shrink-0 border-t border-border bg-card px-6 py-4 shadow-[0_-8px_20px_rgb(255_255_255_/_90%)]">
           <div className="font-mono text-[10px] text-muted-foreground/70">
-            v6.5 · build 2026.05.14
+            v6.5 · build {__BUILD_DATE__}
           </div>
         </div>
       </aside>
 
-      <main className="fixed inset-x-0 bottom-0 top-14 overflow-y-auto bg-muted p-4 pb-28 md:p-6 md:pb-28 lg:left-[220px]">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="fixed inset-x-0 bottom-0 top-14 overflow-y-auto bg-muted p-4 pb-28 outline-none md:p-6 md:pb-28 lg:left-[220px]"
+      >
         <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-4">
           <div className="flex items-center justify-between gap-3 lg:hidden">
             <div>
               <div className="text-[10px] font-bold tracking-[0.06em] text-muted-foreground">
-                Workspace
+                워크스페이스
               </div>
               <h1 className="text-xl font-bold tracking-tight">
                 {activeLabel}
@@ -327,8 +330,8 @@ function TopBar({
       <SearchField
         wrapperClassName="hidden max-w-[480px] flex-1 md:flex"
         shortcut="⌘K"
-        aria-label="Search markets, strategies, addresses"
-        placeholder="Search markets, strategies, addresses..."
+        aria-label="마켓, 전략, 주소 검색"
+        placeholder="마켓 · 전략 · 주소 검색..."
       />
 
       <div className="ml-auto flex items-center gap-2">
@@ -356,7 +359,7 @@ function TopBar({
           <SignInDialog>
             <Button size="sm" variant="ghost" className="h-8">
               <LogIn className="size-3.5" />
-              Sign in
+              로그인
             </Button>
           </SignInDialog>
         )}
@@ -386,7 +389,7 @@ function NotificationOverlay({
     >
       <button
         type="button"
-        aria-label="Close notifications"
+        aria-label="알림 닫기"
         onClick={onClose}
         className={cn(
           "absolute inset-0 bg-black/20 transition-opacity duration-300",
@@ -407,7 +410,7 @@ function NotificationOverlay({
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Close notifications"
+              aria-label="알림 닫기"
               onClick={onClose}
             >
               <X className="size-4" />
@@ -416,7 +419,7 @@ function NotificationOverlay({
               id="notification-panel-title"
               className="font-sans text-base font-bold text-foreground"
             >
-              Notifications
+              알림
             </h2>
           </div>
           <Button
@@ -426,7 +429,7 @@ function NotificationOverlay({
             disabled={notifications.length === 0}
             className="h-8 px-3"
           >
-            Clear all
+            모두 지우기
           </Button>
         </div>
 
@@ -446,10 +449,10 @@ function NotificationOverlay({
                 <Bell className="size-5" />
               </div>
               <p className="font-sans text-base font-bold text-foreground">
-                No notifications
+                새 알림이 없습니다
               </p>
               <p className="mt-1 max-w-[260px] font-sans text-sm text-muted-foreground">
-                New signal, system, and market updates will appear here.
+                새로운 시그널·시스템·시장 소식이 도착하면 여기에 표시됩니다.
               </p>
             </div>
           )}
@@ -521,7 +524,8 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
           exchange.loading && exchange.query === lastQuery
             ? {
                 ...exchange,
-                response: "AI insight failed to load. Please try again.",
+                response:
+                  "AI 인사이트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
                 loading: false,
               }
             : exchange
@@ -679,7 +683,7 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                   <div
                     role="separator"
                     aria-orientation="horizontal"
-                    aria-label="Resize AI chat"
+                    aria-label="AI 대화창 크기 조절"
                     className="absolute left-0 top-0 z-20 h-3 w-full cursor-ns-resize touch-none"
                     onPointerDown={startResize}
                     onPointerMove={resizePanel}
@@ -702,7 +706,7 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                       variant="ghost"
                       size="icon-sm"
                       aria-label={
-                        minimized ? "Restore AI chat" : "Minimize AI chat"
+                        minimized ? "AI 대화 펼치기" : "AI 대화 접기"
                       }
                       onClick={() => setMinimized(current => !current)}
                     >
@@ -716,7 +720,7 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Close AI chat"
+                      aria-label="AI 대화 닫기"
                       onClick={() => {
                         setChatOpen(false);
                         setMinimized(false);
@@ -729,7 +733,13 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                 </div>
 
                 {!minimized && (
-                  <div className="min-h-0 flex-1 overflow-y-auto bg-card px-4 pb-4 pt-2">
+                  <div
+                    className="min-h-0 flex-1 overflow-y-auto bg-card px-4 pb-4 pt-2"
+                    role="log"
+                    aria-live="polite"
+                    aria-busy={analyzeMutation.isPending}
+                    aria-label="AI 인사이트 대화"
+                  >
                     <div className="flex flex-col gap-6">
                       {exchanges.map(exchange => (
                         <div key={exchange.id} className="flex flex-col gap-5">
@@ -742,7 +752,7 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                             {exchange.loading ? (
                               <div className="flex items-center gap-2 font-sans text-sm text-muted-foreground">
                                 <Loader2 className="size-4 animate-spin text-primary" />
-                                Thinking...
+                                분석 중...
                               </div>
                             ) : (
                               <>
@@ -763,7 +773,7 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                                   }}
                                 >
                                   <Copy className="size-4" />
-                                  Copy
+                                  복사
                                 </Button>
                               </>
                             )}
@@ -828,14 +838,14 @@ function AiInsightOverlay({ hidden = false }: { hidden?: boolean }) {
                 setInputFocused(false);
                 setSuggestionsOpen(false);
               }}
-              placeholder="Ask AI insight..."
+              placeholder="AI에게 시장을 물어보세요..."
               className="h-full min-w-0 flex-1 rounded-md bg-transparent px-3 font-sans text-base text-foreground outline-none placeholder:text-muted-foreground"
             />
             <Button
               type="submit"
               size="icon-sm"
               disabled={!hasInput || analyzeMutation.isPending}
-              aria-label="Send AI insight"
+              aria-label="AI 인사이트 전송"
               className={cn(
                 "rounded-md",
                 hasInput && !analyzeMutation.isPending
@@ -882,6 +892,7 @@ function SidebarMenuList({
               <button
                 type="button"
                 onClick={() => onNavigate(item.path)}
+                aria-current={isItemActive(location, item) ? "page" : undefined}
                 className={cn(
                   "flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition-colors",
                   isItemActive(location, item)
@@ -907,6 +918,7 @@ function SidebarMenuList({
                         key={child.path}
                         type="button"
                         onClick={() => onNavigate(child.path)}
+                        aria-current={location === child.path ? "page" : undefined}
                         className={cn(
                           "flex h-9 items-center gap-3 rounded-md px-3 text-left text-xs transition-colors",
                           location === child.path

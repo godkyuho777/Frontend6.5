@@ -55,12 +55,12 @@ export function ModeSwitchControl({ mode, className }: ModeSwitchControlProps) {
     >
       <div className="flex min-w-[72px] items-center gap-1.5 font-sans text-sm font-bold leading-none text-foreground">
         {isPro ? <Zap className="size-3.5" /> : <Wallet className="size-3.5" />}
-        <span>{isPro ? "Pro mode" : "Lite mode"}</span>
+        <span>{isPro ? "프로 모드" : "라이트 모드"}</span>
       </div>
       <Switch
         checked={checked}
         onCheckedChange={handleModeChange}
-        aria-label={isPro ? "Switch to Lite mode" : "Switch to Pro mode"}
+        aria-label={isPro ? "라이트 모드로 전환" : "프로 모드로 전환"}
         className={cn(
           "h-7 w-12 rounded-md border-0 p-[3px] shadow-none",
           "transition-all duration-200",

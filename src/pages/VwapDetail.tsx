@@ -338,7 +338,7 @@ function VolumeHistogram({ detail }: { detail: VwapDetailLite }) {
   if (data.length === 0) {
     return (
       <p className="font-mono text-xs text-muted-foreground py-4 text-center">
-        Volume 데이터 없음
+        아직 거래량 데이터가 없습니다
       </p>
     );
   }
@@ -443,14 +443,14 @@ export default function VwapDetail() {
             aria-label="VWAP 목록으로 돌아가기"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            BACK
+            뒤로
           </Button>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
             <Activity className="h-6 w-6" />
             {symbol.replace("USDT", "")}
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1 hidden sm:block">
-            VWAP strategy detail / candles + VWAP + EMA9 + volume histogram
+            VWAP 전략 상세 · 캔들 + VWAP + EMA(9) + 거래량 히스토그램
           </p>
           {detail?.vwapMult != null && (
             <VwapMultChip vwapMult={detail.vwapMult} />
@@ -473,7 +473,7 @@ export default function VwapDetail() {
         <div className="flex items-center justify-center py-16 gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
           <span className="font-mono text-xs text-muted-foreground">
-            Bybit klines + Volume Profile 계산 중...
+            Bybit 캔들 + 거래량 프로파일 계산 중...
           </span>
         </div>
       )}
@@ -484,7 +484,7 @@ export default function VwapDetail() {
             데이터 로드 실패
           </p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            RETRY
+            다시 시도
           </Button>
         </div>
       )}
@@ -493,15 +493,15 @@ export default function VwapDetail() {
         <>
           {/* Main candle chart + volume histogram (수직 split) */}
           <HudPanel
-            title="Candle Chart + VWAP / EMA9 + Bands"
-            subtitle={`${symbol} · ${tf.toUpperCase()} · ${detail.candles.length} CANDLES`}
+            title="캔들 차트 + VWAP / EMA9 + 밴드"
+            subtitle={`${symbol} · ${tf.toUpperCase()} · 캔들 ${detail.candles.length}개`}
             variant="highlight"
           >
             <VwapCandleChart detail={detail} />
           </HudPanel>
 
           <HudPanel
-            title="Volume Histogram (시간축)"
+            title="거래량 히스토그램 (시간축)"
             subtitle="각 캔들별 거래량 — 양봉(녹) / 음봉(적)"
           >
             <VolumeHistogram detail={detail} />
@@ -510,13 +510,13 @@ export default function VwapDetail() {
           {/* 보조 패널: 5-component 시그널 + multi-TF + pullback v2 + Volume Profile */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <HudPanel
-              title="VWAP Signal V2 — 5-component"
-              subtitle="VWAP 거리 25 + EMA(9) 위치 20 + Pullback 25 + VP 지지 15 + VP 구조 15"
+              title="VWAP 시그널 V2 — 5요소"
+              subtitle="VWAP 거리 25 + EMA(9) 위치 20 + 되돌림 25 + VP 지지 15 + VP 구조 15"
             >
               <SignalCardV2 detail={detail} />
             </HudPanel>
             <HudPanel
-              title="Multi-TF Alignment"
+              title="멀티 TF 정합"
               subtitle="1h · 4h · 1d 정합도 + BBDX multiplier"
             >
               <AlignmentCard alignment={detail.multiTfAlignment} />
@@ -525,13 +525,13 @@ export default function VwapDetail() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <HudPanel
-              title="Pullback Quality (v2)"
+              title="되돌림 품질 (v2)"
               subtitle="VWAP/EMA9 터치 + 반등 확인"
             >
               <PullbackQualityCard pullback={detail.pullbackV2} />
             </HudPanel>
             <HudPanel
-              title="Volume Profile"
+              title="거래량 프로파일"
               subtitle={`POC / HVN / LVN / Value Area (${(detail.volumeProfile.valueArea.pct * 100).toFixed(0)}%)`}
             >
               <VolumeProfilePanel profile={detail.volumeProfile} />
@@ -541,12 +541,12 @@ export default function VwapDetail() {
           {/* Signal side 헤더 보조 — 명시적 표기 */}
           {(detail.signalV2 || detail.signal) && (
             <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-2">
-              <span>Current Side:</span>
+              <span>현재 방향:</span>
               <span className={cn("font-bold", sideColor)}>
                 {detail.signalV2?.side ?? detail.signal?.side}
               </span>
               <span>
-                · Strength{" "}
+                · 강도{" "}
                 {(
                   detail.signalV2?.strength ??
                   detail.signal?.strength ??

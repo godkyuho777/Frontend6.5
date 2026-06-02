@@ -34,7 +34,9 @@ export function SignInDialog({ children }: SignInDialogProps) {
       setSent(true);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to send sign-in link"
+        err instanceof Error
+          ? err.message
+          : "로그인 링크 전송에 실패했습니다."
       );
     } finally {
       setSubmitting(false);
@@ -56,28 +58,28 @@ export function SignInDialog({ children }: SignInDialogProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display tracking-wider">
-            Sign in
+            로그인
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
-            We'll email you a one-time sign-in link.
+            일회용 로그인 링크를 이메일로 보내드립니다.
           </DialogDescription>
         </DialogHeader>
         {sent ? (
           <div className="space-y-2 py-4">
             <p className="font-sans text-sm">
-              Check{" "}
-              <span className="text-neon-cyan break-all">{email}</span>{" "}
-              for a sign-in link.
+              <span className="text-primary break-all">{email}</span> 로
+              로그인 링크를 보냈습니다.
             </p>
             <p className="font-sans text-xs text-muted-foreground">
-              Click the link to complete sign-in. You can close this dialog.
+              메일의 링크를 클릭하면 로그인이 완료됩니다. 이 창은 닫으셔도
+              됩니다.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="signin-email" className="font-sans text-xs">
-                Email
+                이메일
               </Label>
               <Input
                 id="signin-email"
@@ -93,9 +95,9 @@ export function SignInDialog({ children }: SignInDialogProps) {
               <Button
                 type="submit"
                 disabled={submitting || !email}
-                className="bg-neon-pink/20 border border-neon-pink text-neon-pink hover:bg-neon-pink/30"
+                className="w-full"
               >
-                {submitting ? "Sending..." : "Send sign-in link"}
+                {submitting ? "전송 중..." : "로그인 링크 받기"}
               </Button>
             </DialogFooter>
           </form>

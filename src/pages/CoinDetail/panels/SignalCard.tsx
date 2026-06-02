@@ -90,8 +90,8 @@ export function SignalCard({
   if (!signal) {
     return (
       <HudPanel
-        title="Signal"
-        subtitle="LIVE BBDX"
+        title="시그널"
+        subtitle="실시간 BBDX 진입 신호"
         headerRight={
           <div className="flex items-center gap-1">
             <VwapMultChip vwapMult={vwapMult} />
@@ -100,7 +100,7 @@ export function SignalCard({
         }
       >
         <p className="font-mono text-xs text-muted-foreground py-4">
-          시그널 데이터 없음
+          아직 시그널 데이터가 없습니다.
         </p>
       </HudPanel>
     );
@@ -114,13 +114,13 @@ export function SignalCard({
 
   return (
     <HudPanel
-      title="Signal"
+      title="시그널"
       subtitle={
         conflict
-          ? "CONFLICT — 방향 불명"
+          ? "방향 충돌 — 진입 보류"
           : signal.entry
-            ? "BBDX ENTRY DETECTED"
-            : "NO ENTRY"
+            ? "BBDX 진입 신호 감지"
+            : "진입 신호 없음"
       }
       variant={conflict ? "default" : signal.entry ? "highlight" : "default"}
       headerRight={
@@ -143,7 +143,7 @@ export function SignalCard({
         {/* Path label */}
         <div>
           <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            Path
+            진입 경로
           </div>
           <div className="font-display text-2xl font-bold tracking-wider text-neon-cyan">
             {signal.entry ? `LONG • ${path}` : "—"}
@@ -155,7 +155,7 @@ export function SignalCard({
           )}
           {signal.isFallingKnife && (
             <div className="font-mono text-[10px] text-neon-red mt-1">
-              ✗ FALLING KNIFE — entry blocked
+              ✗ Falling Knife 감지 — 진입 차단
             </div>
           )}
         </div>
@@ -164,7 +164,7 @@ export function SignalCard({
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-              Confidence
+              신뢰도
             </span>
             <span className="font-mono text-xs text-neon-cyan">
               {confidence.toFixed(0)} / 100
@@ -189,7 +189,7 @@ export function SignalCard({
         <div className="grid grid-cols-3 gap-2">
           <div>
             <div className="font-mono text-[9px] text-muted-foreground uppercase">
-              Entry
+              진입가
             </div>
             <div className="font-mono text-xs text-foreground">
               ${signal.price.toFixed(signal.price < 1 ? 6 : 2)}
@@ -197,7 +197,7 @@ export function SignalCard({
           </div>
           <div>
             <div className="font-mono text-[9px] text-muted-foreground uppercase">
-              Stop
+              손절가
             </div>
             <div className="font-mono text-xs text-neon-red">
               ${signal.stopLoss.toFixed(signal.stopLoss < 1 ? 6 : 2)}
@@ -205,7 +205,7 @@ export function SignalCard({
           </div>
           <div>
             <div className="font-mono text-[9px] text-muted-foreground uppercase">
-              Size
+              비중
             </div>
             <div className="font-mono text-xs text-neon-cyan">
               ×{signal.sizeFactor.toFixed(2)}
@@ -216,7 +216,7 @@ export function SignalCard({
         {/* 7-dimension chips */}
         <div>
           <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-1">
-            7-Dimension Check
+            7차원 점검
           </div>
           <div className="flex flex-wrap gap-1">
             {DIMENSION_LABELS.map((label, i) => {
@@ -258,7 +258,7 @@ export function SignalCard({
         {reasons.length > 0 && (
           <div>
             <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-1">
-              Reasons
+              근거
             </div>
             <ul className="space-y-0.5">
               {reasons.slice(0, 4).map((r, i) => (

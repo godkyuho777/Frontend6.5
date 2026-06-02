@@ -22,24 +22,24 @@ function formatLargeNumber(n: number | null, prefix = ""): string {
 
 export function CoinInfoCard({ meta }: CoinInfoCardProps) {
   return (
-    <HudPanel title="Coin Info" subtitle={meta?.symbol ?? ""}>
+    <HudPanel title="코인 정보" subtitle={meta?.symbol ?? ""}>
       <dl className="grid grid-cols-2 gap-2 text-xs font-sans">
         <div>
-          <dt className="text-[10px] text-muted-foreground uppercase">Mcap</dt>
+          <dt className="text-[10px] text-muted-foreground uppercase">시가총액</dt>
           <dd className="text-foreground">{formatLargeNumber(meta?.mcap ?? null, "$")}</dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground uppercase">Vol 24h</dt>
+          <dt className="text-[10px] text-muted-foreground uppercase">24h 거래량</dt>
           <dd className="text-foreground">
             {formatLargeNumber(meta?.volume24h ?? null, "$")}
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground uppercase">Supply</dt>
+          <dt className="text-[10px] text-muted-foreground uppercase">공급량</dt>
           <dd className="text-foreground">{formatLargeNumber(meta?.supply ?? null)}</dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground uppercase">Dom</dt>
+          <dt className="text-[10px] text-muted-foreground uppercase">도미넌스</dt>
           <dd className="text-foreground">
             {meta?.dominance != null ? `${(meta.dominance * 100).toFixed(2)}%` : "—"}
           </dd>
@@ -71,7 +71,7 @@ export function CoinInfoCard({ meta }: CoinInfoCardProps) {
         </div>
       </dl>
       <p className="font-sans text-[9px] text-muted-foreground/70 mt-3 leading-relaxed">
-        * Mcap / supply / dominance 는 백엔드 coin.meta 라우트 추가 후 표시됩니다.
+        * 시가총액 / 공급량 / 도미넌스는 백엔드 coin.meta 라우트 추가 후 표시됩니다.
       </p>
     </HudPanel>
   );

@@ -46,31 +46,31 @@ const REGIME_META: Record<
   { label: string; color: string; bg: string; text: string }
 > = {
   crisis: {
-    label: "CRISIS",
+    label: "위기",
     color: "oklch(0.65 0.25 25)",
     bg: "bg-red-500/15",
     text: "text-red-400",
   },
   tight: {
-    label: "TIGHT",
+    label: "긴축",
     color: "oklch(0.7 0.18 60)",
     bg: "bg-orange-500/15",
     text: "text-orange-400",
   },
   neutral: {
-    label: "NEUTRAL",
+    label: "중립",
     color: "oklch(0.7 0.05 260)",
     bg: "bg-slate-500/15",
     text: "text-slate-300",
   },
   easing: {
-    label: "EASING",
+    label: "완화",
     color: "oklch(0.78 0.15 165)",
     bg: "bg-emerald-500/15",
     text: "text-neon-green",
   },
   flooded: {
-    label: "FLOODED",
+    label: "유동성 과잉",
     color: "oklch(0.7 0.22 305)",
     bg: "bg-purple-500/15",
     text: "text-fuchsia-400",
@@ -82,27 +82,27 @@ const CYCLE_PHASE_META: Record<
   { label: string; bg: string; text: string }
 > = {
   pre_recession: {
-    label: "PRE-RECESSION",
+    label: "침체 전조",
     bg: "bg-orange-500/15",
     text: "text-orange-400",
   },
   recession_imminent: {
-    label: "RECESSION IMMINENT",
+    label: "침체 임박",
     bg: "bg-red-500/15",
     text: "text-red-400",
   },
   fed_pivot: {
-    label: "FED PIVOT",
+    label: "Fed 피벗",
     bg: "bg-yellow-500/15",
     text: "text-neon-yellow",
   },
   crypto_rally: {
-    label: "CRYPTO RALLY",
+    label: "크립토 랠리",
     bg: "bg-emerald-500/15",
     text: "text-neon-green",
   },
   neutral: {
-    label: "NEUTRAL",
+    label: "중립",
     bg: "bg-slate-500/15",
     text: "text-slate-300",
   },
@@ -112,15 +112,15 @@ const CYCLE_PHASE_META: Record<
 const SERIES_OPTIONS: { id: string; label: string }[] = [
   { id: "SOFR", label: "SOFR" },
   { id: "IORB", label: "IORB" },
-  { id: "DGS10", label: "10Y Treasury" },
-  { id: "DGS2", label: "2Y Treasury" },
-  { id: "T10Y2Y", label: "Yield Curve 10Y-2Y" },
-  { id: "WALCL", label: "Fed Balance Sheet (WALCL)" },
-  { id: "RRPONTSYD", label: "Reverse Repo" },
-  { id: "WTREGEN", label: "Treasury General Acct (TGA)" },
-  { id: "DTWEXBGS", label: "DXY (Broad)" },
+  { id: "DGS10", label: "10Y 국채" },
+  { id: "DGS2", label: "2Y 국채" },
+  { id: "T10Y2Y", label: "수익률 곡선 10Y-2Y" },
+  { id: "WALCL", label: "Fed 대차대조표 (WALCL)" },
+  { id: "RRPONTSYD", label: "역레포 (RRP)" },
+  { id: "WTREGEN", label: "재무부 일반계정 (TGA)" },
+  { id: "DTWEXBGS", label: "DXY (광의 달러)" },
   { id: "VIXCLS", label: "VIX" },
-  { id: "DFII10", label: "Real Rate 10Y" },
+  { id: "DFII10", label: "10Y 실질금리" },
 ];
 
 const PERIOD_OPTIONS = [
@@ -157,14 +157,14 @@ function SummaryCard({ layer }: { layer: MacroLayer }) {
   const effectiveMult = 1 + (layer.multiplier - 1) * layer.freshness_mult;
   return (
     <HudPanel
-      title="Macro Score & Regime"
-      subtitle="MACRO_v2 § score → regime → multiplier"
+      title="매크로 점수 및 레짐"
+      subtitle="점수에서 레짐, multiplier까지 산출 단계"
       variant="highlight"
     >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="hud-frame p-3">
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
-            Score (-100 ~ +100)
+            점수 (-100 ~ +100)
           </div>
           <div
             className={cn(
@@ -178,7 +178,7 @@ function SummaryCard({ layer }: { layer: MacroLayer }) {
         </div>
         <div className="hud-frame p-3">
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
-            Regime
+            레짐
           </div>
           <div
             className={cn(
@@ -196,13 +196,13 @@ function SummaryCard({ layer }: { layer: MacroLayer }) {
         </div>
         <div className="hud-frame p-3">
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
-            Effective Multiplier
+            실효 multiplier
           </div>
           <div className="font-display text-3xl font-bold text-primary">
             ×{effectiveMult.toFixed(2)}
           </div>
           <div className="font-mono text-[10px] text-muted-foreground mt-1">
-            base ×{layer.multiplier.toFixed(2)} · freshness ×
+            기본 ×{layer.multiplier.toFixed(2)} · 신선도 ×
             {layer.freshness_mult.toFixed(2)}
           </div>
         </div>
@@ -220,37 +220,37 @@ function IndicatorGrid({ layer }: { layer: MacroLayer }) {
     hint?: string;
   }> = [
     {
-      label: "SOFR-IORB Spread",
+      label: "SOFR-IORB 스프레드",
       value: fmtNum(layer.sofr_iorb_spread_bp, 1, " bp"),
       contribution: b.spread_score,
       hint: "단기 자금 압박 (> 0 이면 자금경색 위험)",
     },
     {
-      label: "Yield Curve 10Y-2Y",
+      label: "수익률 곡선 10Y-2Y",
       value: fmtNum(layer.yield_curve_10_2, 2, "%"),
       contribution: b.yield_curve_score,
       hint: "역전 (음수) → 침체 신호",
     },
     {
-      label: "WALCL 30d",
+      label: "WALCL 30일",
       value: fmtPct(layer.walcl_change_30d_pct),
       contribution: b.walcl_score,
       hint: "Fed 대차대조표 (QE/QT)",
     },
     {
-      label: "RRP+TGA 30d",
+      label: "RRP+TGA 30일",
       value: fmtPct(layer.rrp_tga_change_30d_pct),
       contribution: b.rrp_tga_score,
-      hint: "역레포·재무성 잔고 (drain ↑ → 유동성 ↓)",
+      hint: "역레포·재무부 잔고 (증가 → 유동성 흡수)",
     },
     {
-      label: "Real Rate",
+      label: "실질금리",
       value: fmtNum(layer.real_rate, 2, "%"),
       contribution: b.real_rate_score,
       hint: "10Y 실질금리 (TIPS)",
     },
     {
-      label: "DXY 30d",
+      label: "DXY 30일",
       value: fmtPct(layer.dxy_change_30d_pct),
       contribution: b.dxy_score,
       hint: "달러 인덱스 변화 (강달러 → 위험자산 ↓)",
@@ -265,8 +265,8 @@ function IndicatorGrid({ layer }: { layer: MacroLayer }) {
 
   return (
     <HudPanel
-      title="7 Single Indicators"
-      subtitle="MACRO_v2 §2 · raw + scored contribution"
+      title="단일 지표 7종"
+      subtitle="원본 수치와 기여 점수"
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {items.map(it => (
@@ -283,7 +283,7 @@ function IndicatorGrid({ layer }: { layer: MacroLayer }) {
                 it.contribution >= 0 ? "text-neon-green" : "text-red-400"
               )}
             >
-              score: {it.contribution >= 0 ? "+" : ""}
+              점수: {it.contribution >= 0 ? "+" : ""}
               {it.contribution.toFixed(1)}
             </div>
             {it.hint && (
@@ -357,27 +357,27 @@ function CompositeSignalsCard({ layer }: { layer: MacroLayer }) {
   const c4 = CYCLE_PHASE_META[layer.c4_cycle_phase];
   return (
     <HudPanel
-      title="Composite Signals (C1~C4)"
-      subtitle="다중 지표 조합 — 위기 / risk-on / 순유동성 / 사이클"
+      title="복합 신호 (C1~C4)"
+      subtitle="다중 지표 조합 — 위기 / 위험선호 / 순유동성 / 사이클"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <CompositeGauge
-          label="C1 — Crisis"
+          label="C1 — 위기"
           value={layer.c1_crisis}
           highThreshold={0.6}
           highColor="red"
           highLabel="위기 강화 (≥ 0.6)"
         />
         <CompositeGauge
-          label="C2 — Risk-On"
+          label="C2 — 위험선호"
           value={layer.c2_riskOn}
           highThreshold={0.8}
           highColor="green"
-          highLabel="Risk-on 강화 (≥ 0.8)"
+          highLabel="위험선호 강화 (≥ 0.8)"
         />
         <div className="hud-frame p-3">
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
-            C3 — Net Liquidity 30d
+            C3 — 순유동성 30일
           </div>
           <div
             className={cn(
@@ -395,7 +395,7 @@ function CompositeSignalsCard({ layer }: { layer: MacroLayer }) {
         </div>
         <div className="hud-frame p-3">
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-1">
-            C4 — Cycle Phase
+            C4 — 사이클 단계
           </div>
           <div
             className={cn(
@@ -418,19 +418,20 @@ function KoreaMacroCard({ layer }: { layer: MacroLayer }) {
 
   if (!hasBok && !hasKrw) {
     return (
-      <HudPanel title="Korea Macro" subtitle="BOK ECOS · KRW/USD">
+      <HudPanel title="국내 매크로" subtitle="BOK ECOS · KRW/USD">
         <div className="text-xs font-mono text-muted-foreground py-4 text-center">
-          BOK ECOS API key 미설정 — 환율은 Yahoo Finance fallback. 데이터 없음.
+          아직 국내 매크로 데이터가 없습니다. BOK ECOS API 키가 설정되지 않았으며,
+          환율은 Yahoo Finance 대체 소스를 사용합니다.
         </div>
       </HudPanel>
     );
   }
 
   return (
-    <HudPanel title="Korea Macro" subtitle="BOK ECOS · KRW/USD">
+    <HudPanel title="국내 매크로" subtitle="BOK ECOS · KRW/USD">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <StatCard
-          label="BOK Policy Rate"
+          label="BOK 기준금리"
           value={hasBok ? fmtNum(layer.bok_rate, 2, "%") : "—"}
           change={layer.bok_rate_change_90d ?? undefined}
         />
@@ -451,8 +452,8 @@ function BBDXImpactCard({ layer }: { layer: MacroLayer }) {
 
   return (
     <HudPanel
-      title="BBDX Impact"
-      subtitle="헌장 R3 — modifier-only, 단독 시그널 X"
+      title="BBDX 영향"
+      subtitle="헌장 R3 — 가중치 전용, 단독 시그널 없음"
       variant={crisisOn ? "danger" : "default"}
     >
       <div className="space-y-3">
@@ -460,7 +461,7 @@ function BBDXImpactCard({ layer }: { layer: MacroLayer }) {
           <Activity className="h-5 w-5 text-primary shrink-0" />
           <div className="flex-1">
             <div className="font-mono text-[10px] text-muted-foreground tracking-wider">
-              현재 macro_mult
+              현재 매크로 multiplier
             </div>
             <div className="font-display text-2xl font-bold text-primary">
               ×{effectiveMult.toFixed(2)}
@@ -476,15 +477,15 @@ function BBDXImpactCard({ layer }: { layer: MacroLayer }) {
             )}
             {riskOn && (
               <Badge className="bg-emerald-500/15 text-neon-green border-emerald-500/40">
-                C2 Risk-on 강화
+                C2 위험선호 강화
               </Badge>
             )}
           </div>
         )}
         <div className="font-mono text-[10px] text-muted-foreground leading-relaxed">
-          이 multiplier 가 BBDX 진입 신뢰도에 곱해집니다. macro 단독으로는
-          신호를 발행하지 않으며, BB+RSI+ADX 컨플루언스 발생 시 가중치로만
-          작동합니다 (Charter R3 = modifier-only).
+          이 multiplier가 BBDX 진입 신뢰도에 곱해집니다. 매크로 단독으로는
+          신호를 발행하지 않으며, BB+RSI+ADX 컨플루언스가 발생할 때 가중치로만
+          작동합니다 (헌장 R3 — 가중치 전용).
         </div>
       </div>
     </HudPanel>
@@ -508,7 +509,7 @@ function FreshnessHeader({ layer }: { layer: MacroLayer }) {
         <span className={stale ? "text-neon-yellow" : "text-foreground"}>
           {layer.age_hours.toFixed(1)}시간 전
         </span>
-        <span className="text-muted-foreground"> · freshness ×</span>
+        <span className="text-muted-foreground"> · 신선도 ×</span>
         <span className={stale ? "text-neon-yellow" : "text-primary"}>
           {layer.freshness_mult.toFixed(2)}
         </span>
@@ -540,7 +541,7 @@ function TimeSeriesChart() {
 
   return (
     <HudPanel
-      title="FRED Time Series"
+      title="FRED 시계열"
       subtitle={`${seriesLabel} (${period.toUpperCase()})`}
       headerRight={
         <div className="flex items-center gap-2">
@@ -588,11 +589,11 @@ function TimeSeriesChart() {
         </div>
       ) : query.data?.status === "error" ? (
         <div className="h-[260px] flex items-center justify-center font-mono text-xs text-red-400">
-          {query.data.detail ?? "FRED fetch error"}
+          {query.data.detail ?? "FRED 데이터를 불러오지 못했습니다"}
         </div>
       ) : data.length === 0 ? (
         <div className="h-[260px] flex items-center justify-center font-mono text-xs text-muted-foreground">
-          시계열 데이터 없음
+          아직 시계열 데이터가 없습니다
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
@@ -651,7 +652,7 @@ function TimeSeriesChart() {
       )}
       {query.data?.status === "stub" && (
         <div className="font-mono text-[10px] text-muted-foreground/70 mt-2">
-          FRED_API_KEY 미설정 — stub 데이터.
+          FRED_API_KEY 미설정 — STUB 데이터입니다.
         </div>
       )}
     </HudPanel>
@@ -676,16 +677,15 @@ export default function MacroHub() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Macro liquidity tracker
+            매크로 유동성 개요
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            Overview (Composite C1~C4) / 6차원 매크로 / FRED + ALFRED / BBDX
-            multiplier
+            복합 신호 C1~C4와 6차원 매크로를 한눈에 보는 BBDX multiplier 요약
           </p>
         </div>
         <RefreshIconButton
           onClick={() => snapshotQuery.refetch()}
-          label="Refresh macro snapshot"
+          label="매크로 스냅샷 새로고침"
           isLoading={snapshotQuery.isFetching}
         />
       </div>
@@ -695,7 +695,7 @@ export default function MacroHub() {
           <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
         </div>
       ) : !layer ? (
-        <HudPanel title="Macro Snapshot 사용 불가" variant="danger">
+        <HudPanel title="매크로 스냅샷 사용 불가" variant="danger">
           <div className="text-sm font-mono text-muted-foreground">
             FRED API 응답 실패 또는 데이터 미수신. FRED_API_KEY 환경변수 설정
             여부를 확인하세요.

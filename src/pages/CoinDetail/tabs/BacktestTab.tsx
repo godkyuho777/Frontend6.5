@@ -29,7 +29,7 @@ export function BacktestTab({ symbol }: BacktestTabProps) {
           className="bg-neon-pink/10 border border-neon-pink/40 text-neon-pink hover:bg-neon-pink/20 font-display tracking-wider"
         >
           <Play className="h-4 w-4 mr-2" />
-          RUN BACKTEST
+          백테스트 실행
         </Button>
       </div>
     );

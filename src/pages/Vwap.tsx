@@ -79,7 +79,7 @@ function renderPosition(p: VwapPosition | EmaPosition) {
     return (
       <span className="inline-flex items-center gap-1 font-mono text-[11px] text-neon-green">
         <TrendingUp className="h-3 w-3" />
-        Above
+        위
       </span>
     );
   }
@@ -87,12 +87,12 @@ function renderPosition(p: VwapPosition | EmaPosition) {
     return (
       <span className="inline-flex items-center gap-1 font-mono text-[11px] text-neon-red">
         <TrendingDown className="h-3 w-3" />
-        Below
+        아래
       </span>
     );
   }
   return (
-    <span className="font-mono text-[11px] text-muted-foreground">At</span>
+    <span className="font-mono text-[11px] text-muted-foreground">근접</span>
   );
 }
 
@@ -229,10 +229,10 @@ export default function Vwap() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            VWAP strategy
+            VWAP 전략
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1">
-            {tfLabel} timeframe / VWAP + EMA(9) + volume profile / Bybit data
+            거래량 가중 평균가 대비 위치로 진입 타이밍을 판단합니다 · {tfLabel}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -254,34 +254,34 @@ export default function Vwap() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <StatCard label="Total Coins" value={totalCoins} unit="tracked" />
+        <StatCard label="전체 코인" value={totalCoins} unit="개" />
         <StatCard
-          label="Long Signals"
+          label="LONG 시그널"
           value={longCount}
           variant={longCount > 0 ? "positive" : "default"}
         />
         <StatCard
-          label="Short Signals"
+          label="SHORT 시그널"
           value={shortCount}
           variant={shortCount > 0 ? "negative" : "default"}
         />
-        <StatCard label="Avg Strength" value={`${avgStrength}%`} />
-        <StatCard label="Pullbacks" value={pullbackCount} unit="detected" />
+        <StatCard label="평균 강도" value={`${avgStrength}%`} />
+        <StatCard label="풀백" value={pullbackCount} unit="감지" />
       </div>
 
       <HudPanel
-        title="VWAP Analysis"
+        title="VWAP 분석"
         subtitle={
           isSearching
-            ? `Searching "${trimmedQuery}" · ${filteredAndSorted.length} match${filteredAndSorted.length === 1 ? "" : "es"} · ${tfLabel}`
+            ? `"${trimmedQuery}" 검색 · ${filteredAndSorted.length}개 일치 · ${tfLabel}`
             : coins.length > 0
-              ? `Page ${page} of ${totalPages} · ${coins.length} coins · Bybit Spot`
-              : "Loading market data..."
+              ? `${totalPages}페이지 중 ${page} · 코인 ${coins.length}개 · Bybit 현물`
+              : "시장 데이터를 불러오는 중..."
         }
         headerRight={
           <SearchField
             wrapperClassName="w-48"
-            placeholder="Search symbol..."
+            placeholder="심볼 검색..."
             value={searchQuery}
             onChange={e => {
               setSearchQuery(e.target.value);
@@ -295,7 +295,7 @@ export default function Vwap() {
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <AlertCircle className="h-8 w-8 text-neon-red" />
             <p className="font-mono text-sm text-neon-red">
-              Failed to load market data
+              시장 데이터를 불러오지 못했습니다
             </p>
             <Button
               variant="outline"
@@ -304,7 +304,7 @@ export default function Vwap() {
               className="mt-2 font-mono text-xs"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              Retry
+              다시 시도
             </Button>
           </div>
         )}
@@ -313,7 +313,7 @@ export default function Vwap() {
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="font-mono text-sm text-foreground">
-              Loading {pageSize} coins on {tfLabel}...
+              {tfLabel} 코인 {pageSize}개 불러오는 중...
             </p>
           </div>
         )}
@@ -324,7 +324,7 @@ export default function Vwap() {
               <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-cyan/5 border-b border-neon-cyan/20">
                 <Loader2 className="h-3 w-3 animate-spin text-neon-cyan" />
                 <span className="font-mono text-[10px] text-neon-cyan">
-                  Updating data...
+                  데이터 갱신 중...
                 </span>
               </div>
             )}
@@ -333,14 +333,14 @@ export default function Vwap() {
                 <thead>
                   <tr className="border-b border-border/30">
                     <SortHeader
-                      label="Symbol"
+                      label="심볼"
                       sortKeyVal="symbol"
                       className="text-left"
                       sortKey={sortKey}
                       onSort={handleSort}
                     />
                     <SortHeader
-                      label="Price"
+                      label="가격"
                       sortKeyVal="price"
                       sortKey={sortKey}
                       onSort={handleSort}
@@ -353,30 +353,30 @@ export default function Vwap() {
                       onSort={handleSort}
                     />
                     <SortHeader
-                      label="VWAP Pos"
+                      label="VWAP 위치"
                       sortKeyVal="vwap"
                       sortKey={sortKey}
                       onSort={handleSort}
                     />
                     <SortHeader
-                      label="EMA Pos"
+                      label="EMA 위치"
                       sortKeyVal="ema"
                       className="hidden md:table-cell"
                       sortKey={sortKey}
                       onSort={handleSort}
                     />
                     <th className="px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground hidden md:table-cell">
-                      Pullback
+                      풀백
                     </th>
                     <SortHeader
-                      label="Strength"
+                      label="강도"
                       sortKeyVal="strength"
                       className="hidden sm:table-cell"
                       sortKey={sortKey}
                       onSort={handleSort}
                     />
                     <th className="px-4 py-3 text-center font-sans text-[11px] tracking-wider text-muted-foreground">
-                      Signal
+                      시그널
                     </th>
                   </tr>
                 </thead>
@@ -442,7 +442,7 @@ export default function Vwap() {
                           {coin.pullbackDetected ? (
                             <span className="font-mono text-[11px] text-neon-yellow inline-flex items-center gap-0.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-neon-yellow signal-pulse" />
-                              Yes
+                              감지
                             </span>
                           ) : (
                             <span className="font-mono text-[11px] text-muted-foreground">
@@ -503,7 +503,7 @@ export default function Vwap() {
             {filteredAndSorted.length === 0 && isSearching && (
               <div className="flex flex-col items-center justify-center py-8">
                 <p className="font-mono text-sm text-muted-foreground">
-                  No coins matching "{trimmedQuery}"
+                  "{trimmedQuery}"에 일치하는 코인이 없습니다
                 </p>
               </div>
             )}
@@ -512,9 +512,9 @@ export default function Vwap() {
               <span className="font-mono text-[10px] text-muted-foreground">
                 {isSearching
                   ? filteredAndSorted.length > 0
-                    ? `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} of ${filteredAndSorted.length} matches`
-                    : `0 matches for "${trimmedQuery}"`
-                  : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} of ${totalCoins} coins`}
+                    ? `${filteredAndSorted.length}개 일치 중 ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} 표시`
+                    : `"${trimmedQuery}" 일치 0개`
+                  : `${totalCoins}개 코인 중 ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} 표시`}
               </span>
               {displayTotalPages > 1 && (
                 <div className="flex items-center gap-2">
@@ -526,7 +526,7 @@ export default function Vwap() {
                     className="h-7 px-2 border-border/30 font-mono text-[10px]"
                   >
                     <ChevronLeft className="h-3 w-3 mr-0.5" />
-                    Prev
+                    이전
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from({ length: displayTotalPages }, (_, i) => i + 1).map(
@@ -553,7 +553,7 @@ export default function Vwap() {
                     disabled={page >= displayTotalPages || isFetching}
                     className="h-7 px-2 border-border/30 font-mono text-[10px]"
                   >
-                    Next
+                    다음
                     <ChevronRight className="h-3 w-3 ml-0.5" />
                   </Button>
                 </div>
@@ -568,8 +568,8 @@ export default function Vwap() {
       {/* 사용자가 row 클릭 → selectedSymbol 갱신 → trpc.vwap.detail 자동 fetch */}
       {/* ============================================================ */}
       <HudPanel
-        title={`Deep Dive — ${selectedSymbol.replace("USDT", "")}`}
-        subtitle={`${detailTf.toUpperCase()} · click row above to switch · double-click to open coin page`}
+        title={`상세 분석 — ${selectedSymbol.replace("USDT", "")}`}
+        subtitle={`${detailTf.toUpperCase()} · 위 표에서 행 클릭 시 전환 · 더블클릭 시 코인 상세로 이동`}
         variant="highlight"
         headerRight={
           detail ? <VwapMultChip vwapMult={detail.vwapMult} /> : null
@@ -579,7 +579,7 @@ export default function Vwap() {
           <div className="flex items-center gap-2 py-6 justify-center">
             <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
             <span className="font-mono text-xs text-muted-foreground">
-              Loading VWAP detail for {selectedSymbol}...
+              {selectedSymbol} VWAP 상세를 불러오는 중...
             </span>
           </div>
         )}
@@ -588,7 +588,7 @@ export default function Vwap() {
           <div className="flex flex-col items-center gap-2 py-6">
             <AlertCircle className="h-5 w-5 text-neon-red" />
             <p className="font-mono text-xs text-neon-red">
-              VWAP detail 라우트 호출 실패 — 백엔드가 v6.5 머지 후 부팅되었는지
+              VWAP 상세를 불러오지 못했습니다 — 백엔드가 v6.5 머지 후 부팅되었는지
               확인하세요.
             </p>
             <Button
@@ -597,7 +597,7 @@ export default function Vwap() {
               onClick={() => detailQuery.refetch()}
               className="font-mono text-xs"
             >
-              <RefreshCw className="h-3 w-3 mr-1" /> Retry
+              <RefreshCw className="h-3 w-3 mr-1" /> 다시 시도
             </Button>
           </div>
         )}
@@ -609,7 +609,7 @@ export default function Vwap() {
               <div className="md:col-span-7 space-y-4">
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-2">
-                    Price · VWAP · EMA(9) · ±1/2/3σ Bands
+                    가격 · VWAP · EMA(9) · ±1/2/3σ 밴드
                   </div>
                   <VwapChartPanel detail={detail} />
                 </div>
@@ -617,7 +617,7 @@ export default function Vwap() {
               </div>
               <div className="md:col-span-3">
                 <HudPanel
-                  title="Volume Profile"
+                  title="거래량 프로파일"
                   subtitle="POC · HVN · LVN · VA"
                 >
                   <VolumeProfilePanel profile={detail.volumeProfile} />

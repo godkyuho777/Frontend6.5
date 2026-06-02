@@ -42,7 +42,7 @@ export function Header({ symbol, interval, onIntervalChange }: HeaderProps) {
             {symbol.replace("USDT", "")} / USDT
           </h1>
           <p className="font-sans text-[10px] text-muted-foreground -mt-0.5">
-            {tfLabel} · WORKSTATION
+            {tfLabel}
           </p>
         </div>
       </div>

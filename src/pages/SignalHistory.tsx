@@ -18,24 +18,24 @@ export default function SignalHistory() {
   };
 
   const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-    active: { icon: TrendingUp, color: "text-neon-green", label: "Active" },
-    target_hit: { icon: Target, color: "text-neon-cyan", label: "Target hit" },
-    expired: { icon: Clock, color: "text-neon-yellow", label: "Expired" },
-    closed: { icon: XCircle, color: "text-muted-foreground", label: "Closed" },
+    active: { icon: TrendingUp, color: "text-neon-green", label: "진행 중" },
+    target_hit: { icon: Target, color: "text-neon-cyan", label: "목표 도달" },
+    expired: { icon: Clock, color: "text-neon-yellow", label: "만료" },
+    closed: { icon: XCircle, color: "text-muted-foreground", label: "종료" },
   };
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-          Signal history
+          시그널 기록
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          PAST ENTRY SIGNALS // PERFORMANCE LOG
+          저장한 진입 시그널과 이후 성과를 추적합니다
         </p>
       </div>
 
-      <HudPanel title="Signal Log" subtitle={`${history?.length ?? 0} signals recorded`}>
+      <HudPanel title="시그널 로그" subtitle={`${history?.length ?? 0}개 기록됨`}>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-neon-pink" />
@@ -43,9 +43,9 @@ export default function SignalHistory() {
         ) : !history?.length ? (
           <div className="text-center py-12">
             <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-sans text-sm text-muted-foreground">No signals recorded yet</p>
+            <p className="font-sans text-sm text-muted-foreground">아직 저장된 시그널이 없습니다</p>
             <p className="font-sans text-xs text-muted-foreground/60 mt-1">
-              Save signals from the scanner to build your history
+              스캐너에서 시그널을 저장하면 여기에 기록됩니다
             </p>
           </div>
         ) : (
@@ -81,11 +81,11 @@ export default function SignalHistory() {
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-right hidden sm:block">
-                      <div className="font-sans text-[10px] text-muted-foreground">Entry</div>
+                      <div className="font-sans text-[10px] text-muted-foreground">진입가</div>
                       <div className="font-sans text-xs text-foreground">{formatPrice(signal.entryPrice)}</div>
                     </div>
                     <div className="text-right hidden sm:block">
-                      <div className="font-sans text-[10px] text-muted-foreground">Target (BB Mid)</div>
+                      <div className="font-sans text-[10px] text-muted-foreground">목표가 (BB 중심)</div>
                       <div className="font-sans text-xs text-neon-cyan">{formatPrice(signal.bbMiddle)}</div>
                     </div>
                     <div className="text-right hidden md:block">

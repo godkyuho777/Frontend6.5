@@ -161,7 +161,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
               variant="outline"
               className="border-neon-cyan/40 text-neon-cyan font-mono text-xs"
             >
-              Rank #{info.rank}
+              순위 #{info.rank}
             </Badge>
           ) : null
         }
@@ -200,7 +200,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
 
       {/* 2. 한국어 개요 */}
       {info?.description && (
-        <HudPanel title="개요" subtitle="OVERVIEW">
+        <HudPanel title="개요" subtitle="프로젝트 한눈에 보기">
           <p className="font-mono text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
             {info.description}
           </p>
@@ -221,7 +221,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       )}
 
       {/* 3. 마켓 데이터 grid */}
-      <HudPanel title="시장 데이터" subtitle="MARKET DATA">
+      <HudPanel title="시장 데이터" subtitle="시가총액 · 공급량 등 핵심 지표">
         <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm font-mono">
           <DataRow label="시가총액" value={formatUsd(info?.marketCapUsd ?? meta?.mcap ?? null)} />
           <DataRow label="FDV" value={formatUsd(info?.fdvUsd ?? null)} />
@@ -248,7 +248,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
       </HudPanel>
 
       {/* 4. 가격 정보 */}
-      <HudPanel title="가격 정보" subtitle="PRICE HISTORY">
+      <HudPanel title="가격 정보" subtitle="현재가 · ATH · ATL">
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-mono">
           <DataRow label="현재가" value={formatUsd(displayPrice)} />
           <DataRow
@@ -271,7 +271,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
 
       {/* 5. 프로젝트 정보 */}
       {(info?.launchDate || info?.consensus) && (
-        <HudPanel title="프로젝트 정보" subtitle="PROJECT METADATA">
+        <HudPanel title="프로젝트 정보" subtitle="런칭 · 합의 알고리즘">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-mono">
             <DataRow
               label="런칭"
@@ -288,7 +288,7 @@ export function CoinInfoTab({ symbol }: CoinInfoTabProps) {
 
       {/* 6. 공식 링크 */}
       {info && (info.homepage || info.whitepaper || info.github || info.twitter || info.reddit) && (
-        <HudPanel title="공식 링크" subtitle="OFFICIAL LINKS">
+        <HudPanel title="공식 링크" subtitle="홈페이지 · 백서 · SNS">
           <div className="flex flex-wrap gap-2">
             {info.homepage && <ExternalLinkButton href={info.homepage} icon={Globe} label="홈페이지" />}
             {info.whitepaper && <ExternalLinkButton href={info.whitepaper} icon={FileText} label="백서" />}

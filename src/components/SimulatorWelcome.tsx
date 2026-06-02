@@ -173,7 +173,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
         <div className="text-center mb-4 sm:mb-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neon-cyan/40 bg-neon-cyan/5 font-mono text-[10px] uppercase tracking-wider text-neon-cyan">
             <Sparkles className="h-3 w-3" />
-            Investment Simulator · 모의투자
+            모의 투자
           </div>
         </div>
 
@@ -185,7 +185,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
             </div>
             <div className="min-w-0">
               <h1 className="font-display font-bold text-xl sm:text-2xl lg:text-3xl text-foreground">
-                Welcome, Trader
+                환영합니다, 트레이더
               </h1>
               <p className="font-mono text-[10px] sm:text-xs text-muted-foreground leading-tight">
                 닉네임을 입력하고 가상 자금 $200,000 USD 를 받아 모의 거래를 시작하세요.
@@ -206,7 +206,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
               <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="flex flex-col gap-1">
                 <p className="font-display font-bold text-xs text-amber-300 uppercase tracking-wider">
-                  Investment Simulator 사용 안내
+                  모의 투자 사용 안내
                 </p>
                 <ul className="font-mono text-[10px] text-amber-200/90 leading-relaxed space-y-0.5 list-disc pl-4">
                   <li>본 서비스는 <strong>가상 자본을 사용한 모의 거래</strong> 입니다. 실제 자금은 거래되지 않습니다.</li>
@@ -243,7 +243,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
             />
             <FeatureCard
               icon={<Shield className="h-4 w-4" />}
-              title="No Login"
+              title="로그인 불필요"
               subtitle="익명 시작"
               color="text-neon-pink"
             />
@@ -253,7 +253,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
           <div className="space-y-3">
             <div>
               <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                Nickname (닉네임)
+                닉네임
               </label>
               <div className="flex gap-2">
                 <Input
@@ -278,7 +278,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
                   title="랜덤 닉네임"
                 >
                   <Wand2 className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Random</span>
+                  <span className="hidden sm:inline">랜덤</span>
                 </Button>
               </div>
               {error && (
@@ -301,7 +301,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
               )}
             >
               <Sparkles className="h-4 w-4 mr-2" />
-              Start with $200,000
+              $200,000로 시작하기
               <ChevronRight className="h-5 w-5 ml-2" />
             </Button>
           </div>
@@ -341,7 +341,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
                 title="현재 시뮬레이터 데이터를 JSON 백업 파일로 다운로드"
               >
                 <Download className="h-3 w-3" />
-                Export
+                내보내기
               </button>
               <button
                 type="button"
@@ -355,7 +355,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
                 title="JSON 백업 파일에서 시뮬레이터 데이터를 복원"
               >
                 <Upload className="h-3 w-3" />
-                Import
+                가져오기
               </button>
               <button
                 type="button"
@@ -369,11 +369,11 @@ export function SimulatorWelcome({ onRegister }: Props) {
                 title="모든 시뮬레이터 데이터를 영구 삭제"
               >
                 <Trash2 className="h-3 w-3" />
-                Reset
+                초기화
               </button>
             </div>
             <p className="font-mono text-[9px] text-muted-foreground/70 text-center">
-              · Export: 현재 데이터를 JSON 으로 다운로드 · Import: 백업 파일로 복원 · Reset: 모두 삭제
+              · 내보내기: 현재 데이터를 JSON 으로 다운로드 · 가져오기: 백업 파일로 복원 · 초기화: 모두 삭제
               <br />
               · 닉네임 · UUID · 포지션 · 거래 내역 전부 본 브라우저 한정
             </p>
@@ -382,7 +382,7 @@ export function SimulatorWelcome({ onRegister }: Props) {
 
         {/* Footer */}
         <p className="text-center mt-4 font-mono text-[10px] text-muted-foreground">
-          Tradelab · Investment Simulator v1 (2026-05-15)
+          Tradelab · 모의 투자 v1 (2026-05-15)
         </p>
       </div>
     </div>

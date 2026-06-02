@@ -25,8 +25,8 @@ const EVENT_TYPE_COLORS: Record<UpcomingEvent["eventType"], string> = {
 export function UpcomingEvents({ events, isAvailable }: UpcomingEventsProps) {
   return (
     <HudPanel
-      title="Upcoming Events"
-      subtitle="Token unlocks · upgrades · listings"
+      title="예정 이벤트"
+      subtitle="토큰 언락 · 업그레이드 · 상장"
     >
       {!isAvailable ? (
         <div className="text-center py-6">
@@ -38,7 +38,7 @@ export function UpcomingEvents({ events, isAvailable }: UpcomingEventsProps) {
       ) : events.length === 0 ? (
         <div className="text-center py-6">
           <p className="font-sans text-[11px] text-muted-foreground">
-            이 코인에 예정된 이벤트가 없습니다. 어드민에서 추가하세요.
+            아직 예정된 이벤트가 없습니다.
           </p>
         </div>
       ) : (

@@ -100,7 +100,7 @@ function renderPressureCell(pressure: PressureLabel, strong: boolean) {
     return (
       <span className="inline-flex items-center gap-1 font-sans text-xs text-muted-foreground">
         <Minus className="size-2.5" />
-        Neutral
+        중립
       </span>
     );
   }
@@ -113,13 +113,23 @@ function renderPressureCell(pressure: PressureLabel, strong: boolean) {
       ? "text-neon-red"
       : "text-neon-red/60";
   const Icon = isBull ? ArrowUpRight : ArrowDownRight;
-  const label = isBull ? (strong ? "Bull" : "Bull") : strong ? "Bear" : "Bear";
+  // 강/약 구분을 텍스트로도 노출한다. 기존엔 `strong ? "Bull" : "Bull"` 처럼
+  // 양쪽이 동일한 죽은 삼항식이라 강도가 색상 투명도(/60)로만 구분됐다 →
+  // 색맹·스크린리더 사용자는 강/약을 알 수 없었다.
+  const label = isBull
+    ? strong
+      ? "강한 매수세"
+      : "매수세"
+    : strong
+      ? "강한 매도세"
+      : "매도세";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 font-sans text-xs",
+        "inline-flex items-center gap-1 whitespace-nowrap font-sans text-xs",
         colorClass
       )}
+      title={`${label} (DI ${strong ? "gap > 5" : "gap ≤ 5"})`}
     >
       <Icon className="size-2.5" />
       <span>{label}</span>
@@ -253,10 +263,10 @@ function renderSignalBadges(
             SHORT {path}
           </Badge>
           <span
-            title="SHORT algorithm alpha is still being validated"
+            title="SHORT 알고리즘 알파는 아직 검증 중입니다"
             className="rounded-sm border border-neon-yellow/40 bg-neon-yellow/10 px-1 py-0.5 font-sans text-[9px] uppercase tracking-wider text-neon-yellow"
           >
-            검증중
+            검증 중
           </span>
         </span>
       ),
@@ -326,9 +336,9 @@ function matchesSignalFilter(
 }
 
 function signalFilterLabel(filter: SignalFilter) {
-  if (filter === "entry") return "Entry candidates";
-  if (filter === "exit") return "Exit candidates";
-  return "Neutral watch";
+  if (filter === "entry") return "진입 후보";
+  if (filter === "exit") return "청산 후보";
+  return "중립 관망";
 }
 
 export default function Home() {
@@ -511,7 +521,7 @@ export default function Home() {
             <RefreshIconButton
               onClick={handleRefetch}
               disabled={isFetching || isFullScanFetching}
-              label="Rescan market"
+              label="마켓 재스캔"
               isLoading={isFetching || isFullScanFetching}
               className="h-9 w-9 shrink-0"
             />
@@ -526,7 +536,7 @@ export default function Home() {
                       {featuredSymbol}
                     </div>
                     <div className="mt-1 font-sans text-[11px] text-background/60">
-                      Top Scanner Result · {tfLabel}
+                      스캐너 상위 결과 · {tfLabel}
                     </div>
                   </div>
                 </div>
@@ -551,7 +561,7 @@ export default function Home() {
                   )}
                   {featuredChange >= 0 ? "+" : ""}
                   {featuredChange.toFixed(2)}%
-                  <span className="ml-1 text-background/45">Past 24h</span>
+                  <span className="ml-1 text-background/45">지난 24h</span>
                 </div>
               </div>
               <div className="hidden items-center gap-2 md:flex">
@@ -564,7 +574,7 @@ export default function Home() {
                 <RefreshIconButton
                   onClick={handleRefetch}
                   disabled={isFetching || isFullScanFetching}
-                  label="Rescan market"
+                  label="마켓 재스캔"
                   isLoading={isFetching || isFullScanFetching}
                   inverse
                 />
@@ -576,28 +586,28 @@ export default function Home() {
               positive={featuredChange >= 0}
             />
             <div className="mt-4 grid grid-cols-2 gap-4 border-t border-background/10 pt-4 md:grid-cols-4">
-              <HeroMetric label="Entries" value={pulseCountValue(entryCount)} />
-              <HeroMetric label="Exits" value={pulseCountValue(exitCount)} />
-              <HeroMetric label="Avg RSI" value={String(avgRsi)} />
-              <HeroMetric label="Tracked" value={String(totalCoins)} />
+              <HeroMetric label="진입" value={pulseCountValue(entryCount)} />
+              <HeroMetric label="청산" value={pulseCountValue(exitCount)} />
+              <HeroMetric label="평균 RSI" value={String(avgRsi)} />
+              <HeroMetric label="추적 종목" value={String(totalCoins)} />
             </div>
           </section>
         </div>
 
         <aside className="flex flex-col">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
-            <StatCard label="Total coins" value={totalCoins} unit="tracked" />
+            <StatCard label="전체 종목" value={totalCoins} unit="개" />
             <StatCard
-              label="All entry"
+              label="전체 진입"
               value={pulseCountValue(entryCount)}
               variant={entryCount > 0 ? "positive" : "default"}
             />
             <StatCard
-              label="All exit"
+              label="전체 청산"
               value={pulseCountValue(exitCount)}
               variant={exitCount > 0 ? "negative" : "default"}
             />
-            <StatCard label="All avg RSI" value={avgRsi} />
+            <StatCard label="전체 평균 RSI" value={avgRsi} />
           </div>
         </aside>
       </div>
@@ -605,15 +615,15 @@ export default function Home() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <HudPanel
-            title="Watchlist"
+            title="관심 종목"
             subtitle={
               signalFilter
-                ? `${signalFilterLabel(signalFilter)} · ${watchlistCoins.length} of ${fullScanData?.total ?? totalCoins} coins · ${tfLabel}`
+                ? `${signalFilterLabel(signalFilter)} · ${fullScanData?.total ?? totalCoins}개 중 ${watchlistCoins.length}개 · ${tfLabel}`
                 : isSearching
-                  ? `Searching "${trimmedQuery}" · ${filteredAndSorted.length} match${filteredAndSorted.length === 1 ? "" : "es"} · ${tfLabel}`
+                  ? `"${trimmedQuery}" 검색 · ${filteredAndSorted.length}개 일치 · ${tfLabel}`
                   : coins.length > 0
-                    ? `Page ${page} of ${displayTotalPages} · ${coins.length} coins · Bybit spot`
-                    : "Loading market data..."
+                    ? `${displayTotalPages}페이지 중 ${page}페이지 · ${coins.length}개 종목 · Bybit 현물`
+                    : "시장 데이터 불러오는 중..."
             }
             headerRight={
               <div className="flex items-center gap-2">
@@ -624,12 +634,12 @@ export default function Home() {
                     onClick={() => setSignalFilter(null)}
                     className="h-8 px-2 font-sans text-xs"
                   >
-                    All
+                    전체
                   </Button>
                 )}
                 <SearchField
                   wrapperClassName="w-52"
-                  placeholder="Search symbol..."
+                  placeholder="심볼 검색..."
                   value={searchQuery}
                   onChange={e => {
                     setSearchQuery(e.target.value);
@@ -646,11 +656,11 @@ export default function Home() {
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <AlertCircle className="size-8 text-neon-red" />
                 <p className="font-sans text-sm text-neon-red">
-                  Failed to load market data
+                  시장 데이터를 불러오지 못했습니다
                 </p>
                 <p className="font-sans text-xs text-muted-foreground max-w-md text-center">
-                  Fetching data from Bybit API. Please wait a moment and try
-                  again.
+                  Bybit API에서 데이터를 가져오고 있습니다. 잠시 후 다시
+                  시도하세요.
                 </p>
                 <Button
                   variant="outline"
@@ -659,7 +669,7 @@ export default function Home() {
                   className="mt-2 font-sans text-xs"
                 >
                   <RefreshCw className="mr-1 size-3" />
-                  Retry
+                  다시 시도
                 </Button>
               </div>
             )}
@@ -670,10 +680,10 @@ export default function Home() {
                 <Loader2 className="size-8 animate-spin text-primary" />
                 <div className="text-center">
                   <p className="font-sans text-sm text-foreground">
-                    Loading {pageSize} coins on {tfLabel}...
+                    {tfLabel} 코인 {pageSize}개 불러오는 중...
                   </p>
                   <p className="font-mono text-xs text-muted-foreground mt-1">
-                    Fetching data directly from Bybit API
+                    Bybit API에서 직접 데이터를 가져오는 중
                   </p>
                 </div>
               </div>
@@ -686,7 +696,7 @@ export default function Home() {
                   <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-1.5">
                     <Loader2 className="size-3 animate-spin text-primary" />
                     <span className="font-sans text-[10px] text-primary">
-                      Updating data...
+                      데이터 갱신 중...
                     </span>
                   </div>
                 )}
@@ -710,14 +720,14 @@ export default function Home() {
                       <thead>
                         <tr className="border-b border-border/30">
                           <SortHeader
-                            label="Pair"
+                            label="종목"
                             sortKeyVal="symbol"
                             className="sticky left-0 z-30 bg-card"
                             sortKey={sortKey}
                             onSort={handleSort}
                           />
                           <SortHeader
-                            label="Price"
+                            label="현재가"
                             sortKeyVal="price"
                             className="sticky left-[205px] z-30 bg-card"
                             sortKey={sortKey}
@@ -752,26 +762,26 @@ export default function Home() {
                             onSort={handleSort}
                           />
                           <th className="hidden min-w-[120px] px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground lg:table-cell">
-                            Pressure
+                            압력
                           </th>
                           <th className="hidden min-w-[104px] px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground lg:table-cell">
-                            Rev %
+                            반등 %
                           </th>
                           <th className="hidden min-w-[130px] px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground xl:table-cell">
-                            Pattern
+                            패턴
                           </th>
                           <th className="hidden min-w-[120px] px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground xl:table-cell">
                             Fib Zone
                           </th>
                           <SortHeader
-                            label="Strength"
+                            label="강도"
                             sortKeyVal="strength"
                             className="hidden min-w-[128px] sm:table-cell"
                             sortKey={sortKey}
                             onSort={handleSort}
                           />
                           <SortHeader
-                            label="Signal"
+                            label="시그널"
                             sortKeyVal="signal"
                             className="min-w-[132px]"
                             sortKey={sortKey}
@@ -1064,7 +1074,7 @@ export default function Home() {
                 {filteredAndSorted.length === 0 && isSearching && (
                   <div className="flex flex-col items-center justify-center py-8">
                     <p className="font-sans text-sm text-muted-foreground">
-                      No coins matching "{trimmedQuery}"
+                      "{trimmedQuery}"와 일치하는 코인이 없습니다
                     </p>
                   </div>
                 )}
@@ -1072,12 +1082,12 @@ export default function Home() {
                 <div className="flex items-center justify-between border-t border-border px-3 py-3">
                   <span className="font-sans text-[10px] text-muted-foreground">
                     {signalFilter
-                      ? `Showing ${filteredAndSorted.length} ${signalFilterLabel(signalFilter).toLowerCase()}`
+                      ? `${signalFilterLabel(signalFilter)} ${filteredAndSorted.length}개 표시`
                       : isSearching
                         ? filteredAndSorted.length > 0
-                          ? `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} of ${filteredAndSorted.length} matches`
-                          : `0 matches for "${trimmedQuery}"`
-                        : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} of ${totalCoins} coins`}
+                          ? `${filteredAndSorted.length}개 일치 중 ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAndSorted.length)} 표시`
+                          : `"${trimmedQuery}"에 대한 결과 0개`
+                        : `전체 ${totalCoins}개 중 ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCoins)} 표시`}
                   </span>
                   {!signalFilter && displayTotalPages > 1 && (
                     <div className="flex items-center gap-2">
@@ -1089,7 +1099,7 @@ export default function Home() {
                         className="h-7 px-2 font-sans text-[10px]"
                       >
                         <ChevronLeft className="mr-0.5 size-3" />
-                        Prev
+                        이전
                       </Button>
                       <div className="flex items-center gap-1">
                         {Array.from(
@@ -1119,7 +1129,7 @@ export default function Home() {
                         disabled={page >= displayTotalPages || isFetching}
                         className="h-7 px-2 font-sans text-[10px]"
                       >
-                        Next
+                        다음
                         <ChevronRight className="ml-0.5 size-3" />
                       </Button>
                     </div>
@@ -1132,17 +1142,15 @@ export default function Home() {
 
         <aside className="min-w-0">
           <HudPanel
-            title="Strategy pulse"
+            title="전략 동향"
             subtitle={
-              isFullScanLoading
-                ? "scanning all pages"
-                : "all-page scanner summary"
+              isFullScanLoading ? "전체 스캔 중" : "전체 스캐너 요약"
             }
           >
             <div className="flex flex-col gap-3">
               <StrategyRow
-                name="Entry candidates"
-                meta="oversold + confirmation"
+                name="진입 후보"
+                meta="과매도 + 확인"
                 value={entryCount}
                 tone="up"
                 active={signalFilter === "entry"}
@@ -1150,8 +1158,8 @@ export default function Home() {
                 onView={() => handleStrategyView("entry")}
               />
               <StrategyRow
-                name="Exit candidates"
-                meta="overextended / reversal"
+                name="청산 후보"
+                meta="과열 / 반전"
                 value={exitCount}
                 tone="down"
                 active={signalFilter === "exit"}
@@ -1159,8 +1167,8 @@ export default function Home() {
                 onView={() => handleStrategyView("exit")}
               />
               <StrategyRow
-                name="Neutral watch"
-                meta="waiting for confluence"
+                name="중립 관망"
+                meta="컨플루언스 대기"
                 value={neutralCount}
                 active={signalFilter === "neutral"}
                 disabled={!fullScanData}

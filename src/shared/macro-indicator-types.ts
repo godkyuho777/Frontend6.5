@@ -150,7 +150,7 @@ export interface MacroCurrentValueKey {
 export const REGIME_RULEBOOK: MacroRegimeDescriptor[] = [
   {
     key: "crisis",
-    label: "CRISIS",
+    label: "위기",
     multiplier: 0.3,
     description:
       "위기 강화 — 자금시장 경색 / Treasury stress / VIX 급등 동시 발생. BBDX LONG 시그널의 신뢰도를 30% 로 강하게 감쇄. 헤지 / 포지션 축소 권고.",
@@ -160,7 +160,7 @@ export const REGIME_RULEBOOK: MacroRegimeDescriptor[] = [
   },
   {
     key: "tight",
-    label: "TIGHT",
+    label: "긴축",
     multiplier: 0.65,
     description:
       "긴축 — 부분적 유동성 위축. SOFR-IORB Spread 양수 진입 / Real Rate 상승 / Yield Curve 역전 심화. multiplier 0.65 로 보수적.",
@@ -170,7 +170,7 @@ export const REGIME_RULEBOOK: MacroRegimeDescriptor[] = [
   },
   {
     key: "neutral",
-    label: "NEUTRAL",
+    label: "중립",
     multiplier: 1.0,
     description:
       "중립 — composite signal 명확한 방향 없음. multiplier 1.0 = BBDX 점수 그대로 유지. 다른 차원 (signal/wave/onchain) 으로만 결정.",
@@ -180,7 +180,7 @@ export const REGIME_RULEBOOK: MacroRegimeDescriptor[] = [
   },
   {
     key: "easing",
-    label: "EASING",
+    label: "완화",
     multiplier: 1.2,
     description:
       "완화 — Fed 자세 dovish / Real Rate 하락 / Net Liquidity 증가. multiplier 1.20 으로 BBDX LONG 신호를 가중. risk-on 환경 진입.",
@@ -190,7 +190,7 @@ export const REGIME_RULEBOOK: MacroRegimeDescriptor[] = [
   },
   {
     key: "flooded",
-    label: "FLOODED",
+    label: "유동성 과잉",
     multiplier: 1.4,
     description:
       "유동성 홍수 — WALCL 급팽창 + Spread 음수 + Real Rate 음수. multiplier 1.40 으로 최대 가중. 2020/2021 식 risk-asset bull cycle 환경.",
@@ -208,12 +208,12 @@ export const REGIME_RULEBOOK: MacroRegimeDescriptor[] = [
 export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta> = {
   // ── SOFR-IORB Spread ─────────────────────────────────────
   "sofr-iorb": {
-    title: "SOFR-IORB Spread",
+    title: "SOFR-IORB 스프레드",
     dimension: "6차원 매크로",
     description:
-      "단기 자금조달 스트레스 지표. SOFR (overnight financing) 가 IORB (interest on reserve balances) 를 초과하면 자금 경색 신호.",
+      "단기 자금조달 스트레스 지표. SOFR(익일물 조달금리)가 IORB(지급준비금 부리금리)를 초과하면 자금 경색 신호.",
     tagline:
-      "Spread > 0bp 지속 → Treasury 시장 stress. <0bp → reserve abundant.",
+      "스프레드 > 0bp 지속 → Treasury 시장 스트레스. < 0bp → 지급준비금 풍부.",
     fredSeries: [
       {
         id: "SOFR",
@@ -293,8 +293,8 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       "SOFR-IORB Spread 는 미국 단기 자금시장의 health check. Fed 는 IORB 를 통해 reserve 보유 인센티브를 통제하며, SOFR 가 IORB 를 초과한다는 것은 시장 참여자들이 reserve 를 빌리기 위해 Fed 가 제시한 가격보다 더 비싼 가격을 지불할 의사가 있음을 의미합니다. 이는 곧 자금시장에 스트레스가 누적되고 있다는 직접적 신호입니다. 2019-09 repo spike, 2020-03 COVID, 2022-09 Gilt 위기, 2023-03 SVB 사태 모두 Spread 가 +5bp 이상으로 확대된 시점과 일치합니다. 본 modifier 는 BBDX 신호의 신뢰도 multiplier 로만 작동 — Spread 가 평온하면 1.00 ~ 1.20, 위기 영역 (5bp+) 진입 시 0.30 ~ 0.65 로 감쇄됩니다.",
     currentValueKeys: [
       {
-        label: "SOFR-IORB Spread",
-        hint: "Spread > 0bp → reserve scarcity",
+        label: "SOFR-IORB 스프레드",
+        hint: "스프레드 > 0bp → 지급준비금 부족",
         pick: l => l.sofr_iorb_spread_bp,
         unit: "bp",
         digits: 1,
@@ -302,7 +302,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         primary: true,
       },
       {
-        label: "Macro Score",
+        label: "매크로 점수",
         hint: "-100 ~ +100",
         pick: l => l.score,
         unit: "",
@@ -321,28 +321,28 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
 
   // ── WALCL (Fed Balance Sheet) ─────────────────────────────
   walcl: {
-    title: "Fed Balance Sheet (WALCL)",
+    title: "Fed 대차대조표 (WALCL)",
     dimension: "6차원 매크로",
     description:
-      "Fed 총 자산 (Total Assets of All Federal Reserve Banks). QE/QT 사이클의 직접 측정치. WALCL 은 $M (millions) 으로 옴 — UI 에서는 $T 로 자동 환산 표시.",
+      "Fed 총자산(전체 연준은행 자산 합계). QE/QT 사이클의 직접 측정치. WALCL은 $M(백만) 단위로 수신 — UI에서는 $T로 자동 환산 표시.",
     tagline:
-      "30일 변화율 → liquidity injection / drain. Net Liquidity = WALCL - RRP - TGA 가 핵심.",
+      "30일 변화율 → 유동성 공급 / 회수. 핵심은 순유동성 = WALCL - RRP - TGA.",
     fredSeries: [
       {
         id: "WALCL",
-        label: "Fed Balance Sheet",
+        label: "Fed 대차대조표",
         unit: "$M",
         color: "oklch(0.78 0.15 165)",
       },
       {
         id: "RRPONTSYD",
-        label: "Reverse Repo (RRP)",
+        label: "역레포 (RRP)",
         unit: "$M",
         color: "oklch(0.65 0.22 25)",
       },
       {
         id: "WTREGEN",
-        label: "Treasury General Acct (TGA)",
+        label: "재무부 일반계정 (TGA)",
         unit: "$M",
         color: "oklch(0.7 0.18 60)",
       },
@@ -418,8 +418,8 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       "Fed 의 대차대조표 (WALCL) 는 글로벌 dollar liquidity 의 근원지입니다. QE 국면에서 WALCL 이 빠르게 팽창하면 dollar 가 자산시장으로 유입되어 위험자산 가격을 끌어올립니다 (2020-2021). 반대로 QT 국면 (2022-2023) 에서는 dollar 가 회수되어 valuation 압축이 진행됩니다. 다만 '실제 시장에 풀린 dollar' 는 WALCL 만으로 결정되지 않습니다 — RRP (역레포) 와 TGA (재무성 일반계정) 가 dollar 를 회수하는 메커니즘이기 때문에, Net Liquidity = WALCL - RRP - TGA 가 더 정확한 측정치입니다. 본 modifier 는 30일 변화율 + 1년 trend 를 결합해 multiplier 를 산출합니다.",
     currentValueKeys: [
       {
-        label: "WALCL Total Assets",
-        hint: "Fed H.4.1 weekly · $M → $T 환산",
+        label: "WALCL 총자산",
+        hint: "Fed H.4.1 주간 · $M → $T 환산",
         pick: () => null, // fromSeriesId 경로 사용
         fromSeriesId: "WALCL",
         unit: "",
@@ -428,7 +428,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         formatValue: v => `$${(v / 1_000_000).toFixed(2)}T`,
       },
       {
-        label: "WALCL 30d Change",
+        label: "WALCL 30일 변화",
         hint: "30일 변화율 (QE+ / QT-)",
         pick: l => l.walcl_change_30d_pct,
         unit: "%",
@@ -438,7 +438,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         formatValue: v => `${(v * 100).toFixed(2)}%`,
       },
       {
-        label: "Net Liquidity 30d",
+        label: "순유동성 30일",
         hint: "WALCL - RRP - TGA",
         pick: l => l.c3_net_liquidity_30d_pct,
         unit: "%",
@@ -452,28 +452,28 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
 
   // ── Yield Curve ───────────────────────────────────────────
   "yield-curve": {
-    title: "Yield Curve (10Y-2Y)",
+    title: "수익률 곡선 (10Y-2Y)",
     dimension: "6차원 매크로",
     description:
-      "10년 / 2년 국채 금리 스프레드. 역전 (음수) 시 침체 신호. NBER 침체 8개 중 7개가 역전 12-18개월 후 발생.",
+      "10년 / 2년 국채 금리 스프레드. 역전(음수) 시 침체 신호. NBER 침체 8개 중 7개가 역전 12-18개월 후 발생.",
     tagline:
-      "역전 → 침체 lead indicator. 정상 화 (steepening) → Fed pivot 전환점.",
+      "역전 → 침체 선행지표. 정상화(스티프닝) → Fed 피벗 전환점.",
     fredSeries: [
       {
         id: "DGS10",
-        label: "10Y Treasury",
+        label: "10Y 국채",
         unit: "%",
         color: "oklch(0.78 0.15 165)",
       },
       {
         id: "DGS2",
-        label: "2Y Treasury",
+        label: "2Y 국채",
         unit: "%",
         color: "oklch(0.65 0.22 25)",
       },
       {
         id: "T10Y2Y",
-        label: "10Y-2Y Spread",
+        label: "10Y-2Y 스프레드",
         unit: "%",
         color: "oklch(0.7 0.22 305)",
       },
@@ -543,7 +543,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       "Yield Curve 는 시장의 종합적 경기 전망을 단일 숫자로 압축합니다. 10년 금리가 2년 금리보다 낮다는 것은 시장이 '향후 단기 금리가 현재보다 낮아질 것' 이라고 기대한다는 뜻 = Fed 가 침체 대응을 위해 금리를 인하할 것이라는 expectation. 역사적으로 미국의 NBER 침체 8개 중 7개가 yield curve 역전 후 12-24개월 내에 발생했습니다. 한편 crypto 사이클은 침체 자체보다 'Fed pivot 시점' 에 더 민감하며, 평균적으로 yield curve 정상화 (steepening) 시점이 강세장 진입 spot 입니다. 본 modifier 는 (1) 역전 깊이, (2) 역전 지속 기간, (3) 정상화 속도 를 결합해 multiplier 를 산출합니다.",
     currentValueKeys: [
       {
-        label: "10Y-2Y Spread",
+        label: "10Y-2Y 스프레드",
         hint: "음수 → 침체 신호",
         pick: l => l.yield_curve_10_2,
         unit: "%",
@@ -552,19 +552,19 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         primary: true,
       },
       {
-        label: "C4 Cycle Phase",
-        hint: "현재 사이클 단계 (categorical)",
+        label: "C4 사이클 단계",
+        hint: "현재 사이클 단계 (범주형)",
         pick: () => null,
         unit: "",
         valueType: "categorical",
         pickCategorical: l => l.c4_cycle_phase,
         categoricalLabel: v => {
           const map: Record<string, string> = {
-            pre_recession: "PRE-RECESSION",
-            recession_imminent: "RECESSION IMMINENT",
-            fed_pivot: "FED PIVOT",
-            crypto_rally: "CRYPTO RALLY",
-            neutral: "NEUTRAL",
+            pre_recession: "침체 전조",
+            recession_imminent: "침체 임박",
+            fed_pivot: "Fed 피벗",
+            crypto_rally: "크립토 랠리",
+            neutral: "중립",
           };
           return map[v] ?? v.toUpperCase();
         },
@@ -580,7 +580,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         },
       },
       {
-        label: "Macro Score",
+        label: "매크로 점수",
         hint: "-100 ~ +100",
         pick: l => l.score,
         unit: "",
@@ -594,12 +594,12 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
     title: "DXY / VIX",
     dimension: "6차원 매크로",
     description:
-      "Dollar Index (DTWEXBGS) + 공포지수 (VIXCLS) 결합. 강달러·고변동성 동반 시 위험자산에 강한 역풍. 백엔드 layer 는 dxy_change_30d_pct + vix 만 포함 — 절대 DXY 수준은 차트 시리즈에서 확인.",
-    tagline: "DXY ↑ & VIX ↑ 동시 → risk-off 강화 (multiplier 0.6 ~ 0.3).",
+      "달러 인덱스(DTWEXBGS)와 공포지수(VIXCLS) 결합. 강달러·고변동성 동반 시 위험자산에 강한 역풍. 백엔드 layer는 dxy_change_30d_pct와 vix만 포함 — 절대 DXY 수준은 차트 시리즈에서 확인.",
+    tagline: "DXY ↑ & VIX ↑ 동시 → 위험회피 강화 (multiplier 0.6 ~ 0.3).",
     fredSeries: [
       {
         id: "DTWEXBGS",
-        label: "DXY (Broad Dollar)",
+        label: "DXY (광의 달러)",
         unit: "",
         color: "oklch(0.78 0.15 165)",
       },
@@ -681,7 +681,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
       "DXY 와 VIX 는 글로벌 risk sentiment 의 두 축입니다. DXY 상승은 미국 외 모든 자산에 valuation 압축을 의미 (denominator effect) 하고, VIX 상승은 옵션시장의 보험료 (kurtosis premium) 가 상승했음을 뜻합니다. 둘이 동시에 상승할 때 (true risk-off) crypto 는 평균 -2.1% / day 의 negative drift 를 보이며, 둘 중 하나만 움직이면 영향이 제한됩니다. 본 modifier 는 두 시리즈의 30일 변화율 + 절대 수준을 결합해 'risk sentiment' 점수를 산출하며, BBDX 의 LONG 신호 신뢰도에 multiplier 로 적용합니다.",
     currentValueKeys: [
       {
-        label: "DXY 30d Change",
+        label: "DXY 30일 변화",
         hint: "강달러 → 역풍",
         pick: l => l.dxy_change_30d_pct,
         unit: "%",
@@ -692,7 +692,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         formatValue: v => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%`,
       },
       {
-        label: "VIX Level",
+        label: "VIX 수준",
         hint: "> 30 = 패닉 / < 15 = 평온",
         pick: l => l.vix,
         unit: "",
@@ -700,7 +700,7 @@ export const MACRO_INDICATOR_META: Record<MacroIndicatorKey, MacroIndicatorMeta>
         positiveIsGood: false,
       },
       {
-        label: "C2 Risk-On",
+        label: "C2 위험선호",
         hint: "0 (off) ~ 1 (on)",
         pick: l => l.c2_riskOn,
         unit: "",

@@ -13,7 +13,14 @@ interface LiteCardProps {
   children: ReactNode;
   variant?: "default" | "good" | "caution" | "bad" | "muted";
   className?: string;
+  /**
+   * 실제 클릭 핸들러. 제공하면 카드가 버튼처럼 동작하며 키보드(Enter/Space)
+   * 와 focus-visible 링을 갖춘다. 이미 <Link> 로 감싼 카드라면 onClick 대신
+   * `interactive` 를 써서 시각 효과만 주고 중첩 인터랙티브 요소를 피한다.
+   */
   onClick?: () => void;
+  /** 클릭 핸들러 없이 hover lift 등 시각적 인터랙티브 스타일만 적용. */
+  interactive?: boolean;
 }
 
 const VARIANT_CLASSES: Record<Required<LiteCardProps>["variant"], string> = {
@@ -32,15 +39,34 @@ export function LiteCard({
   variant = "default",
   className,
   onClick,
+  interactive: interactiveProp = false,
 }: LiteCardProps) {
-  const interactive = !!onClick;
+  const isButton = !!onClick;
+  const interactive = isButton || interactiveProp;
   return (
     <div
       onClick={onClick}
+      // 실제 핸들러가 있으면 버튼 시맨틱 + 키보드 활성화를 제공 (기존엔
+      // onClick 만 있고 키보드/포커스가 없어 키보드·스크린리더 사용자가
+      // 카드를 누를 수 없었다).
+      role={isButton ? "button" : undefined}
+      tabIndex={isButton ? 0 : undefined}
+      onKeyDown={
+        isButton
+          ? event => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "relative overflow-hidden rounded-lg border shadow-sm transition-all",
         VARIANT_CLASSES[variant],
         interactive && "cursor-pointer hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.99]",
+        isButton &&
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
         className
       )}
     >

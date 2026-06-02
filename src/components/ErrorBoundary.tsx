@@ -65,13 +65,25 @@ class ErrorBoundary extends Component<Props, State> {
               className="text-destructive mb-6 flex-shrink-0"
             />
 
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
+            <h2 className="text-xl font-bold mb-4">
+              예상치 못한 오류가 발생했습니다
+            </h2>
 
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
-              </pre>
-            </div>
+            {/* 스택 트레이스는 개발 모드에서만 노출. 프로덕션에서 내부 코드
+                경로/파일 구조를 사용자·제3자에게 흘리지 않고(정보 누출 방지),
+                일반 사용자에게 무의미한 텍스트 벽 대신 친절한 안내를 보여준다. */}
+            {import.meta.env.DEV && this.state.error?.stack ? (
+              <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
+                <pre className="text-sm text-muted-foreground whitespace-break-spaces">
+                  {this.state.error.stack}
+                </pre>
+              </div>
+            ) : (
+              <p className="mb-6 max-w-md text-center text-sm text-muted-foreground">
+                일시적인 오류일 수 있어요. 아래 버튼으로 새로고침하면 대부분
+                해결됩니다.
+              </p>
+            )}
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <button

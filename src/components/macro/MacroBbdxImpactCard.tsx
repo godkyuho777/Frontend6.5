@@ -58,15 +58,15 @@ export function MacroBbdxImpactCard({
 
   return (
     <HudPanel
-      title="BBDX Impact Simulator"
-      subtitle="헌장 R3 — modifier-only · 곱셈 체인"
+      title="BBDX 영향 시뮬레이터"
+      subtitle="헌장 R3 — 가중치 전용 · 곱셈 체인"
       variant={variant}
     >
       <div className="space-y-4">
         {/* 곱셈 체인 시각화 */}
         <div className="hud-frame p-3">
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-2">
-            현재 곱셈 체인 (예시: base score = {BASE_SCORE})
+            현재 곱셈 체인 (예시: 기준 점수 {BASE_SCORE})
           </div>
           <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
             <span className="rounded-md bg-muted/40 px-2 py-1 text-foreground">
@@ -106,7 +106,7 @@ export function MacroBbdxImpactCard({
           </div>
           {isStub && (
             <div className="font-mono text-[10px] text-orange-300/80 mt-2">
-              STUB — multiplier 1.00 default. 실데이터 진입 후 실제 값 표시.
+              STUB — multiplier 기본값 1.00. 실데이터 수신 후 실제 값이 표시됩니다.
             </div>
           )}
         </div>
@@ -115,7 +115,7 @@ export function MacroBbdxImpactCard({
         <div>
           <div className="font-mono text-[10px] text-muted-foreground tracking-wider mb-2 flex items-center gap-1.5">
             <Calculator className="h-3 w-3" />
-            regime 전환 시 final score 시뮬레이션 (base {BASE_SCORE})
+            레짐 전환 시 최종 점수 시뮬레이션 (기준 {BASE_SCORE})
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
             {REGIME_RULEBOOK.map(r => (
@@ -133,10 +133,10 @@ export function MacroBbdxImpactCard({
         {/* 면책 */}
         <div className="rounded-md bg-muted/30 p-2">
           <div className="font-mono text-[10px] text-muted-foreground leading-relaxed">
-            본 시뮬레이터는 단일 차원 (macro) 의 효과만 표시. 실제 EntryDecision
-            은 signal × wave × structure × volatility × volume × macro ×
-            onchain 의 7차원 곱셈입니다. 헌장 R3 — macro 단독으로는 entry 결정
-            X.
+            이 시뮬레이터는 매크로 차원의 효과만 보여줍니다. 실제 EntryDecision은
+            signal × wave × structure × volatility × volume × macro × onchain의
+            7차원 곱셈으로 결정됩니다. 헌장 R3에 따라 매크로 단독으로는 진입을
+            결정하지 않습니다.
           </div>
         </div>
       </div>
