@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, ShieldAlert, Activity, Layers } from "lucide-react";
+import { TrendingUp, TrendingDown, ShieldAlert, Activity, Layers, Target } from "lucide-react";
 import type { CoinScanResult } from "@shared/types";
 import { PatternConfluenceCard } from "@/components/PatternConfluenceCard";
 
@@ -90,6 +90,10 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
             </Section>
           )}
 
+          {/* Risk / Reward — 진입 시그널이 있을 때만. 표시 전용(헌장 안전):
+              BBDX 결정 로직을 바꾸지 않고 기존 데이터로 R:R 만 계산. */}
+          {coin.entryDecision && <RiskReward coin={coin} />}
+
           {/* Exit Decision */}
           {coin.exitDecision && (
             <Section
@@ -134,12 +138,27 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
           {/* Indicator snapshot (always shown) */}
           <Section title="지표" icon={<Activity className="h-4 w-4 text-neon-cyan" />}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <Row label="RSI(14)" value={coin.indicators.rsi.toFixed(1)} />
-              <Row label="ADX(14)" value={coin.indicators.adx.toFixed(1)} />
+              <Row
+                label="RSI(14)"
+                value={`${coin.indicators.rsi.toFixed(1)} · ${rsiZone(coin.indicators.rsi)}`}
+              />
+              <Row
+                label="ADX(14)"
+                value={`${coin.indicators.adx.toFixed(1)} · ${adxZone(coin.indicators.adx)}`}
+              />
               <Row label="+DI" value={coin.indicators.plusDi.toFixed(1)} />
               <Row label="-DI" value={coin.indicators.minusDi.toFixed(1)} />
               <Row label="BB 중심선" value={`$${formatPrice(coin.indicators.bbMiddle)}`} />
               <Row label="BB 하단" value={`$${formatPrice(coin.indicators.bbLower)}`} />
+              {coin.atr != null && coin.atr > 0 && (
+                <>
+                  <Row label="ATR(14)" value={`$${formatPrice(coin.atr)}`} />
+                  <Row
+                    label="변동성(ATR%)"
+                    value={`${coin.price > 0 ? ((coin.atr / coin.price) * 100).toFixed(2) : "0.00"}%`}
+                  />
+                </>
+              )}
               <Row label="압력" value={formatPressure(coin.pressure ?? "NEUTRAL")} />
               <Row label="반전 확률" value={`${(coin.reversalProb ?? 0).toFixed(0)}%`} />
               <Row label="거래량 비율" value={(coin.volumeRatio ?? 1).toFixed(2)} />
@@ -194,6 +213,86 @@ export function SignalDetailDialog({ coin, children }: SignalDetailDialogProps) 
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * 리스크/보상(R:R) 카드 — 표시 전용. BBDX 진입/청산 결정에 영향 없음(헌장 안전).
+ * 기존 스캔 결과(price · stopLossPrice · BB 중심선/상단)만으로 계산:
+ *   리스크 = 진입 − 손절(BB하단×0.97), 목표 = BB 중심선/상단 (평균회귀).
+ * 기존엔 손절가만 보였고 목표가·R:R 비율이 없어 트레이더가 기대 보상을 가늠 불가.
+ */
+function RiskReward({ coin }: { coin: CoinScanResult }) {
+  const entry = coin.price;
+  const stop = coin.stopLossPrice ?? 0;
+  const risk = entry - stop;
+  if (!(risk > 0) || !(entry > 0)) return null;
+  const riskPct = (risk / entry) * 100;
+  const t1 = coin.indicators.bbMiddle;
+  const t2 = coin.indicators.bbUpper;
+  const rr1 = t1 > entry ? (t1 - entry) / risk : null;
+  const rr2 = t2 > entry ? (t2 - entry) / risk : null;
+
+  return (
+    <Section title="리스크 / 보상 (R:R)" icon={<Target className="h-4 w-4 text-neon-cyan" />}>
+      <Row label="진입가" value={`$${formatPrice(entry)}`} />
+      <Row
+        label="손절가 (BB하단×0.97)"
+        value={`$${formatPrice(stop)} · −${riskPct.toFixed(2)}%`}
+      />
+      {coin.atr != null && coin.atr > 0 && (
+        <Row
+          label="ATR 손절 제안 (1.5×ATR)"
+          value={`$${formatPrice(entry - 1.5 * coin.atr)} · −${(((1.5 * coin.atr) / entry) * 100).toFixed(2)}%`}
+        />
+      )}
+      <div className="my-1 border-t border-border/20" />
+      <RRRow label="목표 1 · BB 중심선" target={t1} entry={entry} rr={rr1} />
+      <RRRow label="목표 2 · BB 상단" target={t2} entry={entry} rr={rr2} />
+      <p className="mt-1.5 text-[9px] font-mono text-muted-foreground/70 leading-relaxed">
+        평균회귀 기준 (목표 = BB 중심선/상단). R:R = (목표−진입) ÷ (진입−손절).
+        ATR 손절은 변동성 기반의 더 넓은 대안 (고정 BB 손절이 좁아 조기 손절될 때
+        참고). 참고용이며 실제 청산은 EXIT 로직을 따름.
+      </p>
+    </Section>
+  );
+}
+
+function RRRow({
+  label,
+  target,
+  entry,
+  rr,
+}: {
+  label: string;
+  target: number;
+  entry: number;
+  rr: number | null;
+}) {
+  const rewardPct = entry > 0 ? ((target - entry) / entry) * 100 : 0;
+  return (
+    <div className="flex items-center justify-between font-sans text-[11px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">
+        ${formatPrice(target)} · +{rewardPct.toFixed(2)}%
+        {rr != null ? (
+          <span
+            className={cn(
+              "ml-2 font-bold tabular-nums",
+              rr >= 2
+                ? "text-neon-green"
+                : rr >= 1
+                  ? "text-neon-yellow"
+                  : "text-neon-red"
+            )}
+          >
+            {rr.toFixed(2)}:1
+          </span>
+        ) : (
+          <span className="ml-2 text-muted-foreground">도달</span>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -381,6 +480,22 @@ function Trigger({ label, met }: { label: string; met: boolean }) {
 function formatPrice(p: number): string {
   if (p === 0) return "—";
   return p < 1 ? p.toFixed(6) : p < 100 ? p.toFixed(4) : p.toFixed(2);
+}
+
+/** RSI 해석 라벨 — 숫자만으론 일반 트레이더가 구간을 알기 어려움. */
+function rsiZone(rsi: number): string {
+  if (rsi <= 30) return "과매도";
+  if (rsi <= 40) return "약과매도";
+  if (rsi >= 70) return "과매수";
+  if (rsi >= 60) return "약과매수";
+  return "중립";
+}
+
+/** ADX 추세 강도 해석 — BBDX 는 저-ADX(레인지)에서 평균회귀 진입. */
+function adxZone(adx: number): string {
+  if (adx < 20) return "약추세";
+  if (adx < 25) return "추세 형성";
+  return "추세";
 }
 
 function formatPatternName(name: string): string {

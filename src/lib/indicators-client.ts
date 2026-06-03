@@ -81,6 +81,24 @@ function trueRange(high: number, low: number, prevClose: number): number {
 }
 
 /**
+ * ATR (Average True Range) — Wilder smoothing. 백엔드 indicators.ts 미러.
+ * 변동성 (price 단위, 항상 ≥ 0). 표시·리스크 관리용 — BBDX 신호 결정엔 미사용.
+ */
+export function calculateATR(candles: Candle[], period = 14): number {
+  if (candles.length < period + 1) return 0;
+  const trArr: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    trArr.push(trueRange(candles[i].high, candles[i].low, candles[i - 1].close));
+  }
+  if (trArr.length < period) return 0;
+  let atr = trArr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trArr.length; i++) {
+    atr = (atr * (period - 1) + trArr[i]) / period;
+  }
+  return atr;
+}
+
+/**
  * ADX (Average Directional Index) 계산
  */
 export function calculateADX(

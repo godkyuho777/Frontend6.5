@@ -261,6 +261,8 @@ export interface CoinScanResult {
   isStopLossHit: boolean;
   /** -DI > +DI AND ADX > 25 — LONG 진입 차단 */
   isFallingKnife: boolean;
+  /** ATR(14) — 변동성 (price 단위). 표시·리스크용, BBDX 신호 결정 미사용. */
+  atr?: number;
 
   // ─── SHORT (Phase v6.5 dual-system) ─────────────────────────────────────
   /** SHORT BB 구조 — LONG 의 bbStructure 미러 */

@@ -18,6 +18,7 @@ import { aggregatePatternScore } from "@/lib/pattern-aggregator";
 import { fetchKlines, fetchAll24hTickers } from "@/lib/bybit-client";
 import {
   calculateAllIndicators,
+  calculateATR,
   calculateBollingerBandsSeries,
   calculateEMA,
   calculateSignalStrengthV2,
@@ -188,6 +189,7 @@ async function scanCoin(
     const exitDecision = decideExit(price, indicators, bearishPatterns);
     const stopLossPrice = indicators.bbLower * 0.97;
     const isStopLossHit = price <= stopLossPrice;
+    const atr = calculateATR(candles);
 
     // VWAP Strategy ──
     const vwap = indicators.vwap ?? calculateVWAP(candles);
@@ -226,6 +228,7 @@ async function scanCoin(
       stopLossPrice,
       isStopLossHit,
       isFallingKnife: fallingKnife,
+      atr,
       // VWAP Strategy fields
       vwap,
       ema9,
