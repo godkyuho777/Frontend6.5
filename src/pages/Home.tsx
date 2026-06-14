@@ -41,6 +41,7 @@ import { fetchKlines } from "@/lib/bybit-client";
 import { useFullMarketScan, useMarketScan } from "@/hooks/useMarketData";
 import { useBbdxV66Flags } from "@/hooks/useBbdxV66Flags";
 import { DualSignalBadge } from "@/components/strategies/DualSignalBadge";
+import { RiskBadge } from "@/components/risk/RiskBadge";
 
 type SortKey =
   | "symbol"
@@ -339,6 +340,22 @@ function signalFilterLabel(filter: SignalFilter) {
   if (filter === "entry") return "진입 후보";
   if (filter === "exit") return "청산 후보";
   return "중립 관망";
+}
+
+/**
+ * 페이지 번호 윈도우 — 유니버스가 바이비트 전체로 확장돼 페이지 수가 많아져도
+ * (예: 60페이지) 번호 버튼이 줄을 넘치지 않도록 1 … (현재±1) … N 형태로 압축.
+ */
+function pageWindow(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push("…");
+  for (let p = start; p <= end; p++) out.push(p);
+  if (end < total - 1) out.push("…");
+  out.push(total);
+  return out;
 }
 
 export default function Home() {
@@ -716,6 +733,7 @@ export default function Home() {
                         <col className="w-[140px]" />
                         <col className="w-[150px]" />
                         <col className="w-[140px]" />
+                        <col className="w-[140px]" />
                       </colgroup>
                       <thead>
                         <tr className="border-b border-border/30">
@@ -780,6 +798,9 @@ export default function Home() {
                             sortKey={sortKey}
                             onSort={handleSort}
                           />
+                          <th className="hidden min-w-[120px] px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground sm:table-cell">
+                            리스크
+                          </th>
                           <SortHeader
                             label="시그널"
                             sortKeyVal="signal"
@@ -1052,6 +1073,17 @@ export default function Home() {
                               </td>
                               <td
                                 className={cn(
+                                  "hidden whitespace-nowrap px-4 py-4 text-left transition-colors sm:table-cell",
+                                  rowBgClass
+                                )}
+                              >
+                                <RiskBadge
+                                  score={coin.riskScore}
+                                  band={coin.riskBand}
+                                />
+                              </td>
+                              <td
+                                className={cn(
                                   "whitespace-nowrap px-4 py-4 text-left transition-colors",
                                   rowBgClass
                                 )}
@@ -1102,23 +1134,29 @@ export default function Home() {
                         이전
                       </Button>
                       <div className="flex items-center gap-1">
-                        {Array.from(
-                          { length: displayTotalPages },
-                          (_, i) => i + 1
-                        ).map(p => (
-                          <button
-                            key={p}
-                            onClick={() => setPage(p)}
-                            className={cn(
-                              "size-6 rounded-sm font-sans text-[10px] transition-all",
-                              page === p
-                                ? "border border-foreground bg-foreground text-background"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                            )}
-                          >
-                            {p}
-                          </button>
-                        ))}
+                        {pageWindow(page, displayTotalPages).map((p, i) =>
+                          p === "…" ? (
+                            <span
+                              key={`gap-${i}`}
+                              className="px-0.5 font-sans text-[10px] text-muted-foreground"
+                            >
+                              …
+                            </span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => setPage(p)}
+                              className={cn(
+                                "size-6 rounded-sm font-sans text-[10px] transition-all",
+                                page === p
+                                  ? "border border-foreground bg-foreground text-background"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                              )}
+                            >
+                              {p}
+                            </button>
+                          )
+                        )}
                       </div>
                       <Button
                         variant="outline"

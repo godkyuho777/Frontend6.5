@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { TIMEFRAMES } from "@shared/types";
 import type { CoinScanResult, TimeframeValue } from "@shared/types";
 import { useFullMarketScan, useMarketScan } from "@/hooks/useMarketData";
+import { RiskBadge } from "@/components/risk/RiskBadge";
 
 type SortKey = "symbol" | "price" | "change24h" | "fib" | "trendlines" | "strength";
 type SortDir = "asc" | "desc";
@@ -335,6 +336,9 @@ export default function Fibonacci() {
                     </th>
                     <SortHeader label="추세선" sortKeyVal="trendlines" className="hidden md:table-cell" sortKey={sortKey} onSort={handleSort} />
                     <SortHeader label="강도" sortKeyVal="strength" className="hidden sm:table-cell" sortKey={sortKey} onSort={handleSort} />
+                    <th className="hidden whitespace-nowrap px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground sm:table-cell">
+                      리스크
+                    </th>
                     <th className="whitespace-nowrap px-4 py-3 text-left font-sans text-[11px] tracking-wider text-muted-foreground">
                       시그널
                     </th>
@@ -453,6 +457,9 @@ export default function Fibonacci() {
                           ) : (
                             <span className="font-sans text-[10px] text-muted-foreground">—</span>
                           )}
+                        </td>
+                        <td className={cn("hidden whitespace-nowrap px-4 py-4 text-left transition-colors sm:table-cell", rowBgClass)}>
+                          <RiskBadge score={coin.riskScore} band={coin.riskBand} />
                         </td>
                         <td className={cn("whitespace-nowrap px-4 py-4 text-left transition-colors", rowBgClass)}>
                           {sig === "BUY" ? (

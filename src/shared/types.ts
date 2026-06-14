@@ -264,6 +264,12 @@ export interface CoinScanResult {
   /** ATR(14) — 변동성 (price 단위). 표시·리스크용, BBDX 신호 결정 미사용. */
   atr?: number;
 
+  // ─── Risk Score (백엔드 risk.* 미러, modifier/표시용) ────────────────────
+  /** 코인별 리스크 점수 0-100 (높을수록 위험). 백엔드 스캐너가 부여. */
+  riskScore?: number;
+  /** 리스크 밴드 — low/moderate/high/extreme */
+  riskBand?: "low" | "moderate" | "high" | "extreme";
+
   // ─── SHORT (Phase v6.5 dual-system) ─────────────────────────────────────
   /** SHORT BB 구조 — LONG 의 bbStructure 미러 */
   bbStructureShort?: BBStructureShort | null;

@@ -14,7 +14,9 @@
 import {
   SECTORS,
   SECTOR_MEMBERSHIPS,
+  OTHER_SECTOR,
   symbolsInSector,
+  sectorsOf,
   type SectorId,
   type SectorMeta,
 } from "./sector-taxonomy";
@@ -51,7 +53,7 @@ export interface SectorRow {
 export function aggregateBySector(
   tickers: Map<string, SectorTicker>,
 ): SectorRow[] {
-  return SECTORS.map((sector) => {
+  const rows: SectorRow[] = SECTORS.map((sector) => {
     const symbols = symbolsInSector(sector.id);
     const coins: SectorTicker[] = [];
     for (const sym of symbols) {
@@ -80,6 +82,32 @@ export function aggregateBySector(
       coins,
     };
   });
+
+  // ── 기타(미분류) 버킷 — 명시 taxonomy 에 없는 모든 코인 ──────────
+  // 유니버스가 바이비트 전체로 확장되면서 분류 안 된 신규 코인을 catch-all.
+  const otherCoins: SectorTicker[] = [];
+  for (const t of tickers.values()) {
+    if (sectorsOf(t.symbol).length === 0 && Number.isFinite(t.change24h)) {
+      otherCoins.push(t);
+    }
+  }
+  if (otherCoins.length > 0) {
+    otherCoins.sort((a, b) => b.change24h - a.change24h);
+    const avgChange24h =
+      otherCoins.reduce((s, c) => s + c.change24h, 0) / otherCoins.length;
+    const totalVolume24h = otherCoins.reduce((s, c) => s + c.volume24h, 0);
+    rows.push({
+      sector: OTHER_SECTOR,
+      avgChange24h,
+      coinCount: otherCoins.length,
+      totalVolume24h,
+      topPerformer: otherCoins[0] ?? null,
+      bottomPerformer: otherCoins[otherCoins.length - 1] ?? null,
+      coins: otherCoins,
+    });
+  }
+
+  return rows;
 }
 
 /**

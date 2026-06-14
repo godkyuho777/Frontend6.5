@@ -26,6 +26,8 @@ import Simulator from "./pages/Simulator";
 import SimulatorLeaderboard from "./pages/simulator/Leaderboard";
 import Onchain from "./pages/Onchain";
 import SectorPulse from "./pages/SectorPulse";
+import ResearchList from "./pages/research/ResearchList";
+import ResearchArticle from "./pages/research/ResearchArticle";
 import Charter from "./pages/Charter";
 import HealthCheck from "./pages/admin/HealthCheck";
 import CalibrationAdmin from "./pages/admin/Calibration";
@@ -136,6 +138,10 @@ function ProShell() {
         <Route path={"/onchain"} component={Onchain} />
         {/* Sector Pulse — 12 섹터 24h % 변동 + drill-down (디스커버리). */}
         <Route path={"/sectors"} component={SectorPulse} />
+        {/* Research Hub — 섹터 딥다이브 + 주간 시황 (현재 mock, 추후 tRPC).
+            구체 라우트(:slug)를 인덱스보다 위에 배치 — wouter top-down 매칭. */}
+        <Route path={"/research/:slug"} component={ResearchArticle} />
+        <Route path={"/research"} component={ResearchList} />
         <Route path={"/charter"} component={Charter} />
         <Route path={"/admin/health"} component={HealthCheck} />
         <Route path={"/admin/calibration"} component={CalibrationAdmin} />

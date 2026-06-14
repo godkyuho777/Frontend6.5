@@ -31,6 +31,12 @@ import { HudPanel, StatCard } from "@/components/HudPanel";
 import { RefreshIconButton } from "@/components/RefreshIconButton";
 import { Badge } from "@/components/ui/badge";
 import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { riskBandMeta, type RiskBand } from "@/components/risk/riskBandMeta";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -659,6 +665,82 @@ function TimeSeriesChart() {
   );
 }
 
+// ── 시장 리스크 지수 (헤더용) ───────────────────────────────
+// risk.market — Fear&Greed + 매크로 유동성 국면을 블렌딩한 시스템 리스크.
+// 이 페이지가 추적하는 매크로 국면이 모든 코인에 겹쳐지는 시장 전역 리스크.
+function MarketRiskHeaderCard() {
+  const query = trpc.risk.market.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const data = query.data as
+    | {
+        score: number;
+        band: RiskBand;
+        fearGreed: number;
+        fearGreedLabel: string;
+        macroRegime: string;
+      }
+    | undefined;
+
+  if (!data) {
+    return (
+      <div className="hud-frame px-3 py-2">
+        <div className="font-mono text-[10px] text-muted-foreground tracking-wider">
+          시장 리스크 지수
+        </div>
+        <div className="font-display text-lg font-bold text-muted-foreground">
+          {query.isLoading ? "…" : "—"}
+        </div>
+      </div>
+    );
+  }
+
+  const meta = riskBandMeta(data.band);
+
+  return (
+    <UiTooltip>
+      <TooltipTrigger asChild>
+        <div className="hud-frame cursor-default px-3 py-2">
+          <div className="font-mono text-[10px] text-muted-foreground tracking-wider">
+            시장 리스크 지수
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className={cn("font-display text-2xl font-bold", meta.textClass)}>
+              {Math.round(data.score)}
+            </span>
+            <span
+              className={cn(
+                "rounded-md border px-1.5 py-0.5 font-display text-[11px] font-bold",
+                meta.bgClass,
+                meta.borderClass,
+                meta.textClass
+              )}
+            >
+              {meta.label}
+            </span>
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[240px]">
+        <div className="flex flex-col gap-1">
+          <span className="font-sans text-xs font-bold">
+            시장(시스템) 리스크 — 0-100, 높을수록 위험
+          </span>
+          <span className="font-sans text-[11px] text-muted-foreground">
+            공포·탐욕 지수와 이 페이지가 추적하는 매크로 유동성 국면을 블렌딩한
+            값으로, 모든 코인에 겹쳐지는 시장 전역 리스크입니다.
+          </span>
+          <span className="font-sans text-[11px] text-muted-foreground">
+            공포·탐욕 {data.fearGreed} · {data.fearGreedLabel} · 국면{" "}
+            {data.macroRegime}
+          </span>
+        </div>
+      </TooltipContent>
+    </UiTooltip>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────
 
 export default function MacroHub() {
@@ -683,11 +765,14 @@ export default function MacroHub() {
             복합 신호 C1~C4와 6차원 매크로를 한눈에 보는 BBDX multiplier 요약
           </p>
         </div>
-        <RefreshIconButton
-          onClick={() => snapshotQuery.refetch()}
-          label="매크로 스냅샷 새로고침"
-          isLoading={snapshotQuery.isFetching}
-        />
+        <div className="flex items-center gap-3">
+          <MarketRiskHeaderCard />
+          <RefreshIconButton
+            onClick={() => snapshotQuery.refetch()}
+            label="매크로 스냅샷 새로고침"
+            isLoading={snapshotQuery.isFetching}
+          />
+        </div>
       </div>
 
       {snapshotQuery.isLoading ? (

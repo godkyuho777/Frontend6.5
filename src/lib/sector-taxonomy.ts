@@ -29,6 +29,7 @@ import {
   Radar,
   Coins,
   Lock,
+  Boxes,
 } from "lucide-react";
 
 export type SectorId =
@@ -43,7 +44,8 @@ export type SectorId =
   | "perp-dex"
   | "oracle-data"
   | "rwa"
-  | "zk-privacy";
+  | "zk-privacy"
+  | "other";
 
 export interface SectorMeta {
   id: SectorId;
@@ -158,6 +160,22 @@ export const SECTORS: SectorMeta[] = [
 export const SECTOR_BY_ID: Record<SectorId, SectorMeta> = Object.fromEntries(
   SECTORS.map((s) => [s.id, s]),
 ) as Record<SectorId, SectorMeta>;
+
+/**
+ * 기타(미분류) 섹터 — 명시 taxonomy 에 없는 모든 코인의 catch-all.
+ * 유니버스가 바이비트 전체로 확장되면서 분류되지 않은 신규 코인이 Sector Pulse
+ * 에서 사라지지 않도록 이 버킷으로 집계한다. SECTORS 배열에는 넣지 않고(자동
+ * symbol 매핑이 없으므로), `aggregateBySector` 가 미분류 티커를 모아 별도 row
+ * 로 append 한다.
+ */
+export const OTHER_SECTOR: SectorMeta = {
+  id: "other",
+  name: "기타",
+  description: "미분류 — 위 섹터에 속하지 않는 코인 (바이비트 전체 상장)",
+  icon: Boxes,
+  color: "text-muted-foreground",
+  accent: "border-border/40 bg-muted/20",
+};
 
 /**
  * Symbol → sector list 매핑.

@@ -21,6 +21,7 @@ import {
   Loader2,
   Megaphone,
   Minus,
+  Newspaper,
   Plus,
   Radar,
   Ruler,
@@ -121,6 +122,7 @@ const workspaceItems: MenuItem[] = [
   },
   { icon: Database, label: "온체인 데이터", path: "/onchain" },
   { icon: Radar, label: "섹터 동향", path: "/sectors" },
+  { icon: Newspaper, label: "리서치", path: "/research" },
 ];
 
 const accountItems: MenuItem[] = [
@@ -160,6 +162,9 @@ function isItemActive(location: string, item: MenuItem) {
   if (item.children?.some(child => location === child.path)) return true;
   if (item.path === "/") return location === "/";
   if (location === item.path) return true;
+  // 상세 라우트(예: /research/:slug)에서도 부모 메뉴(/research) 활성 유지.
+  // "/" 는 위에서 정확 매칭만 처리하므로 모든 경로에 매칭되는 사고를 막는다.
+  if (item.path !== "/" && location.startsWith(`${item.path}/`)) return true;
   return false;
 }
 
@@ -196,6 +201,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   // <title> 동기화 — 동적 상세 라우트(/coin/:symbol 등)는 심볼을 우선 노출하고,
   // 그 외에는 활성 메뉴 라벨을 사용한다. 레이아웃 한 곳에서만 계산해 race 방지.
+  // 리서치 상세(/research/:slug)는 데이터가 비동기 tRPC 로 바뀌어 여기서 동기
+  // 해석이 불가하므로 일반값("리서치", activeLabel 폴백)만 잡는다. 실제 기사
+  // 제목은 ResearchArticle 페이지가 detail 응답 도착 후(이후 커밋) 설정한다 —
+  // 부모의 초기 동기 타이틀을 비동기 응답이 덮어쓰므로 race 가 발생하지 않는다.
   const docTitle = useMemo(() => {
     const detail = location.match(
       /^\/(?:coin|fibonacci|vwap|trackers\/ema-adx-trend)\/([^/?#]+)/

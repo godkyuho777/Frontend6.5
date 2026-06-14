@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CandleChartLW, type ChartFibLevel } from "@/components/CandleChartLW";
 import { useCoinDetail } from "@/hooks/useMarketData";
+import { trpc } from "@/lib/trpc";
+import { RiskGauge, type RiskBreakdown } from "@/components/risk/RiskGauge";
+import { type RiskBand } from "@/components/risk/riskBandMeta";
 import { cn } from "@/lib/utils";
 import MultiTFTrendPanel from "@/components/wave/MultiTFTrendPanel";
 import type { Trendline as FibTrendline } from "@/lib/fibonacci-engine";
@@ -152,6 +155,22 @@ export default function WaveTrend() {
   const { data: detail, isLoading, error, refetch } = useCoinDetail(symbol, interval, 120);
   const candles = detail?.candles ?? [];
   const indicators = detail?.indicators;
+
+  // ─── 코인별 리스크 점수 (백엔드 risk.score) ─────────────────────────────
+  // 백엔드 타입 재빌드 전까지 trpc.risk.* 는 타입 미존재(예상된 에러). 데이터
+  // 형상은 LOCKED CONTRACT 의 RiskScoreResult 와 동일하므로 로컬 미러로 캐스팅.
+  const riskQuery = trpc.risk.score.useQuery(
+    { symbol },
+    { staleTime: 300_000, refetchOnWindowFocus: false }
+  );
+  const risk = riskQuery.data as
+    | {
+        score: number;
+        band: RiskBand;
+        breakdown: RiskBreakdown;
+        notes: string[];
+      }
+    | undefined;
 
   // ─── Fibonacci levels ──────────────────────────────────────────────
   const { fibLow, fibHigh, fibLevels } = useMemo(() => {
@@ -397,6 +416,37 @@ export default function WaveTrend() {
               height={500}
               windowSize={candles.length}
             />
+          </HudPanel>
+
+          {/* 코인별 리스크 점수 — 백엔드 risk.score (변동성/유동성/레버리지/추세·낙폭/시장국면) */}
+          <HudPanel
+            title="리스크 점수"
+            subtitle={`${symbol.replace("USDT", "")} · 0-100, 높을수록 위험`}
+            variant={risk && risk.band === "extreme" ? "danger" : "default"}
+          >
+            {riskQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-neon-cyan" />
+                <span className="font-sans text-xs text-muted-foreground">
+                  {symbol} 리스크 점수를 불러오는 중...
+                </span>
+              </div>
+            ) : risk ? (
+              <div className="flex justify-center py-2">
+                <RiskGauge
+                  score={risk.score}
+                  band={risk.band}
+                  label={`${symbol.replace("USDT", "")} · ${tfLabel}`}
+                  breakdown={risk.breakdown}
+                  notes={risk.notes}
+                  className="w-full max-w-xs"
+                />
+              </div>
+            ) : (
+              <div className="py-8 text-center font-sans text-xs text-muted-foreground">
+                리스크 점수를 사용할 수 없습니다
+              </div>
+            )}
           </HudPanel>
 
           {/* Trend Analysis Engine v2.0 — 멀티 TF + 추세선 + EMA + ADX + HH/HL + 브레이크아웃 */}

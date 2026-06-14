@@ -13,8 +13,8 @@
  *
  * 데이터:
  *   - Bybit `fetchAll24hTickers()` 1회 호출 (60s refetch)
- *   - 95 개 TOP_COINS 중 SECTOR_MEMBERSHIPS 에 매핑된 코인만 집계
- *   - 미분류 코인은 console.warn 으로 모니터링 (운영자만)
+ *   - 바이비트 전체 USDT 스팟 코인 (레버리지 토큰 제외)
+ *   - 분류된 코인은 해당 섹터로, 미분류 코인은 "기타" 버킷으로 집계
  *
  * 헌장: Sector Pulse 는 *디스커버리* 도구. BBDX 시그널 시스템과 무관 (헌장
  * R3 영향 X). 단독 매매 시그널 발행 X.
@@ -32,12 +32,10 @@ import {
   aggregateBySector,
   sortByPerformance,
   sortByVolatility,
-  findUnclassified,
   type SectorRow,
   type SectorTicker,
 } from "@/lib/sector-aggregator";
-import { SECTORS } from "@/lib/sector-taxonomy";
-import { TOP_COINS } from "@shared/types";
+import { isExcludedSymbol } from "@/lib/coin-universe";
 import {
   TrendingUp,
   TrendingDown,
@@ -65,27 +63,19 @@ export default function SectorPulse() {
     setError(null);
     try {
       const map = await fetchAll24hTickers();
+      // 바이비트 전체 USDT 스팟 코인 (레버리지 토큰 제외). 미분류 코인은
+      // aggregateBySector 의 "기타" 버킷으로 자동 집계된다.
       const result = new Map<string, SectorTicker>();
-      for (const sym of TOP_COINS) {
-        const t = map.get(sym);
-        if (t) {
-          result.set(sym, {
-            symbol: sym,
-            price: t.price,
-            change24h: t.change24h,
-            volume24h: t.volume24h,
-          });
-        }
+      for (const [sym, t] of map) {
+        if (isExcludedSymbol(sym)) continue;
+        result.set(sym, {
+          symbol: sym,
+          price: t.price,
+          change24h: t.change24h,
+          volume24h: t.volume24h,
+        });
       }
       setTickers(result);
-      // 미분류 코인 운영 모니터링
-      const unclassified = findUnclassified(TOP_COINS);
-      if (unclassified.length > 0) {
-        console.warn(
-          `[SectorPulse] ${unclassified.length} unclassified coins:`,
-          unclassified,
-        );
-      }
     } catch (e) {
       setError((e as Error)?.message ?? "Failed to load tickers");
     } finally {
@@ -232,7 +222,8 @@ export default function SectorPulse() {
 
       {/* Footer note */}
       <div className="font-mono text-[10px] text-muted-foreground border-t border-border/20 pt-3">
-        · 데이터: Bybit V5 (60s 자동 갱신) · 95개 코인 · 12개 섹터
+        · 데이터: Bybit V5 (60s 자동 갱신) · {tickers.size.toLocaleString()}개 코인 ·{" "}
+        {rows.length}개 섹터 (바이비트 전체 USDT 스팟)
         <br />
         · Sector 평균: 산술평균 (시총 가중치 X) · top performer 는 sector
         내 24h% 1위

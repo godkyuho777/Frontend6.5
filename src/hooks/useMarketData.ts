@@ -13,7 +13,7 @@ import type {
   Candle,
   CandlePatternMatch,
 } from "@shared/types";
-import { TOP_COINS } from "@shared/types";
+import { getCoinUniverse } from "@/lib/coin-universe";
 import { aggregatePatternScore } from "@/lib/pattern-aggregator";
 import { fetchKlines, fetchAll24hTickers } from "@/lib/bybit-client";
 import {
@@ -254,14 +254,16 @@ async function scanCoinsPage(
   pageSize: number,
   interval: TimeframeValue
 ): Promise<ScanPageResult> {
+  const universe = await getCoinUniverse();
   const startIdx = (page - 1) * pageSize;
-  const pageSymbols = TOP_COINS.slice(startIdx, startIdx + pageSize);
+  const pageSymbols = universe.slice(startIdx, startIdx + pageSize);
 
-  return scanSymbols(pageSymbols, page, pageSize, interval, TOP_COINS.length);
+  return scanSymbols(pageSymbols, page, pageSize, interval, universe.length);
 }
 
 async function scanAllCoins(interval: TimeframeValue): Promise<ScanPageResult> {
-  return scanSymbols(TOP_COINS, 1, TOP_COINS.length, interval, TOP_COINS.length);
+  const universe = await getCoinUniverse();
+  return scanSymbols(universe, 1, universe.length, interval, universe.length);
 }
 
 async function scanSymbols(
@@ -404,10 +406,11 @@ export function useMarketScan(
     };
   }, [fetchData]);
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
     // 캐시 클리어 후 다시 가져오기
+    const universe = await getCoinUniverse();
     const startIdx = (page - 1) * pageSize;
-    const pageSymbols = TOP_COINS.slice(startIdx, startIdx + pageSize);
+    const pageSymbols = universe.slice(startIdx, startIdx + pageSize);
     for (const symbol of pageSymbols) {
       scanCache.delete(cacheKey(symbol, interval));
     }
@@ -466,8 +469,9 @@ export function useFullMarketScan(interval: TimeframeValue) {
     };
   }, [fetchData]);
 
-  const refetch = useCallback(() => {
-    for (const symbol of TOP_COINS) {
+  const refetch = useCallback(async () => {
+    const universe = await getCoinUniverse();
+    for (const symbol of universe) {
       scanCache.delete(cacheKey(symbol, interval));
     }
     fetchData(true);

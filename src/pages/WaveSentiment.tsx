@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/chart";
 import { useWaveTracker } from "@/hooks/useWaveTracker";
 import { WaveMatrixCard } from "@/components/wave/WaveMatrixCard";
+import { trpc } from "@/lib/trpc";
+import { RiskGauge } from "@/components/risk/RiskGauge";
+import { type RiskBand } from "@/components/risk/riskBandMeta";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -242,6 +245,23 @@ export default function WaveSentiment() {
     refetch,
   } = useWaveTracker(oiInterval);
 
+  // ─── 시장(시스템) 리스크 — 백엔드 risk.market (Fear&Greed + 매크로 국면) ──
+  // trpc.risk.* 는 백엔드 타입 재빌드 전까지 타입 미존재(예상된 에러).
+  // 데이터 형상은 LOCKED CONTRACT 의 MarketRiskResult 와 동일.
+  const marketRiskQuery = trpc.risk.market.useQuery(undefined, {
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+  });
+  const marketRisk = marketRiskQuery.data as
+    | {
+        score: number;
+        band: RiskBand;
+        fearGreed: number;
+        fearGreedLabel: string;
+        macroRegime: string;
+      }
+    | undefined;
+
   // ── Chart data ──
   const oiChartData = useMemo(
     () =>
@@ -367,7 +387,7 @@ export default function WaveSentiment() {
             />
           </div>
 
-          {/* Wave Analysis + Liquidation Pressure */}
+          {/* Wave Analysis + Liquidation Pressure + Market Risk */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Wave Gauge */}
             <HudPanel
@@ -377,6 +397,49 @@ export default function WaveSentiment() {
             >
               <div className="flex flex-col items-center py-4">
                 <WaveGauge score={analysis.score} label={analysis.label} />
+              </div>
+            </HudPanel>
+
+            {/* 시장 리스크 — risk.market (Fear&Greed + 매크로 국면) */}
+            <HudPanel
+              title="시장 리스크"
+              subtitle="Fear & Greed + 매크로 유동성 국면"
+              variant={
+                marketRisk && marketRisk.band === "extreme" ? "danger" : "default"
+              }
+            >
+              <div className="flex flex-col items-center py-4">
+                {marketRiskQuery.isLoading ? (
+                  <div className="flex items-center gap-2 py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-neon-cyan" />
+                    <span className="font-sans text-xs text-muted-foreground">
+                      시장 리스크를 불러오는 중...
+                    </span>
+                  </div>
+                ) : marketRisk ? (
+                  <>
+                    <RiskGauge score={marketRisk.score} band={marketRisk.band} />
+                    <div className="mt-3 flex flex-col items-center gap-1 text-center">
+                      <span className="font-sans text-xs text-muted-foreground">
+                        공포·탐욕{" "}
+                        <span className="font-bold text-foreground">
+                          {marketRisk.fearGreed}
+                        </span>{" "}
+                        · {marketRisk.fearGreedLabel}
+                      </span>
+                      <span className="font-sans text-xs text-muted-foreground">
+                        매크로 국면{" "}
+                        <span className="font-bold text-foreground">
+                          {marketRisk.macroRegime}
+                        </span>
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 text-center font-sans text-xs text-muted-foreground">
+                    시장 리스크를 사용할 수 없습니다
+                  </div>
+                )}
               </div>
             </HudPanel>
 

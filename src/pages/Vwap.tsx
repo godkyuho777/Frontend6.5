@@ -26,6 +26,7 @@ import type {
 } from "@shared/types";
 import { useFullMarketScan, useMarketScan } from "@/hooks/useMarketData";
 import { trpc } from "@/lib/trpc";
+import { RiskBadge } from "@/components/risk/RiskBadge";
 import {
   VwapChartPanel,
   VolumeProfilePanel,
@@ -375,6 +376,9 @@ export default function Vwap() {
                       sortKey={sortKey}
                       onSort={handleSort}
                     />
+                    <th className="px-4 py-3 text-right font-sans text-[11px] tracking-wider text-muted-foreground hidden sm:table-cell">
+                      리스크
+                    </th>
                     <th className="px-4 py-3 text-center font-sans text-[11px] tracking-wider text-muted-foreground">
                       시그널
                     </th>
@@ -475,6 +479,13 @@ export default function Vwap() {
                               —
                             </span>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-right hidden sm:table-cell">
+                          <RiskBadge
+                            score={coin.riskScore}
+                            band={coin.riskBand}
+                            className="justify-end"
+                          />
                         </td>
                         <td className="px-4 py-3 text-center">
                           {sig?.side === "LONG" ? (

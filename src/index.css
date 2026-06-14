@@ -373,3 +373,137 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── 리서치 본문 prose (.prose-research) ───────────────────────────
+   리서치 읽기 페이지(/research/:slug)의 mock 본문(HTML) 전용 타이포그래피.
+   좁은 리딩 칼럼은 컴포넌트(max-w-[42rem])가 담당하고, 여기서는 본문 요소의
+   리듬(헤딩 크기·문단 행간·인용구·그림·콜아웃)만 정의한다.
+
+   원칙:
+   - 자식 선택자는 :where() 로 0-specificity → 페이지에서 필요 시 유틸로 덮어쓰기 가능.
+   - 색은 디자인 토큰(--foreground / --muted-foreground / --primary / --border) 사용.
+   - 2026-06-01 경고 준수: 전역 blanket border/shadow kill 을 재도입하지 않는다.
+     아래 규칙은 .prose-research 하위로만 한정된 추가 스타일이다. */
+.prose-research {
+  color: var(--foreground);
+  font-size: 0.95rem;
+  line-height: 1.78;
+}
+
+.prose-research :where(p) {
+  margin-block: 0 1.1em;
+  font-size: 0.95rem;
+  line-height: 1.78;
+}
+
+.prose-research :where(h2) {
+  margin-block: 1.9em 0.6em;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: var(--tracking-display);
+}
+
+.prose-research :where(h3) {
+  margin-block: 1.5em 0.5em;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: var(--tracking-tight);
+}
+
+.prose-research :where(h2:first-child, h3:first-child) {
+  margin-top: 0;
+}
+
+.prose-research :where(strong) {
+  font-weight: 700;
+}
+
+.prose-research :where(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-research :where(ul, ol) {
+  margin-block: 0 1.1em;
+  padding-left: 1.3em;
+}
+
+.prose-research :where(li) {
+  margin-block: 0.35em;
+}
+
+.prose-research :where(li)::marker {
+  color: var(--muted-foreground);
+}
+
+/* 인용구 — 좌측 단측 보더 대신 상하 보더 + serif 강조 (rounded 0). */
+.prose-research :where(blockquote) {
+  margin-block: 1.6em;
+  padding-block: 1em;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--foreground);
+}
+
+.prose-research :where(blockquote p) {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* 그림 + 캡션 */
+.prose-research :where(figure) {
+  margin-block: 1.8em;
+}
+
+.prose-research :where(figcaption) {
+  margin-top: 0.7em;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+/* 본문 내 그림 자리 표시자 (mock — 추후 실제 차트/이미지로 교체) */
+.prose-research .prose-figure-placeholder {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--tl-n-50),
+      var(--tl-n-50) 12px,
+      var(--tl-n-100) 12px,
+      var(--tl-n-100) 24px
+    );
+}
+
+/* 콜아웃 (.prose-callout, data-variant="warn") — 주의/노트 박스.
+   전체 보더 + rounded (단측 보더 금지). */
+.prose-research .prose-callout {
+  margin-block: 1.6em;
+  padding: 1em 1.1em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tl-n-50);
+}
+
+.prose-research .prose-callout[data-variant="warn"] {
+  border-color: color-mix(in oklab, var(--tl-orange) 35%, var(--border));
+  background: color-mix(in oklab, var(--tl-orange) 7%, var(--card));
+}
+
+.prose-research .prose-callout :where(p) {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
