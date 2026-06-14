@@ -507,3 +507,46 @@
   font-size: 0.9rem;
   line-height: 1.7;
 }
+
+/* 데이터 테이블 — 기관 리포트용 비교표(토큰 등락·AUM·플로우 등).
+   hairline 보더 + tabular 숫자. 가로 스크롤은 .prose-table-wrap 래퍼가
+   담당(모바일 안전). blanket 보더/섀도 킬 재도입 아님 — .prose-research 한정. */
+.prose-research .prose-table-wrap {
+  margin-block: 1.6em;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.prose-research :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.prose-research :where(th, td) {
+  padding: 0.55em 0.8em;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.prose-research :where(thead th) {
+  background: var(--tl-n-50);
+  font-weight: 700;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.prose-research :where(tbody tr:last-child td) {
+  border-bottom: 0;
+}
+
+/* 숫자 셀 — 우정렬 + tabular(<td class="num">). */
+.prose-research :where(td.num, th.num) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
