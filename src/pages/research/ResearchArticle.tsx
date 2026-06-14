@@ -31,13 +31,99 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { trpc } from "@/lib/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   RESEARCH_TYPE_LABEL,
   researchSectorMeta,
   formatResearchDate,
   type ResearchSummary,
+  type ResearchDetail,
 } from "@/lib/research-types";
 import { SectorBadge } from "./ResearchList";
+
+// ── PDF 내보내기 (클라이언트 인쇄) ────────────────────────────────
+// 별도 창에 자체 완결형 A4 문서를 써서 인쇄(=PDF 저장)한다. 대시보드 크롬
+// (사이드바/탑바)을 print CSS 로 분리하는 대신, 기사 데이터만으로 독립 문서를
+// 구성 → 한글 폰트 안전 + 레이아웃 간섭 0. 본문(bodyHtml)은 백엔드 seed 의
+// 신뢰된 정적 HTML.
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function buildResearchPrintHtml(article: ResearchDetail): string {
+  const typeLabel = RESEARCH_TYPE_LABEL[article.type];
+  const sectorLabel = researchSectorMeta(article.sector).label;
+  const dateStr = formatResearchDate(article.publishedAt);
+  const kt =
+    article.takeaways.length > 0
+      ? `<section class="kt"><h2>핵심 요약</h2><ul>${article.takeaways
+          .map((t) => `<li>${escHtml(t)}</li>`)
+          .join("")}</ul></section>`
+      : "";
+  const css = `
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;}
+    body{font-family:"42dot Sans","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;color:#1a1a1a;line-height:1.7;}
+    .page{max-width:760px;margin:0 auto;padding:28px 24px 48px;}
+    .doc-head{border-bottom:2px solid #1a1a1a;padding-bottom:14px;margin-bottom:18px;}
+    .brand{font-size:12px;font-weight:700;letter-spacing:.06em;color:#185adb;text-transform:uppercase;}
+    .badges{font-size:12px;color:#666;margin-top:6px;}
+    h1{font-size:24px;line-height:1.3;margin:8px 0 6px;letter-spacing:-.01em;}
+    .dek{font-size:14px;color:#666;margin:0 0 8px;}
+    .meta{font-size:12px;color:#666;}
+    .kt{border:1px solid #185adb;border-radius:10px;background:rgba(24,90,219,.05);padding:14px 16px;margin:18px 0;}
+    .kt h2{font-size:13px;color:#185adb;margin:0 0 8px;}
+    .kt ul{margin:0;padding-left:18px;}
+    .kt li{font-size:13px;margin:5px 0;}
+    .print-btn{display:inline-block;margin:0 0 14px;padding:8px 14px;border:1px solid #e2e2e2;border-radius:8px;background:#fff;font:inherit;font-size:13px;cursor:pointer;}
+    .doc-foot{margin-top:28px;border-top:1px solid #e2e2e2;padding-top:12px;font-size:11px;color:#666;}
+    .prose-research{font-size:13.5px;line-height:1.75;}
+    .prose-research h2{font-size:18px;margin:1.6em 0 .5em;line-height:1.3;}
+    .prose-research h3{font-size:15px;margin:1.3em 0 .4em;}
+    .prose-research p{margin:0 0 1em;}
+    .prose-research a{color:#185adb;text-decoration:underline;word-break:break-all;}
+    .prose-research ul,.prose-research ol{margin:0 0 1em;padding-left:1.3em;}
+    .prose-research li{margin:.3em 0;}
+    .prose-research blockquote{margin:1.4em 0;padding:.8em 0;border-top:1px solid #e2e2e2;border-bottom:1px solid #e2e2e2;font-style:italic;font-size:15px;}
+    .prose-research blockquote p{margin:0;}
+    .prose-research figure{display:none;}
+    .prose-research .prose-table-wrap{border:1px solid #e2e2e2;border-radius:8px;margin:1.2em 0;}
+    .prose-research table{width:100%;border-collapse:collapse;font-size:12px;}
+    .prose-research th,.prose-research td{padding:6px 10px;text-align:left;border-bottom:1px solid #e2e2e2;vertical-align:top;}
+    .prose-research thead th{background:#fafafa;font-weight:700;}
+    .prose-research td.num,.prose-research th.num{text-align:right;font-variant-numeric:tabular-nums;}
+    .prose-research .prose-callout{margin:1.3em 0;padding:10px 12px;border:1px solid #e2e2e2;border-radius:8px;background:#fafafa;}
+    .prose-research .prose-callout[data-variant="warn"]{border-color:rgba(252,103,54,.4);background:rgba(252,103,54,.06);}
+    .prose-research .prose-callout p{margin:0;font-size:12.5px;}
+    @page{size:A4;margin:16mm;}
+    @media print{.no-print{display:none !important;}.page{max-width:none;padding:0;}}
+  `;
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escHtml(
+    article.title,
+  )} · Tradelab 리서치</title><style>${css}</style></head><body><div class="page"><button class="print-btn no-print" onclick="window.print()">인쇄 / PDF로 저장</button><header class="doc-head"><div class="brand">Tradelab 리서치</div><div class="badges">${escHtml(
+    sectorLabel,
+  )} · ${escHtml(typeLabel)}</div><h1>${escHtml(article.title)}</h1><p class="dek">${escHtml(
+    article.dek,
+  )}</p><div class="meta">${escHtml(article.author)} · ${escHtml(
+    dateStr,
+  )} · ${article.readMinutes}분 읽기</div></header>${kt}<main class="prose-research">${
+    article.bodyHtml ?? ""
+  }</main><footer class="doc-foot">© Tradelab 리서치 — 본 문서는 시장 구조 분석·교육 목적이며 투자 자문이 아닙니다. 과거 성과는 미래를 보장하지 않습니다. (사이트 PDF 내보내기로 생성)</footer></div><script>window.addEventListener("load",function(){setTimeout(function(){try{window.print();}catch(e){}},350);});</script></body></html>`;
+}
+
+function handleExportResearchPdf(article: ResearchDetail): void {
+  const w = window.open("", "_blank", "width=900,height=1000");
+  if (!w) {
+    toast("PDF 내보내기를 열 수 없어요", {
+      description:
+        "팝업이 차단된 것 같아요. 팝업을 허용하거나, 페이지에서 Ctrl+P 로 저장하세요.",
+    });
+    return;
+  }
+  w.document.open();
+  w.document.write(buildResearchPrintHtml(article));
+  w.document.close();
+}
 
 export default function ResearchArticlePage() {
   const [, params] = useRoute("/research/:slug");
@@ -209,8 +295,8 @@ export default function ResearchArticlePage() {
           <Button
             variant="outline"
             className="h-9"
-            disabled
-            aria-label="PDF 내보내기 (준비 중)"
+            onClick={() => handleExportResearchPdf(article)}
+            aria-label="PDF 내보내기"
           >
             <FileDown className="size-4" />
             PDF 내보내기
