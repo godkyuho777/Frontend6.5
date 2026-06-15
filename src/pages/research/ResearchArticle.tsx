@@ -41,6 +41,8 @@ import {
 import { SectorBadge } from "./ResearchList";
 import ResearchChart from "./ResearchChart";
 import { chartsForSlug } from "@/lib/research-charts";
+import ResearchEvents from "./ResearchEvents";
+import { eventsForSector } from "@/lib/research-events";
 
 // ── PDF 내보내기 (클라이언트 인쇄) ────────────────────────────────
 // 별도 창에 자체 완결형 A4 문서를 써서 인쇄(=PDF 저장)한다. 대시보드 크롬
@@ -162,6 +164,7 @@ export default function ResearchArticlePage() {
   }
 
   const related = relatedQuery.data ?? [];
+  const events = eventsForSector(article.sector);
 
   return (
     <article className="flex flex-col gap-6">
@@ -284,6 +287,21 @@ export default function ResearchArticlePage() {
             {charts.map((spec, i) => (
               <ResearchChart key={i} spec={spec} />
             ))}
+          </section>
+        )}
+
+        {/* 주요 이벤트 (섹터별 알트코인 이벤트 캘린더) */}
+        {events.length > 0 && (
+          <section className="flex flex-col gap-3 border-t border-border pt-5">
+            <div>
+              <h2 className="text-sm font-bold tracking-tight text-foreground">
+                주요 이벤트
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                이 섹터 알트코인의 하드포크·업그레이드·언락·규제 일정 (확정/목표/미확정 표기)
+              </p>
+            </div>
+            <ResearchEvents events={events} />
           </section>
         )}
 
