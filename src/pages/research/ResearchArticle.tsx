@@ -39,6 +39,8 @@ import {
   type ResearchDetail,
 } from "@/lib/research-types";
 import { SectorBadge } from "./ResearchList";
+import ResearchChart from "./ResearchChart";
+import { chartsForSlug } from "@/lib/research-charts";
 
 // ── PDF 내보내기 (클라이언트 인쇄) ────────────────────────────────
 // 별도 창에 자체 완결형 A4 문서를 써서 인쇄(=PDF 저장)한다. 대시보드 크롬
@@ -127,6 +129,7 @@ function handleExportResearchPdf(article: ResearchDetail): void {
 export default function ResearchArticlePage() {
   const [, params] = useRoute("/research/:slug");
   const slug = params?.slug ?? "";
+  const charts = chartsForSlug(slug);
 
   const detailQuery = trpc.research.detail.useQuery(
     { slug },
@@ -270,6 +273,18 @@ export default function ResearchArticlePage() {
               확인해보세요.
             </p>
           </div>
+        )}
+
+        {/* 주요 데이터 (차트) — slug 별 프론트 차트 데이터 (as-of·출처 캡션) */}
+        {charts.length > 0 && (
+          <section className="flex flex-col gap-4 border-t border-border pt-5">
+            <h2 className="text-sm font-bold tracking-tight text-foreground">
+              주요 데이터
+            </h2>
+            {charts.map((spec, i) => (
+              <ResearchChart key={i} spec={spec} />
+            ))}
+          </section>
         )}
 
         {/* 출처 */}
