@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { trpc } from "@/lib/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { cn } from "@/lib/utils";
@@ -160,7 +159,6 @@ export default function ResearchArticlePage() {
   }
 
   const related = relatedQuery.data ?? [];
-  const initials = article.author.slice(0, 2);
 
   return (
     <article className="flex flex-col gap-6">
@@ -190,11 +188,6 @@ export default function ResearchArticlePage() {
           {article.dek}
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <Avatar className="size-9">
-            <AvatarFallback className="bg-foreground text-xs font-bold text-background">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">
               {article.author}
