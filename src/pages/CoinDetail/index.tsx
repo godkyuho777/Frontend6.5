@@ -20,10 +20,11 @@
  *   - tracker=vwap       — VWAP + EMA(9)
  */
 
-import { BarChart3, Bell, ClipboardList, FlaskConical, History, Info } from "lucide-react";
+import { BarChart3, Bell, ClipboardList, FlaskConical, History, Info, TrendingUp } from "lucide-react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { TrackerTabs, type TrackerTab } from "@/components/trackers/TrackerTabs";
 import { CoinInfoTab } from "./tabs/v2/CoinInfoTab";
+import { CoinValuationTab } from "./tabs/v2/CoinValuationTab";
 import { CoinCriteriaTab } from "./tabs/v2/CoinCriteriaTab";
 import { CoinSignalTab } from "./tabs/v2/CoinSignalTab";
 import { CoinChartTab } from "./tabs/v2/CoinChartTab";
@@ -46,6 +47,7 @@ import {
 // 6 탭 정의 (STANDARD_TABS 확장 — "info" 탭이 맨 앞에 추가됨).
 const COIN_DETAIL_TABS: ReadonlyArray<TrackerTab> = [
   { id: "info", label: "코인 정보", icon: Info },
+  { id: "valuation", label: "밸류에이션", icon: TrendingUp },
   { id: "criteria", label: "매매기준", icon: ClipboardList },
   { id: "signal", label: "실시간 신호", icon: Bell },
   { id: "chart", label: "차트", icon: BarChart3 },
@@ -111,6 +113,8 @@ export default function CoinDetailPage() {
         switch (activeTab) {
           case "info":
             return <CoinInfoTab symbol={symbol} />;
+          case "valuation":
+            return <CoinValuationTab symbol={symbol} />;
           case "criteria":
             return <CoinCriteriaTab symbol={symbol} tracker={tracker} />;
           case "signal":

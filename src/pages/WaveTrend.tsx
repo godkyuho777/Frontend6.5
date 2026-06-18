@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Loader2, RefreshCw, Waves } from "lucide-react";
+import { Loader2, RefreshCw, Waves, TrendingUp } from "lucide-react";
+import { Link } from "wouter";
 
 import { HudPanel, StatCard } from "@/components/HudPanel";
 import { TimeRangeSegmented } from "@/components/TimeRangeSegmented";
@@ -352,6 +353,18 @@ export default function WaveTrend() {
             value={interval}
             onChange={setSelectedInterval}
           />
+          {/* 코인 상세 밸류에이션 링크 */}
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 font-sans text-[10px] border-neon-pink/30 text-neon-pink hover:bg-neon-pink/10"
+          >
+            <Link href={`/coin/${symbol}?tab=valuation`}>
+              <TrendingUp className="h-3 w-3 mr-1" />
+              밸류에이션
+            </Link>
+          </Button>
         </div>
       </div>
 
