@@ -43,6 +43,8 @@ import ResearchChart from "./ResearchChart";
 import { chartsForSlug } from "@/lib/research-charts";
 import ResearchEvents from "./ResearchEvents";
 import { eventsForSector } from "@/lib/research-events";
+import ResearchSubsectors from "./ResearchSubsectors";
+import { subsectorsForSector } from "@/lib/research-subsectors";
 
 // ── PDF 내보내기 (클라이언트 인쇄) ────────────────────────────────
 // 별도 창에 자체 완결형 A4 문서를 써서 인쇄(=PDF 저장)한다. 대시보드 크롬
@@ -165,6 +167,7 @@ export default function ResearchArticlePage() {
 
   const related = relatedQuery.data ?? [];
   const events = eventsForSector(article.sector);
+  const subsectors = subsectorsForSector(article.sector);
 
   return (
     <article className="flex flex-col gap-6">
@@ -276,6 +279,21 @@ export default function ResearchArticlePage() {
               확인해보세요.
             </p>
           </div>
+        )}
+
+        {/* 서브섹터 분해 — 섹터를 하위 서브섹터로 세분 (Messari 식) */}
+        {subsectors.length > 0 && (
+          <section className="flex flex-col gap-3 border-t border-border pt-5">
+            <div>
+              <h2 className="text-sm font-bold tracking-tight text-foreground">
+                서브섹터 분해
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                이 섹터를 하위 서브섹터로 세분 — 대표 토큰 · 상대강도 · 현재 동인
+              </p>
+            </div>
+            <ResearchSubsectors subsectors={subsectors} />
+          </section>
         )}
 
         {/* 주요 데이터 (차트) — slug 별 프론트 차트 데이터 (as-of·출처 캡션) */}
