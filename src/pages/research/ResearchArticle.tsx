@@ -289,7 +289,7 @@ export default function ResearchArticlePage() {
                 서브섹터 분해
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                이 섹터를 하위 서브섹터로 세분 — 대표 토큰 · 상대강도 · 현재 동인
+                이 섹터를 하위 서브섹터로 세분 — 리서치 상대강도 + 라이브 24h 집계 · 대표 토큰 · 동인
               </p>
             </div>
             <ResearchSubsectors subsectors={subsectors} />
