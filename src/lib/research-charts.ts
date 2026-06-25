@@ -69,6 +69,25 @@ export const RESEARCH_CHARTS: Record<string, ResearchChartSpec[]> = {
     },
   ],
 
+  // 주간 시황 #14 — Perp/L1 30일 수수료 비교 (Hyperliquid 우위)
+  "weekly-14-warsh-hawkish-risk-off-2026-06": [
+    {
+      type: "bar",
+      title: "Perp/L1 30일 수수료 비교 — Hyperliquid의 현금흐름 우위 (단위: 백만 USD)",
+      xKey: "name",
+      series: [{ key: "fees", label: "30일 수수료($M)", color: BLUE }],
+      data: [
+        { name: "Hyperliquid", fees: 53 },
+        { name: "Ethereum", fees: 5.1 },
+        { name: "Solana", fees: 2 },
+      ],
+      format: "plain",
+      asOf: "2026-06 기준(최근 30일)",
+      source: "출처: BanklessTimes — Hyperliquid 지표 (Solana는 <$2M 근사)",
+      note: "HYPE는 수수료 대부분을 토큰 소각에 사용 — 가격과 별개의 현금흐름·디플레가 DeFi 수수료 스위치 테제의 실사례.",
+    },
+  ],
+
   // 주간 시황 #13 — BTC ETF 주간 순유출
   "weekly-13-risk-off-rotation": [
     {
