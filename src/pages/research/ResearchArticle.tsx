@@ -15,6 +15,7 @@
  * 전역 토큰만 사용, 섹터 배지 tint 만 의미색.
  */
 
+import { useState } from "react";
 import { Link, useRoute } from "wouter";
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import {
   ExternalLink,
   AlertTriangle,
   RotateCcw,
+  Languages,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,140 @@ import { eventsForSector } from "@/lib/research-events";
 import ResearchSubsectors from "./ResearchSubsectors";
 import { subsectorsForSector } from "@/lib/research-subsectors";
 
+// ── 언어(KO/EN) — UI 크롬 i18n + 토글 ─────────────────────────────
+// 본문/메타는 백엔드 research.translate(온디맨드 LLM) 로 번역하고, 화면 크롬
+// (섹션 제목·버튼)은 아래 정적 사전으로 즉시 전환한다. 헌장: 교육 콘텐츠 접근성.
+type Lang = "ko" | "en";
+
+interface ArticleStrings {
+  research: string;
+  breadcrumbAria: string;
+  keyTakeaways: string;
+  toc: string;
+  subsectors: string;
+  subsectorsDesc: string;
+  keyData: string;
+  events: string;
+  eventsDesc: string;
+  sources: string;
+  sourcesBody: string;
+  pdf: string;
+  naver: string;
+  related: string;
+  backToList: string;
+  minuteSuffix: string;
+  translating: string;
+  enUnavailable: string;
+}
+
+const STR: Record<Lang, ArticleStrings> = {
+  ko: {
+    research: "리서치",
+    breadcrumbAria: "경로",
+    keyTakeaways: "핵심 요약",
+    toc: "목차",
+    subsectors: "서브섹터 분해",
+    subsectorsDesc:
+      "이 섹터를 하위 서브섹터로 세분 — 리서치 상대강도 + 라이브 24h 집계 · 대표 토큰 · 동인",
+    keyData: "주요 데이터",
+    events: "주요 이벤트",
+    eventsDesc:
+      "이 섹터 알트코인의 하드포크·업그레이드·언락·규제 일정 (확정/목표/미확정 표기)",
+    sources: "출처",
+    sourcesBody:
+      "온체인 데이터 및 시장 지표는 발행 시점 기준이며, Tradelab 리서치팀이 정리했습니다. 수치는 거래소·온체인 데이터 제공처를 종합해 산출했습니다.",
+    pdf: "PDF 내보내기",
+    naver: "네이버 원문",
+    related: "관련 리서치",
+    backToList: "리서치 목록으로",
+    minuteSuffix: "분",
+    translating: "영어로 번역 중…",
+    enUnavailable: "영어 번역을 사용할 수 없어 원문(한국어)을 표시합니다.",
+  },
+  en: {
+    research: "Research",
+    breadcrumbAria: "Breadcrumb",
+    keyTakeaways: "Key Takeaways",
+    toc: "Contents",
+    subsectors: "Sub-sector Breakdown",
+    subsectorsDesc:
+      "Breaking this sector into sub-sectors — research relative strength + live 24h aggregate · key tokens · drivers",
+    keyData: "Key Data",
+    events: "Key Events",
+    eventsDesc:
+      "Hard forks, upgrades, unlocks, and regulatory dates for this sector's altcoins (confirmed / target / unconfirmed)",
+    sources: "Sources",
+    sourcesBody:
+      "On-chain data and market metrics are as of publication and were compiled by the Tradelab research desk from exchange and on-chain data providers.",
+    pdf: "Export PDF",
+    naver: "Naver original",
+    related: "Related Research",
+    backToList: "Back to research",
+    minuteSuffix: " min",
+    translating: "Translating to English…",
+    enUnavailable:
+      "English translation is currently unavailable — showing the original (Korean).",
+  },
+};
+
+// 기사 타입 라벨(EN). KO 는 RESEARCH_TYPE_LABEL 사용.
+const TYPE_EN: Record<string, string> = {
+  weekly: "Weekly",
+  deepdive: "Deep Dive",
+  flash: "Flash",
+};
+
+// 언어 토글 (한국어 | EN). EN 로딩 중에는 스피너 표시.
+function LangToggle({
+  lang,
+  onChange,
+  loading,
+}: {
+  lang: Lang;
+  onChange: (l: Lang) => void;
+  loading: boolean;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="언어 / Language"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-card p-0.5"
+    >
+      <button
+        type="button"
+        onClick={() => onChange("ko")}
+        aria-pressed={lang === "ko"}
+        className={cn(
+          "rounded-md px-2.5 py-1 text-xs font-bold transition-colors",
+          lang === "ko"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        한국어
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("en")}
+        aria-pressed={lang === "en"}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-bold transition-colors",
+          lang === "en"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        {loading ? (
+          <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <Languages className="size-3.5" />
+        )}
+        EN
+      </button>
+    </div>
+  );
+}
+
 // ── PDF 내보내기 (클라이언트 인쇄) ────────────────────────────────
 // 별도 창에 자체 완결형 A4 문서를 써서 인쇄(=PDF 저장)한다. 대시보드 크롬
 // (사이드바/탑바)을 print CSS 로 분리하는 대신, 기사 데이터만으로 독립 문서를
@@ -55,13 +191,35 @@ function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function buildResearchPrintHtml(article: ResearchDetail): string {
-  const typeLabel = RESEARCH_TYPE_LABEL[article.type];
+function buildResearchPrintHtml(article: ResearchDetail, lang: Lang): string {
+  const isEn = lang === "en";
+  const L = isEn
+    ? {
+        brand: "Tradelab Research",
+        keyTakeaways: "Key Takeaways",
+        printBtn: "Print / Save as PDF",
+        readSuffix: " min read",
+        titleSuffix: " · Tradelab Research",
+        foot: "© Tradelab Research — This document is for market-structure analysis and education only, not investment advice. Past performance does not guarantee future results. (Generated via the site's PDF export.)",
+        htmlLang: "en",
+      }
+    : {
+        brand: "Tradelab 리서치",
+        keyTakeaways: "핵심 요약",
+        printBtn: "인쇄 / PDF로 저장",
+        readSuffix: "분 읽기",
+        titleSuffix: " · Tradelab 리서치",
+        foot: "© Tradelab 리서치 — 본 문서는 시장 구조 분석·교육 목적이며 투자 자문이 아닙니다. 과거 성과는 미래를 보장하지 않습니다. (사이트 PDF 내보내기로 생성)",
+        htmlLang: "ko",
+      };
+  const typeLabel = isEn
+    ? TYPE_EN[article.type] ?? article.type
+    : RESEARCH_TYPE_LABEL[article.type];
   const sectorLabel = researchSectorMeta(article.sector).label;
   const dateStr = formatResearchDate(article.publishedAt);
   const kt =
     article.takeaways.length > 0
-      ? `<section class="kt"><h2>핵심 요약</h2><ul>${article.takeaways
+      ? `<section class="kt"><h2>${L.keyTakeaways}</h2><ul>${article.takeaways
           .map((t) => `<li>${escHtml(t)}</li>`)
           .join("")}</ul></section>`
       : "";
@@ -103,30 +261,43 @@ function buildResearchPrintHtml(article: ResearchDetail): string {
     @page{size:A4;margin:16mm;}
     @media print{.no-print{display:none !important;}.page{max-width:none;padding:0;}}
   `;
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escHtml(
+  return `<!DOCTYPE html><html lang="${L.htmlLang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escHtml(
     article.title,
-  )} · Tradelab 리서치</title><style>${css}</style></head><body><div class="page"><button class="print-btn no-print" onclick="window.print()">인쇄 / PDF로 저장</button><header class="doc-head"><div class="brand">Tradelab 리서치</div><div class="badges">${escHtml(
+  )}${L.titleSuffix}</title><style>${css}</style></head><body><div class="page"><button class="print-btn no-print" onclick="window.print()">${
+    L.printBtn
+  }</button><header class="doc-head"><div class="brand">${
+    L.brand
+  }</div><div class="badges">${escHtml(
     sectorLabel,
   )} · ${escHtml(typeLabel)}</div><h1>${escHtml(article.title)}</h1><p class="dek">${escHtml(
     article.dek,
   )}</p><div class="meta">${escHtml(article.author)} · ${escHtml(
     dateStr,
-  )} · ${article.readMinutes}분 읽기</div></header>${kt}<main class="prose-research">${
+  )} · ${article.readMinutes}${L.readSuffix}</div></header>${kt}<main class="prose-research">${
     article.bodyHtml ?? ""
-  }</main><footer class="doc-foot">© Tradelab 리서치 — 본 문서는 시장 구조 분석·교육 목적이며 투자 자문이 아닙니다. 과거 성과는 미래를 보장하지 않습니다. (사이트 PDF 내보내기로 생성)</footer></div><script>window.addEventListener("load",function(){setTimeout(function(){try{window.print();}catch(e){}},350);});</script></body></html>`;
+  }</main><footer class="doc-foot">${
+    L.foot
+  }</footer></div><script>window.addEventListener("load",function(){setTimeout(function(){try{window.print();}catch(e){}},350);});</script></body></html>`;
 }
 
-function handleExportResearchPdf(article: ResearchDetail): void {
+function handleExportResearchPdf(article: ResearchDetail, lang: Lang): void {
   const w = window.open("", "_blank", "width=900,height=1000");
   if (!w) {
-    toast("PDF 내보내기를 열 수 없어요", {
-      description:
-        "팝업이 차단된 것 같아요. 팝업을 허용하거나, 페이지에서 Ctrl+P 로 저장하세요.",
-    });
+    toast(
+      lang === "en"
+        ? "Couldn't open PDF export"
+        : "PDF 내보내기를 열 수 없어요",
+      {
+        description:
+          lang === "en"
+            ? "A popup may be blocked. Allow popups, or press Ctrl+P on the page to save."
+            : "팝업이 차단된 것 같아요. 팝업을 허용하거나, 페이지에서 Ctrl+P 로 저장하세요.",
+      },
+    );
     return;
   }
   w.document.open();
-  w.document.write(buildResearchPrintHtml(article));
+  w.document.write(buildResearchPrintHtml(article, lang));
   w.document.close();
 }
 
@@ -134,6 +305,7 @@ export default function ResearchArticlePage() {
   const [, params] = useRoute("/research/:slug");
   const slug = params?.slug ?? "";
   const charts = chartsForSlug(slug);
+  const [lang, setLang] = useState<Lang>("ko");
 
   const detailQuery = trpc.research.detail.useQuery(
     { slug },
@@ -142,6 +314,15 @@ export default function ResearchArticlePage() {
   const relatedQuery = trpc.research.related.useQuery(
     { slug, limit: 2 },
     { enabled: slug.length > 0, staleTime: 5 * 60 * 1000 }
+  );
+  // EN 토글 시에만 번역 요청. 성공분은 영구 캐시(staleTime Infinity), 재시도 없음.
+  const enQuery = trpc.research.translate.useQuery(
+    { slug, lang: "en" },
+    {
+      enabled: lang === "en" && slug.length > 0,
+      staleTime: Infinity,
+      retry: false,
+    }
   );
 
   const article = detailQuery.data;
@@ -169,17 +350,43 @@ export default function ResearchArticlePage() {
   const events = eventsForSector(article.sector);
   const subsectors = subsectorsForSector(article.sector);
 
+  // 언어 토글 — 원문(KO) vs 번역(EN). 번역 성공분만 덮어쓰고 나머지는 원문 유지.
+  const tr = STR[lang];
+  const en =
+    lang === "en" && enQuery.data?.status === "ok" ? enQuery.data : null;
+  const enLoading = lang === "en" && enQuery.isLoading;
+  const enFailed =
+    lang === "en" &&
+    (enQuery.data?.status === "unavailable" ||
+      enQuery.data?.status === "error");
+  const view: ResearchDetail = {
+    ...article,
+    title: en?.title ?? article.title,
+    dek: en?.dek ?? article.dek,
+    takeaways: en?.takeaways ?? article.takeaways,
+    toc: en?.toc ?? article.toc,
+    bodyHtml: en?.bodyHtml ?? article.bodyHtml,
+  };
+  const typeLabel =
+    lang === "en"
+      ? TYPE_EN[view.type] ?? view.type
+      : RESEARCH_TYPE_LABEL[view.type];
+
   return (
     <article className="flex flex-col gap-6">
-      {/* breadcrumb */}
-      <nav aria-label="경로">
+      {/* breadcrumb + 언어 토글 */}
+      <nav
+        aria-label={tr.breadcrumbAria}
+        className="flex items-center justify-between gap-3"
+      >
         <Link
           href="/research"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="size-4" />
-          리서치
+          {tr.research}
         </Link>
+        <LangToggle lang={lang} onChange={setLang} loading={enLoading} />
       </nav>
 
       {/* 타이틀 블록 (좁은 칼럼) */}
@@ -187,14 +394,14 @@ export default function ResearchArticlePage() {
         <div className="flex flex-wrap items-center gap-2">
           <SectorBadge sector={article.sector} />
           <span className="text-sm font-medium text-muted-foreground">
-            {RESEARCH_TYPE_LABEL[article.type]}
+            {typeLabel}
           </span>
         </div>
         <h1 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-foreground">
-          {article.title}
+          {view.title}
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-muted-foreground">
-          {article.dek}
+          {view.dek}
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
@@ -208,7 +415,8 @@ export default function ResearchArticlePage() {
             <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
               <Clock className="size-3.5" />
-              {article.readMinutes}분
+              {view.readMinutes}
+              {tr.minuteSuffix}
             </span>
           </div>
         </div>
@@ -217,13 +425,13 @@ export default function ResearchArticlePage() {
       {/* 본문 칼럼 */}
       <div className="mx-auto flex w-full max-w-[42rem] flex-col gap-6">
         {/* 핵심 요약 박스 (연한 블루 tint, 전체 보더+rounded) */}
-        {article.takeaways.length > 0 && (
+        {view.takeaways.length > 0 && (
           <section className="rounded-xl border border-primary/20 bg-primary/5 p-5">
             <h2 className="text-sm font-bold tracking-tight text-primary">
-              핵심 요약
+              {tr.keyTakeaways}
             </h2>
             <ul className="mt-3 flex flex-col gap-2">
-              {article.takeaways.map((t, i) => (
+              {view.takeaways.map((t, i) => (
                 <li
                   key={i}
                   className="flex gap-2.5 text-[0.95rem] leading-relaxed text-foreground"
@@ -240,16 +448,16 @@ export default function ResearchArticlePage() {
         )}
 
         {/* 목차 박스 (hairline) */}
-        {article.toc.length > 0 && (
+        {view.toc.length > 0 && (
           <nav
-            aria-label="목차"
+            aria-label={tr.toc}
             className="rounded-xl border border-border bg-card p-5"
           >
             <h2 className="text-sm font-bold tracking-tight text-foreground">
-              목차
+              {tr.toc}
             </h2>
             <ol className="mt-3 flex flex-col gap-2">
-              {article.toc.map((item) => (
+              {view.toc.map((item) => (
                 <li key={item.no} className="flex gap-3 text-[0.95rem]">
                   <span className="font-mono text-sm text-muted-foreground">
                     {item.no}
@@ -261,13 +469,26 @@ export default function ResearchArticlePage() {
           </nav>
         )}
 
-        {/* 본문 */}
-        {article.bodyHtml ? (
+        {/* 번역 상태 배너 (EN 토글) */}
+        {enLoading && (
+          <div className="inline-flex items-center gap-2 self-start rounded-lg border border-primary/20 bg-primary/5 px-3.5 py-2 text-sm font-medium text-primary">
+            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            {tr.translating}
+          </div>
+        )}
+        {enFailed && (
+          <div className="rounded-lg border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-muted-foreground">
+            {tr.enUnavailable}
+          </div>
+        )}
+
+        {/* 본문 (KO 원문 또는 EN 번역) */}
+        {view.bodyHtml ? (
           <div
             className="prose-research"
-            // 백엔드 seed 본문 — 신뢰된 정적 콘텐츠. 추후 사용자 발행 본문은
-            // 서버에서 sanitize 한 HTML 또는 마크다운 렌더 결과로 교체한다.
-            dangerouslySetInnerHTML={{ __html: article.bodyHtml }}
+            // 백엔드 seed 본문(또는 research.translate 의 EN HTML) — 신뢰된 콘텐츠.
+            // 추후 사용자 발행 본문은 서버 sanitize HTML/마크다운 렌더로 교체한다.
+            dangerouslySetInnerHTML={{ __html: view.bodyHtml }}
           />
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center">
@@ -286,10 +507,10 @@ export default function ResearchArticlePage() {
           <section className="flex flex-col gap-3 border-t border-border pt-5">
             <div>
               <h2 className="text-sm font-bold tracking-tight text-foreground">
-                서브섹터 분해
+                {tr.subsectors}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                이 섹터를 하위 서브섹터로 세분 — 리서치 상대강도 + 라이브 24h 집계 · 대표 토큰 · 동인
+                {tr.subsectorsDesc}
               </p>
             </div>
             <ResearchSubsectors subsectors={subsectors} />
@@ -300,7 +521,7 @@ export default function ResearchArticlePage() {
         {charts.length > 0 && (
           <section className="flex flex-col gap-4 border-t border-border pt-5">
             <h2 className="text-sm font-bold tracking-tight text-foreground">
-              주요 데이터
+              {tr.keyData}
             </h2>
             {charts.map((spec, i) => (
               <ResearchChart key={i} spec={spec} />
@@ -313,10 +534,10 @@ export default function ResearchArticlePage() {
           <section className="flex flex-col gap-3 border-t border-border pt-5">
             <div>
               <h2 className="text-sm font-bold tracking-tight text-foreground">
-                주요 이벤트
+                {tr.events}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                이 섹터 알트코인의 하드포크·업그레이드·언락·규제 일정 (확정/목표/미확정 표기)
+                {tr.eventsDesc}
               </p>
             </div>
             <ResearchEvents events={events} />
@@ -326,11 +547,10 @@ export default function ResearchArticlePage() {
         {/* 출처 */}
         <section className="border-t border-border pt-5">
           <h2 className="text-sm font-bold tracking-tight text-foreground">
-            출처
+            {tr.sources}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            온체인 데이터 및 시장 지표는 발행 시점 기준이며, Tradelab 리서치팀이
-            정리했습니다. 수치는 거래소·온체인 데이터 제공처를 종합해 산출했습니다.
+            {tr.sourcesBody}
           </p>
         </section>
 
@@ -339,11 +559,11 @@ export default function ResearchArticlePage() {
           <Button
             variant="outline"
             className="h-9"
-            onClick={() => handleExportResearchPdf(article)}
-            aria-label="PDF 내보내기"
+            onClick={() => handleExportResearchPdf(view, lang)}
+            aria-label={tr.pdf}
           >
             <FileDown className="size-4" />
-            PDF 내보내기
+            {tr.pdf}
           </Button>
           {article.naverUrl && (
             <Button asChild variant="ghost" className="h-9">
@@ -353,7 +573,7 @@ export default function ResearchArticlePage() {
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="size-4" />
-                네이버 원문
+                {tr.naver}
               </a>
             </Button>
           )}
@@ -363,7 +583,7 @@ export default function ResearchArticlePage() {
       {/* 관련 리서치 */}
       {related.length > 0 && (
         <section className="mx-auto w-full max-w-[42rem] border-t border-border pt-6">
-          <h2 className="text-base font-bold text-foreground">관련 리서치</h2>
+          <h2 className="text-base font-bold text-foreground">{tr.related}</h2>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {related.map((r) => (
               <RelatedCard key={r.slug} article={r} />
@@ -379,7 +599,7 @@ export default function ResearchArticlePage() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
-          리서치 목록으로
+          {tr.backToList}
         </Link>
       </div>
     </article>
