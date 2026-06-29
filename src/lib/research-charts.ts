@@ -88,6 +88,27 @@ export const RESEARCH_CHARTS: Record<string, ResearchChartSpec[]> = {
     },
   ],
 
+  // 주간 시황 #15 — 연준 인플레이션 전망 상향 (3월 → 6월 SEP)
+  "weekly-15-btc-breaks-60k-rotation-2026-06": [
+    {
+      type: "bar",
+      title: "연준 2026 인플레이션 전망 상향 — 3월 → 6월 SEP (단위: %)",
+      xKey: "metric",
+      series: [
+        { key: "march", label: "3월 전망", color: BLUE },
+        { key: "june", label: "6월 전망", color: AMBER },
+      ],
+      data: [
+        { metric: "PCE 2026", march: 2.7, june: 3.6 },
+        { metric: "근원 PCE 2026", march: 2.7, june: 3.3 },
+      ],
+      format: "pct",
+      asOf: "2026-06-17 FOMC SEP",
+      source: "출처: Federal Reserve — Summary of Economic Projections (6/17)",
+      note: "PCE +0.9%p 상향은 2021년 인플레 급등 이후 단일 회의 최대폭. 인플레 2% 복귀 시점도 2028년으로 후퇴 — 워시의 매파 톤은 취향이 아니라 데이터의 산물.",
+    },
+  ],
+
   // 주간 시황 #13 — BTC ETF 주간 순유출
   "weekly-13-risk-off-rotation": [
     {
